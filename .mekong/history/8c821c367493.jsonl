@@ -1,0 +1,4 @@
+{"event_id": "17df1c7ff082", "kind": "workflow_started", "timestamp": 1772634047.540443, "workflow_id": "8c821c367493", "step_order": null, "data": {"recipe": "Plan: H\u00c0NH \u0110\u1ed8NG (algo-trader): Retry task without invalid skill syntax. Use direct /cook command or /whisk for standard execution. Enable permissions if needed.", "steps": 1}}
+{"event_id": "a6b18ef79d98", "kind": "step_scheduled", "timestamp": 1772634047.540819, "workflow_id": "8c821c367493", "step_order": 1, "data": {}}
+{"event_id": "af35a77318d0", "kind": "step_completed", "timestamp": 1772634047.54276, "workflow_id": "8c821c367493", "step_order": 1, "data": {}}
+{"event_id": "2d28bd82a67c", "kind": "workflow_completed", "timestamp": 1772634047.542926, "workflow_id": "8c821c367493", "step_order": null, "data": {"success_rate": 100.0}}

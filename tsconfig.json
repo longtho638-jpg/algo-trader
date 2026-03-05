@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "commonjs",
+    "outDir": "./dist",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "types": ["node", "jest"],
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types", "../../node_modules/.pnpm/node_modules/@types", "../../packages/trading-core/types"],
+    "paths": {
+      "@agencyos/trading-core": ["../../packages/trading-core/index.ts"],
+      "@agencyos/trading-core/*": ["../../packages/trading-core/*"],
+      "@agencyos/vibe-billing-trading": ["../../packages/vibe-billing-trading/index.ts"],
+      "@agencyos/vibe-billing-trading/*": ["../../packages/vibe-billing-trading/*"],
+      "@agencyos/vibe-arbitrage-engine": ["../../packages/vibe-arbitrage-engine/index.ts"],
+      "@agencyos/vibe-arbitrage-engine/*": ["../../packages/vibe-arbitrage-engine/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "**/*.test.ts"]
+}
