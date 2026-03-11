@@ -1,0 +1,55 @@
+# Node dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Playwright
+playwright-report/
+test-results/
+
+# Reports (large files, regenerate)
+reports/
+
+# Temporary
+tmp/
+temp/
+
+# Telemetry
+.mekong/
+
+# Turbo
+.turbo/
+
+# Database
+*.db
+prisma/dev.db
