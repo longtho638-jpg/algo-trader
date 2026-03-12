@@ -3,6 +3,7 @@
  * Displays licenses with tier/status badges, usage tracking, and row actions.
  */
 import { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { License, LicenseFilters } from '../hooks/use-licenses';
 
 type SortKey = keyof Pick<License, 'name' | 'key' | 'domain' | 'tier' | 'status' | 'usageCount' | 'createdAt' | 'expiresAt'>;
@@ -58,6 +59,7 @@ export function LicenseListTable({
   onDelete,
   onViewAudit,
 }: LicenseListTableProps) {
+  const { t } = useTranslation();
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [filters, setFilters] = useState<LicenseFilters>({ status: 'all', tier: 'all' });
@@ -115,7 +117,7 @@ export function LicenseListTable({
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
         </svg>
-        <p className="text-sm">Loading licenses...</p>
+        <p className="text-sm">{t('license-list.loading')}</p>
       </div>
     );
   }
