@@ -98,7 +98,7 @@
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "wrangler": "^3.101.0",
+    "wrangler": "^4.2.0",
     "yaml": "^2.8.2"
   },
   "pnpm": {
