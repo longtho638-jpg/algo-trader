@@ -24,20 +24,20 @@ preview_id = "ba8c93a931524b7e97027dbad43b31c0"
 binding = "BUILD_CACHE"
 id = "95df9f174767429ea6e4d2e8c63c982a"
 
-# Queues (TEMPORARILY DISABLED - enable Queues in Cloudflare dashboard)
-# [[queues.producers]]
-# queue = "backtest-queue"
-# binding = "BACKTEST_QUEUE"
+# Queues (ENABLED - created via API)
+[[queues.producers]]
+queue = "backtest-queue"
+binding = "BACKTEST_QUEUE"
 
-# [[queues.producers]]
-# queue = "scan-queue"
-# binding = "SCAN_QUEUE"
+[[queues.producers]]
+queue = "scan-queue"
+binding = "SCAN_QUEUE"
 
-# [[queues.producers]]
-# queue = "webhook-queue"
-# binding = "WEBHOOK_QUEUE"
+[[queues.producers]]
+queue = "webhook-queue"
+binding = "WEBHOOK_QUEUE"
 
-# # Queue Consumers
+# Queue Consumers (DISABLED - requires queue handler in gateway.ts)
 # [[queues.consumers]]
 # queue = "backtest-queue"
 # max_batch_size = 10
