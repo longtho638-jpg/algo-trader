@@ -16,7 +16,7 @@
   },
   "scripts": {
     "prepublishOnly": "npm run build && npm test",
-    "prepare": "npm run build",
+    "prepare": "node scripts/skip-prepare-in-ci.js",
     "sop:run": "node src/agi-sops/index.js",
     "sop:dev": "node --watch src/agi-sops/index.js",
     "disk:check": "pnpm exec ts-node scripts/disk-monitor.ts",
