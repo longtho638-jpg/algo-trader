@@ -31,6 +31,8 @@
     "node_modules/.cache",
     "src/api/routes/monitoring-routes.ts",
     "src/api/routes/monitoring-routes-extension.ts",
-    "../../packages/**/*.ts"
+    "../../packages/**/*.ts",
+    "src/arbitrage/**/*.ts",
+    "src/cli/**/*.ts"
   ]
 }

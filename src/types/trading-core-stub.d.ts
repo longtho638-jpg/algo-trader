@@ -17,15 +17,28 @@ declare module '@agencyos/trading-core/exchanges' {
   }
 
   export class ExchangeClientBase {
+    constructor(config?: any);
     name: string;
-    constructor(config: any);
     fetchTicker(symbol: string): Promise<any>;
     fetchOrderBook(symbol: string): Promise<any>;
-    createOrder(symbol: string, type: string, side: string, amount: number, price?: number): Promise<any>;
+    createOrder(symbol: string, type: string, side: string, amount: number, price?: number, ...args: any[]): Promise<any>;
     createMarketOrder(symbol: string, side: string, amount: number): Promise<any>;
     fetchBalance(): Promise<any>;
     connect(): Promise<void>;
     disconnect(): Promise<void>;
+    [key: string]: any;
+  }
+
+  export class BinanceAdapter extends ExchangeClientBase {
+    constructor(config?: any, ...args: any[]);
+  }
+
+  export class OkxAdapter extends ExchangeClientBase {
+    constructor(config?: any, ...args: any[]);
+  }
+
+  export class BybitAdapter extends ExchangeClientBase {
+    constructor(config?: any, ...args: any[]);
   }
 
   export class ExchangeFactory {
@@ -48,21 +61,79 @@ declare module '@agencyos/trading-core/arbitrage' {
     spread: number;
     profit: number;
     timestamp: number;
+    buyPrice: number;
+    sellPrice: number;
+    spreadPercent: number;
+    netProfitPercent: number;
+    estimatedProfitUsd: number;
+    [key: string]: any;
   }
 
   export interface ArbitrageConfig {
-    minProfit: number;
-    maxInvestment: number;
-    exchanges: string[];
+    minProfit?: number;
+    maxInvestment?: number;
+    exchanges?: string[];
+    symbols?: string[];
+    minSpreadPercent?: number;
+    pollIntervalMs?: number;
+    positionSizeUsd?: number;
+    [key: string]: any;
+  }
+
+  export interface ExchangeConfig {
+    name: string;
+    apiKey?: string;
+    secret?: string;
+    [key: string]: any;
+  }
+
+  export class AgiArbitrageEngine {
+    constructor(config?: any, ...args: any[]);
+    execute(): Promise<any>;
+    init(): void;
+    start(): void;
+    stop(): void;
+    getStats(): any;
+    getProfitSummary(): any;
+    [key: string]: any;
+  }
+
+  export class SpreadDetectorEngine {
+    constructor(config?: any, ...args: any[]);
+    init(): void;
+    start(): void;
+    stop(): void;
+    getStats(): any;
+    getProfitSummary(): any;
+    [key: string]: any;
+  }
+
+  export class ArbitrageOrchestrator {
+    constructor(config?: any, ...args: any[]);
+    init(): void;
+    start(): void;
+    stop(): void;
+    getStats(): any;
+    [key: string]: any;
   }
 
   export class ArbitrageScanner {
-    constructor(config: ArbitrageConfig);
+    constructor(config?: ArbitrageConfig, ...args: any[]);
     scan(): Promise<ArbitrageOpportunity[]>;
+    addExchange(config: ExchangeConfig | any, ...args: any[]): void;
+    onOpportunity(callback: (opp: ArbitrageOpportunity) => void, ...args: any[]): void;
+    start(): void;
+    stop(): void;
+    getStats(): any;
+    [key: string]: any;
   }
 
   export class ArbitrageExecutor {
+    constructor(config?: any, ...args: any[]);
     execute(opp: ArbitrageOpportunity): Promise<any>;
+    addExchange(exchange: any, ...args: any[]): void;
+    printDashboard(): void;
+    [key: string]: any;
   }
 }
 
@@ -84,7 +155,7 @@ declare module '@agencyos/trading-core/interfaces' {
       free: number;
       used: number;
       total: number;
-    };
+    } | string | number; // Allow string/number for balance values
   }
 
   export interface IOrderBookEntry {
@@ -102,23 +173,25 @@ declare module '@agencyos/trading-core/interfaces' {
   export interface IOrder {
     id: string;
     symbol: string;
-    type: string;
+    type?: string; // Optional
     side: string;
     amount: number;
     price?: number;
-    filled: number;
+    filled?: number; // Optional
     status: string;
     timestamp: number;
+    [key: string]: any;
   }
 
   export interface ISignal {
     type: SignalType;
-    symbol: string;
-    action: 'buy' | 'sell' | 'hold';
-    strength: number;
+    symbol?: string; // Optional
+    action?: 'buy' | 'sell' | 'hold'; // Optional
+    strength?: number; // Optional
     timestamp: number;
-    price?: number; // Optional price property
-    [key: string]: any; // Allow any additional properties
+    price?: number;
+    metadata?: any;
+    [key: string]: any;
   }
 
   export interface ICandle {
@@ -128,14 +201,14 @@ declare module '@agencyos/trading-core/interfaces' {
     low: number;
     close: number;
     volume: number;
-    metadata?: any; // Optional metadata property
-    [key: string]: any; // Allow any additional properties
+    metadata?: any;
+    [key: string]: any;
   }
 
   export interface IStrategy {
     name: string;
     execute(): Promise<any>;
-    [key: string]: any; // Allow any additional properties
+    [key: string]: any;
   }
 
   export enum SignalType {
@@ -149,10 +222,27 @@ declare module '@agencyos/vibe-arbitrage-engine/strategies' {
   export interface Strategy {
     name: string;
     execute(): Promise<any>;
+    [key: string]: any;
+  }
+
+  export class CrossExchangeArbitrage implements Strategy {
+    name: string;
+    execute(): Promise<any>;
+  }
+
+  export class TriangularArbitrage implements Strategy {
+    name: string;
+    execute(): Promise<any>;
+  }
+
+  export class StatisticalArbitrage implements Strategy {
+    name: string;
+    execute(): Promise<any>;
   }
 
   export const strategies: {
     TriangularArbitrage: Strategy;
     CrossExchangeArbitrage: Strategy;
+    StatisticalArbitrage: Strategy;
   };
 }
