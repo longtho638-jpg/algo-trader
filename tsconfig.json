@@ -33,6 +33,9 @@
     "src/api/routes/monitoring-routes-extension.ts",
     "../../packages/**/*.ts",
     "src/arbitrage/**/*.ts",
-    "src/cli/**/*.ts"
+    "src/cli/**/*.ts",
+    "src/core/**/*.ts",
+    "src/execution/**/*.ts",
+    "src/index.ts"
   ]
 }
