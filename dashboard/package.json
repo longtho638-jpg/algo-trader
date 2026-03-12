@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy:staging": "wrangler pages deploy dist --project-name=algo-trader-dashboard --branch=staging",
+    "deploy:production": "wrangler pages deploy dist --project-name=algo-trader-dashboard"
   },
   "dependencies": {
     "lightweight-charts": "^4.2.2",
