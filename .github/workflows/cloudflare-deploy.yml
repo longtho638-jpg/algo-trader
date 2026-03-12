@@ -3,13 +3,14 @@ name: Cloudflare Deploy
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
     branches: [main]
 
 jobs:
-  deploy:
+  deploy-worker:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
 
     steps:
       - uses: actions/checkout@v4
@@ -19,32 +20,18 @@ jobs:
         with:
           node-version: '20'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm ci
 
       - name: Type check
-        run: pnpm run typecheck
-
-      - name: Run tests
-        run: pnpm test
+        run: npm run typecheck
 
       - name: Build worker
-        run: pnpm run build:worker
+        run: npm run build
 
-      - name: Deploy to Cloudflare Staging
-        if: github.event_name == 'pull_request'
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          environment: staging
-
-      - name: Deploy to Cloudflare Production
+      - name: Deploy Worker (Production)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          preCommands: npm run build
