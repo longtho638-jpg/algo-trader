@@ -52,6 +52,11 @@ app.use('*', secureHeaders());
 app.use('*', rateLimitMiddleware());
 
 // Health check endpoints (no auth required)
+app.get('/', (c) => {
+  // Redirect root to dashboard
+  return c.redirect('https://e25e5e66.algo-trader-dashboard.pages.dev', 302);
+});
+
 app.get('/health', (c) => {
   return c.json({
     status: 'healthy',
