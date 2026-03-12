@@ -196,15 +196,39 @@ class PrometheusExporterImpl implements PrometheusExporter {
   }
 
   recordLatency(ms: number, labels?: { tenant?: string; endpoint?: string; success?: string }): void {
-    // Implementation for recording latency
+    const histogram = this.registerHistogram(
+      'trade_latency_seconds',
+      'Trade latency in seconds',
+      this.histogramBuckets,
+      {
+        tenant: labels?.tenant || 'unknown',
+        endpoint: labels?.endpoint || 'unknown',
+        success: labels?.success || 'unknown',
+      }
+    );
+    this.observe(histogram, ms / 1000);
   }
 
   incrementErrors(labels?: { tenant?: string; error_type?: string; endpoint?: string }): void {
-    // Implementation for incrementing errors
+    const counter = this.registerCounter(
+      'trade_errors_total',
+      'Total trade errors',
+      {
+        tenant: labels?.tenant || 'unknown',
+        error_type: labels?.error_type || 'unknown',
+        endpoint: labels?.endpoint || 'unknown',
+      }
+    );
+    this.inc(counter, 1);
   }
 
   updateIdempotency(count: number, tenant?: string): void {
-    // Implementation for updating idempotency
+    const gauge = this.registerGauge(
+      'idempotency_cache_size',
+      'Idempotency cache size',
+      { tenant: tenant || 'unknown' }
+    );
+    this.set(gauge, count);
   }
 
   async getMetrics(): Promise<string> {
