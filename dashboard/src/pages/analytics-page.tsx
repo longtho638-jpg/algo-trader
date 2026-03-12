@@ -6,10 +6,15 @@
  */
 import { useState } from 'react';
 import { useRevenueAnalytics, TIME_RANGES } from '../hooks/use-revenue-analytics';
+import { useLicenseAnalytics } from '../hooks/use-license-analytics';
 import { RevenueMetricsCard, MRRIcon, DALIcon, ChurnIcon, ARPAIcon } from '../components/revenue-metrics-card';
 import { RevenueTrendChart } from '../components/revenue-trend-chart';
 import { RevenueByTierChart } from '../components/revenue-by-tier';
 import { ExportReportButton } from '../components/export-report-button';
+import { RoiMetricsOverview } from '../components/roi-metrics-overview';
+import { OverageRevenueCard } from '../components/overage-revenue-card';
+import { LicenseHealthGauge } from '../components/license-health-gauge';
+import { UsageAnalyticsDashboard } from '../components/usage-analytics-dashboard';
 
 export function AnalyticsPage() {
   const {
@@ -23,6 +28,10 @@ export function AnalyticsPage() {
     togglePolling,
     reload,
   } = useRevenueAnalytics();
+
+  const {
+    analytics: licenseAnalytics,
+  } = useLicenseAnalytics();
 
   const [selectedTier, setSelectedTier] = useState<string>('all');
 
@@ -130,7 +139,41 @@ export function AnalyticsPage() {
         </div>
       </div>
 
-      {/* Summary Metrics Cards */}
+      {/* Phase 5 - ROI Metrics Overview */}
+      {licenseAnalytics && (
+        <RoiMetricsOverview
+          mrr={licenseAnalytics.revenue?.mrr || 0}
+          arr={licenseAnalytics.revenue?.arr || 0}
+          totalRevenue={licenseAnalytics.revenue?.totalRevenue || 0}
+          overageRevenue={licenseAnalytics.revenue?.overageRevenue || 0}
+          ltv={licenseAnalytics.customerMetrics?.ltv || 0}
+          churnRate={licenseAnalytics.customerMetrics?.churnRate || 0}
+          healthScore={licenseAnalytics.licenseHealth?.healthScore || 0}
+        />
+      )}
+
+      {/* Overage Revenue + License Health Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {licenseAnalytics && (
+          <OverageRevenueCard
+            overageRevenue={licenseAnalytics.revenue?.overageRevenue || 0}
+            overageCalls={licenseAnalytics.usage?.overageCalls || 0}
+            licensesInOverage={licenseAnalytics.licenseHealth?.exceeded || 0}
+            projectedOverage={(licenseAnalytics.revenue?.overageRevenue || 0) * 3}
+          />
+        )}
+        {licenseAnalytics && (
+          <LicenseHealthGauge
+            healthScore={licenseAnalytics.licenseHealth?.healthScore || 0}
+            healthy={licenseAnalytics.licenseHealth?.healthy || 0}
+            atRisk={licenseAnalytics.licenseHealth?.atRisk || 0}
+            exceeded={licenseAnalytics.licenseHealth?.exceeded || 0}
+            size="sm"
+          />
+        )}
+      </div>
+
+      {/* Original Revenue Metrics Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <RevenueMetricsCard
           label="MRR"
@@ -245,6 +288,9 @@ export function AnalyticsPage() {
           </div>
         </div>
       </div>
+
+      {/* Phase 5 - Usage Analytics Dashboard */}
+      <UsageAnalyticsDashboard />
     </div>
   );
 }

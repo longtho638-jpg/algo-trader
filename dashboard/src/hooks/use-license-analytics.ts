@@ -24,6 +24,8 @@ export interface AnalyticsData {
     apiCalls: number;
     mlFeatures: number;
     premiumData: number;
+    overageCalls: number;
+    quotaUtilization: number;
   };
   recentActivity: Array<{
     event: string;
@@ -34,12 +36,35 @@ export interface AnalyticsData {
   revenue: {
     monthly: number;
     projected: number;
+    mrr: number;
+    totalRevenue: number;
+    avgLicenseValue: number;
+    overageRevenue: number;
+    arr: number;
+  };
+  paymentStatus: {
+    successful: number;
+    failed: number;
+    pending: number;
+    refunded: number;
   };
   dailyBreakdown: Array<{
     date: string;
     apiCalls: number;
     activeLicenses: number;
   }>;
+  customerMetrics: {
+    ltv: number;
+    churnRate: number;
+    expansionRate: number;
+    avgCustomerLifespan: number;
+  };
+  licenseHealth: {
+    healthy: number;
+    atRisk: number;
+    exceeded: number;
+    healthScore: number;
+  };
 }
 
 export interface TimeRange {
