@@ -234,18 +234,16 @@ describe('ROIaaS Phase 1 Gate Functions', () => {
       expect(result.hasAccess).toBe(false);
     });
 
-    test('should return hasAccess=true for PRO tier', async () => {
-      process.env.RAAS_LICENSE_KEY = 'raas-pro-test';
-      await validateLicense();
+    test('should return hasAccess=true for PRO tier', () => {
+      LicenseService.getInstance().validateSync('raas-pro-test');
       const result = checkLicense();
       expect(result.valid).toBe(true);
       expect(result.tier).toBe(LicenseTier.PRO);
       expect(result.hasAccess).toBe(true);
     });
 
-    test('should return hasAccess=true for ENTERPRISE tier', async () => {
-      process.env.RAAS_LICENSE_KEY = 'raas-ent-test';
-      await validateLicense();
+    test('should return hasAccess=true for ENTERPRISE tier', () => {
+      LicenseService.getInstance().validateSync('raas-ent-test');
       const result = checkLicense();
       expect(result.valid).toBe(true);
       expect(result.tier).toBe(LicenseTier.ENTERPRISE);
