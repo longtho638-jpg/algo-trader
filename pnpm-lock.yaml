@@ -1,0 +1,65 @@
+lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+overrides:
+  esbuild@<=0.24.2: '>=0.25.0'
+  devalue@<5.3.2: '>=5.3.2'
+  wrangler@>=2.0.15 <3.114.17: '>=3.114.17'
+  devalue@<=5.6.2: '>=5.6.3'
+  ajv@<6.14.0: '>=6.14.0'
+  hono@<4.12.4: '>=4.12.4'
+  dompurify@>=3.1.3 <=3.3.1: '>=3.3.2'
+  svgo@=4.0.0: '>=4.0.1'
+  fastify@>=5.7.2 <=5.8.0: '>=5.8.1'
+  '@hono/node-server@<1.19.10': '>=1.19.10'
+  express-rate-limit@>=8.2.0 <8.2.2: '>=8.2.2'
+  tar@<=7.5.9: '>=7.5.10'
+
+importers:
+
+  .:
+    dependencies:
+      ollama:
+        specifier: ^0.5.0
+        version: 0.5.18
+    devDependencies:
+      '@types/react':
+        specifier: ^18.3.28
+        version: 18.3.28
+
+packages:
+
+  '@types/prop-types@15.7.15':
+    resolution: {integrity: sha512-F6bEyamV9jKGAFBEmlQnesRPGOQqS2+Uwi0Em15xenOxHaf2hv6L8YCVn3rPdPJOiJfPiCnLIRyvwVaqMY3MIw==}
+
+  '@types/react@18.3.28':
+    resolution: {integrity: sha512-z9VXpC7MWrhfWipitjNdgCauoMLRdIILQsAEV+ZesIzBq/oUlxk0m3ApZuMFCXdnS4U7KrI+l3WRUEGQ8K1QKw==}
+
+  csstype@3.2.3:
+    resolution: {integrity: sha512-z1HGKcYy2xA8AGQfwrn0PAy+PB7X/GSj3UVJW9qKyn43xWa+gl5nXmU4qqLMRzWVLFC8KusUX8T/0kCiOYpAIQ==}
+
+  ollama@0.5.18:
+    resolution: {integrity: sha512-lTFqTf9bo7Cd3hpF6CviBe/DEhewjoZYd9N/uCe7O20qYTvGqrNOFOBDj3lbZgFWHUgDv5EeyusYxsZSLS8nvg==}
+
+  whatwg-fetch@3.6.20:
+    resolution: {integrity: sha512-EqhiFU6daOA8kpjOWTL0olhVOF3i7OrFzSYiGsEMB8GcXS+RrzauAERX65xMeNWVqxA6HXH2m69Z9LaKKdisfg==}
+
+snapshots:
+
+  '@types/prop-types@15.7.15': {}
+
+  '@types/react@18.3.28':
+    dependencies:
+      '@types/prop-types': 15.7.15
+      csstype: 3.2.3
+
+  csstype@3.2.3: {}
+
+  ollama@0.5.18:
+    dependencies:
+      whatwg-fetch: 3.6.20
+
+  whatwg-fetch@3.6.20: {}

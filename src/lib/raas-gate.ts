@@ -663,8 +663,8 @@ export async function deactivateSubscription(tenantId: string): Promise<void> {
  */
 export function checkLicense(): { valid: boolean; tier: LicenseTier; hasAccess: boolean } {
   const service = LicenseService.getInstance();
-  // Use cached license if available, otherwise validate
-  const validation = service.validatedLicense || service.validateSync();
+  // Use validateSync to get current license state (public method, not private property access)
+  const validation: LicenseValidation = service.validateSync();
 
   return {
     valid: validation.valid,
