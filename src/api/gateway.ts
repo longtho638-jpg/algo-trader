@@ -27,6 +27,18 @@ export type Env = {
   ARTIFACT_STORE?: unknown; // R2Bucket - typed at runtime
 };
 
+// MessageBatch type for queue processing
+interface MessageBatch {
+  queue: string;
+  messages: Array<{
+    id: string;
+    body: unknown;
+    timestamp: Date;
+    attempts: number;
+    ack(): void;
+  }>;
+}
+
 // App type with Cloudflare Workers bindings
 type AppBindings = {
   Bindings: Env;
@@ -231,8 +243,40 @@ app.onError((err, c) => {
   }, status);
 });
 
-// Export for Cloudflare Workers
-export default app;
+// Queue processors
+import { processBacktestJob } from '../queues/backtest-processor';
+import { processScanJob } from '../queues/scan-processor';
+import { processWebhookJob } from '../queues/webhook-processor';
+
+// Export for Cloudflare Workers with queue handler
+export default {
+  fetch: app.fetch,
+  async queue(batch: MessageBatch, env: Env): Promise<void> {
+    const queueName = batch.queue;
+
+    for (const msg of batch.messages) {
+      try {
+        switch (queueName) {
+          case 'backtest-queue':
+            await processBacktestJob(msg.body, env);
+            break;
+          case 'scan-queue':
+            await processScanJob(msg.body, env);
+            break;
+          case 'webhook-queue':
+            await processWebhookJob(msg.body, env);
+            break;
+          default:
+            console.warn(`[queue] Unknown queue: ${queueName}`);
+        }
+        msg.ack();
+      } catch (err) {
+        console.error(`[queue] Error [${queueName}][${msg.id}]:`, err);
+        throw err; // Triggers retry/DLQ
+      }
+    }
+  }
+};
 
 // Named export for testing
 export { app as handler };
