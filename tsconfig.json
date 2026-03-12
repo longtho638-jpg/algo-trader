@@ -29,7 +29,6 @@
     "src/database/**/*",
     "src/middleware/**/*",
     "src/models/**/*",
-    "src/services/**/*",
     "src/types/**/*",
     "src/utils/**/*",
     "src/validators/**/*"
