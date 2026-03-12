@@ -8,7 +8,6 @@ export class TriggerEvaluator {
     const value = this.getFieldValue(condition.field, context);
 
     if (value === undefined) {
-      console.warn(`Field not found: ${condition.field}`);
       return false;
     }
 
@@ -30,7 +29,6 @@ export class TriggerEvaluator {
       case 'crosses_below':
         return this.checkCrossesBelow(value, condition.value);
       default:
-        console.warn(`Unknown operator: ${condition.operator}`);
         return false;
     }
   }
