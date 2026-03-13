@@ -70,9 +70,17 @@ module.exports = {
     '^@agencyos/trading-core$': '<rootDir>/../../packages/trading-core/index.ts',
     '^@agencyos/vibe-arbitrage-engine/(.*)$': '<rootDir>/../../packages/vibe-arbitrage-engine/$1',
     '^@agencyos/vibe-arbitrage-engine$': '<rootDir>/../../packages/vibe-arbitrage-engine/index.ts',
+    '^src/(.*)$': '<rootDir>/src/$1',
     '^../interfaces/(.*)$': '<rootDir>/src/interfaces/$1',
     '^../../interfaces/(.*)$': '<rootDir>/src/interfaces/$1',
     '^../../../interfaces/(.*)$': '<rootDir>/src/interfaces/$1',
+    '^../../../src/adapters/(.*)$': '<rootDir>/src/adapters/$1',
+    '^../../../src/polymarket/(.*)$': '<rootDir>/src/polymarket/$1',
+    '^../../../src/analysis/(.*)$': '<rootDir>/src/analysis/$1',
+    '^../../../src/strategies/(.*)$': '<rootDir>/src/strategies/$1',
+    '^../../analysis/(.*)$': '<rootDir>/src/analysis/$1',
+    '^../../interfaces/(.*)$': '<rootDir>/src/interfaces/$1',
+    '^../interfaces/(.*)$': '<rootDir>/src/interfaces/$1',
   },
   transform: {
     '^.+\\.ts$': ['ts-jest', {

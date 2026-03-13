@@ -58,7 +58,7 @@ describe('CrossPlatformArbStrategy', () => {
 
       expect(config.minEdgeThreshold).toBeDefined();
       expect(config.maxPositionSize).toBeDefined();
-      expect(config.staleDataThresholdMs).toBeDefined();
+      expect(config.staleDataMs).toBeDefined();
     });
 
     it('should accept custom config', async () => {
@@ -79,7 +79,7 @@ describe('CrossPlatformArbStrategy', () => {
 
       expect(schema.minEdgeThreshold).toBeDefined();
       expect(schema.maxPositionSize).toBeDefined();
-      expect(schema.staleDataThresholdMs).toBeDefined();
+      expect(schema.staleDataMs).toBeDefined();
     });
   });
 

@@ -41,7 +41,7 @@ describe('MarketMakerStrategy', () => {
       await strategy.init([]);
       const config = strategy.getConfig();
 
-      expect(config.targetSpreadBps).toBeDefined();
+      expect(config.targetSpread).toBeDefined();
       expect(config.orderSize).toBeDefined();
       expect(config.maxInventory).toBeDefined();
       expect(config.cancelReplaceMs).toBeDefined();
@@ -49,7 +49,7 @@ describe('MarketMakerStrategy', () => {
 
     it('should accept custom config', async () => {
       const customConfig: any = {
-        targetSpreadBps: 1500, // 15 cents
+        targetSpread: 0.15,
         orderSize: 100,
         maxInventory: 500,
       };
@@ -57,7 +57,7 @@ describe('MarketMakerStrategy', () => {
       await strategy.init([], customConfig);
       const config = strategy.getConfig();
 
-      expect(config.targetSpreadBps).toBe(1500);
+      expect(config.targetSpread).toBe(0.15);
       expect(config.orderSize).toBe(100);
       expect(config.maxInventory).toBe(500);
     });
@@ -67,7 +67,7 @@ describe('MarketMakerStrategy', () => {
     it('should return valid schema', () => {
       const schema = strategy.getConfigSchema();
 
-      expect(schema.targetSpreadBps).toBeDefined();
+      expect(schema.targetSpread).toBeDefined();
       expect(schema.orderSize).toBeDefined();
       expect(schema.maxInventory).toBeDefined();
       expect(schema.cancelReplaceMs).toBeDefined();

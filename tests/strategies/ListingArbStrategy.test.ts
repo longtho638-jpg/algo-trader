@@ -5,7 +5,7 @@
  */
 
 import { ListingArbStrategy } from '../../../src/strategies/ListingArbStrategy';
-import { ListingArbConfig, DEFAULT_LISTING_ARB_CONFIG } from '../../../src/interfaces/IBinance';
+import { ListingArbConfig, DEFAULT_LISTING_ARB_CONFIG } from '../../../src/adapters/BinanceAnnouncementWS';
 
 // Manual mocks for external dependencies
 const mockBinanceWS = {
