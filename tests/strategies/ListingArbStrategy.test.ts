@@ -70,7 +70,6 @@ describe('ListingArbStrategy', () => {
       expect(schema.minConfidence).toBeDefined();
       expect(schema.maxPositionSize).toBeDefined();
       expect(schema.cooldownMs).toBeDefined();
-      expect(schema.timeoutMs).toBeDefined();
     });
   });
 

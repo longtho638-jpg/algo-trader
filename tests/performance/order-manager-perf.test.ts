@@ -3,6 +3,8 @@
  * Tests order processing throughput
  */
 
+import { describe, test, expect } from '@jest/globals';
+
 describe('Order Manager Performance', () => {
   test('should process 500 orders within 300ms', () => {
     const startTime = Date.now();

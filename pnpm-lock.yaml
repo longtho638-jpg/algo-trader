@@ -116,6 +116,9 @@ importers:
       '@cloudflare/workers-types':
         specifier: ^4.20241230.0
         version: 4.20260312.1
+      '@jest/globals':
+        specifier: ^29.7.0
+        version: 29.7.0
       '@playwright/test':
         specifier: ^1.40.0
         version: 1.58.2
