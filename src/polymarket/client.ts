@@ -208,7 +208,10 @@ export class PolymarketClobClient {
   /**
    * Cancel orders by market or asset
    */
-  async cancelMarketOrders(payload: any): Promise<any> {
+  async cancelMarketOrders(payload: {
+    market?: string;
+    asset?: string;
+  }): Promise<void> {
     return this.client.cancelMarketOrders(payload);
   }
 

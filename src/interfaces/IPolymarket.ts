@@ -19,7 +19,7 @@ export enum PolymarketSignalType {
 /**
  * Polymarket signal with market context
  */
-export interface IPolymarketSignal extends ISignal {
+export interface IPolymarketSignal extends Omit<ISignal, 'type' | 'timestamp'> {
   type: PolymarketSignalType;
   tokenId: string;         // Conditional token ID
   marketId: string;        // Market/condition ID
@@ -37,7 +37,7 @@ export interface IPolymarketSignal extends ISignal {
     volume?: number;
     liquidity?: number;
     endDate?: string;
-    [key: string]: any;
+    [key: string]: string | number | number[] | undefined;
   };
   timestamp?: number;
 }

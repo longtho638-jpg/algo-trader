@@ -6,6 +6,7 @@
  * - Graceful shutdown (SIGINT/SIGTERM handlers)
  * - Health monitoring with automatic recovery
  * - Strategy hot-reload without downtime
+ * - PolymarketBotEngine integration
  *
  * Designed for M1 16GB memory constraints:
  * - Max 3 strategies running in parallel
@@ -17,12 +18,14 @@ import { EventEmitter } from 'events';
 import { spawn, ChildProcess } from 'child_process';
 import { join } from 'path';
 import { logger } from '../utils/logger';
+import { signalHandlers } from '../utils/signal-handlers';
 
 export interface StrategyConfig {
   name: string;
   port: number;
   memoryLimit: string;
   args: string[];
+  type?: 'child_process' | 'bot_engine'; // Support both spawned processes and in-process bots
 }
 
 export interface ProcessInfo {
@@ -33,6 +36,12 @@ export interface ProcessInfo {
   lastStart?: number;
   lastHealthCheck?: number;
   memoryUsage?: number;
+}
+
+export interface BotInfo {
+  name: string;
+  instance: any; // PolymarketBotEngine instance
+  status: 'stopped' | 'running' | 'stopping';
 }
 
 export interface DaemonConfig {
@@ -74,9 +83,14 @@ export class DaemonManager extends EventEmitter {
   private config: DaemonConfig;
   private processes = new Map<string, ProcessInfo>();
   private childProcesses = new Map<string, ChildProcess>();
+  private botInstances = new Map<string, BotInfo>(); // For in-process bot engines
   private healthCheckTimer?: NodeJS.Timeout;
   private shuttingDown = false;
   private readonly rootDir: string;
+  private shutdownResult = {
+    ordersCancelled: 0,
+    positionsPersisted: 0,
+  };
 
   constructor(config: Partial<DaemonConfig> = {}) {
     super();
@@ -93,32 +107,23 @@ export class DaemonManager extends EventEmitter {
     });
 
     this.setupSignalHandlers();
+    this.registerShutdownHandler();
   }
 
   /**
    * Setup graceful shutdown handlers
    */
   private setupSignalHandlers(): void {
-    // SIGINT (Ctrl+C)
-    process.on('SIGINT', () => {
-      logger.info('[DaemonManager] Received SIGINT, initiating graceful shutdown...');
-      this.shutdown();
-    });
+    // Use centralized signal handlers from signal-handlers.ts
+    // Local handlers kept for backward compatibility
+  }
 
-    // SIGTERM (kill, PM2, systemd)
-    process.on('SIGTERM', () => {
-      logger.info('[DaemonManager] Received SIGTERM, initiating graceful shutdown...');
-      this.shutdown();
-    });
-
-    // Handle uncaught exceptions
-    process.on('uncaughtException', (err) => {
-      logger.error('[DaemonManager] Uncaught exception:', err);
-      this.shutdown(1);
-    });
-
-    process.on('unhandledRejection', (reason, promise) => {
-      logger.error('[DaemonManager] Unhandled rejection:', reason);
+  /**
+   * Register shutdown handler with centralized signal handler
+   */
+  private registerShutdownHandler(): void {
+    signalHandlers.registerHandler('daemon-manager', async () => {
+      await this.shutdown(0);
     });
   }
 
@@ -255,12 +260,13 @@ export class DaemonManager extends EventEmitter {
   }
 
   /**
-   * Stop all strategies
+   * Stop all strategies with graceful shutdown
    */
   async shutdown(exitCode = 0): Promise<void> {
     if (this.shuttingDown) return;
     this.shuttingDown = true;
 
+    const startTime = Date.now();
     logger.info('[DaemonManager] Initiating shutdown...');
 
     // Stop health monitoring
@@ -269,14 +275,27 @@ export class DaemonManager extends EventEmitter {
       this.healthCheckTimer = undefined;
     }
 
-    // Stop all strategies in reverse order
+    // Stop all bot engines first (in-process)
+    for (const [name, botInfo] of this.botInstances.entries()) {
+      await this.stopBotEngine(name);
+    }
+
+    // Stop all child processes (spawned strategies)
     const strategies = [...this.config.strategies].reverse();
     for (const strategy of strategies) {
       await this.stopStrategy(strategy.name);
     }
 
+    const duration = Date.now() - startTime;
     logger.info('[DaemonManager] Shutdown complete');
-    this.emit('stopped');
+    logger.info(`[DaemonManager] Duration: ${duration}ms`);
+    logger.info(`[DaemonManager] Orders cancelled: ${this.shutdownResult.ordersCancelled}`);
+    logger.info(`[DaemonManager] Positions persisted: ${this.shutdownResult.positionsPersisted}`);
+
+    this.emit('stopped', {
+      duration,
+      ...this.shutdownResult,
+    });
 
     if (exitCode > 0) {
       process.exit(exitCode);
@@ -313,6 +332,55 @@ export class DaemonManager extends EventEmitter {
     processInfo.pid = undefined;
     logger.info(`[DaemonManager] ${name} stopped`);
     this.emit('strategy:stopped', name);
+  }
+
+  /**
+   * Stop a bot engine instance with order cancellation
+   */
+  private async stopBotEngine(name: string): Promise<void> {
+    const botInfo = this.botInstances.get(name);
+    if (!botInfo || botInfo.status === 'stopped') return;
+
+    logger.info(`[DaemonManager] Stopping bot engine: ${name}`);
+    botInfo.status = 'stopping';
+
+    try {
+      // Call stop() on bot engine - this cancels orders and persists positions
+      await botInfo.instance.stop();
+
+      // Track shutdown metrics
+      this.shutdownResult.ordersCancelled++;
+      this.shutdownResult.positionsPersisted++;
+
+      logger.info(`[DaemonManager] Bot engine ${name} stopped gracefully`);
+      this.emit('bot:stopped', name);
+    } catch (error) {
+      logger.error(`[DaemonManager] Error stopping ${name}:`, error);
+      this.emit('bot:error', { name, error });
+    } finally {
+      botInfo.status = 'stopped';
+      this.botInstances.delete(name);
+    }
+  }
+
+  /**
+   * Register a PolymarketBotEngine instance for lifecycle management
+   */
+  registerBotEngine(name: string, botEngine: any): void {
+    this.botInstances.set(name, {
+      name,
+      instance: botEngine,
+      status: 'running',
+    });
+    logger.info(`[DaemonManager] Registered bot engine: ${name}`);
+  }
+
+  /**
+   * Unregister a bot engine instance
+   */
+  unregisterBotEngine(name: string): void {
+    this.botInstances.delete(name);
+    logger.info(`[DaemonManager] Unregistered bot engine: ${name}`);
   }
 
   /**

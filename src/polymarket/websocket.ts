@@ -23,6 +23,12 @@ export type MarketEventType =
 // User channel event types
 export type UserEventType = "trade" | "order";
 
+// WebSocket message type
+export type WebSocketMessage = {
+  event_type: MarketEventType | UserEventType;
+  [key: string]: unknown;
+};
+
 export interface BookEvent {
   event_type: "book";
   asset_id: string;
@@ -282,7 +288,7 @@ export class PolymarketWebSocket {
   /**
    * Handle incoming messages
    */
-  private handleMessage(msg: any): void {
+  private handleMessage(msg: WebSocketMessage): void {
     const eventType = msg.event_type as MarketEventType | UserEventType;
 
     switch (eventType) {
