@@ -21,7 +21,7 @@ import { IPolymarketSignal, PolymarketSignalType, IMarketTick } from '../../../i
 export interface ComplementaryArbConfig {
   minEdgeThreshold: number;    // Minimum edge to trade (default 0.02 = 2%)
   maxPositionSize: number;     // Max shares per arb (default 100)
-  feeRateBps: number;          // Fee rate in basis points (default 2500 = 0.25%)
+  feeRateBps: number;          // Fee rate in basis points (default 25 = 0.25%)
 }
 
 export class ComplementaryArbStrategy extends BasePolymarketStrategy {
@@ -30,7 +30,7 @@ export class ComplementaryArbStrategy extends BasePolymarketStrategy {
   protected config: Required<ComplementaryArbConfig> = {
     minEdgeThreshold: 0.02,
     maxPositionSize: 100,
-    feeRateBps: 2500,
+    feeRateBps: 25,
   };
 
   async init(candles: ICandle[], config?: Record<string, unknown>): Promise<void> {
@@ -44,7 +44,7 @@ export class ComplementaryArbStrategy extends BasePolymarketStrategy {
     return {
       minEdgeThreshold: { type: 'number', default: 0.02, min: 0.001, max: 0.1 },
       maxPositionSize: { type: 'number', default: 100, min: 10, max: 1000 },
-      feeRateBps: { type: 'number', default: 2500, min: 0, max: 10000 },
+      feeRateBps: { type: 'number', default: 25, min: 0, max: 100 },
     };
   }
 

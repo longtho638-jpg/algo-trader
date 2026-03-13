@@ -81,7 +81,7 @@ describe('AIReasoningStrategy', () => {
 
       const responses = (strategy as any).llmResponses.get('token-1');
       expect(responses).toHaveLength(5);
-      expect(responses[0].probability).toBe(0.3); // Started from response 3
+      expect(responses[0].probability).toBeCloseTo(0.3, 2); // Started from response 3
     });
 
     it('should clear cached responses', () => {

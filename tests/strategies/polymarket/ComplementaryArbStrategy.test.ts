@@ -19,7 +19,7 @@ describe('ComplementaryArbStrategy', () => {
 
       expect(config.minEdgeThreshold).toBe(0.02);
       expect(config.maxPositionSize).toBe(100);
-      expect(config.feeRateBps).toBe(2500);
+      expect(config.feeRateBps).toBe(25);
     });
 
     it('should accept custom config', async () => {
@@ -71,10 +71,10 @@ describe('ComplementaryArbStrategy', () => {
     });
 
     it('should not detect arbitrage when edge below threshold', () => {
-      const yesTick = createTick('yes-token', 'market-1', 0.49, 0.49);
-      const noTick = createTick('no-token', 'market-1', 0.49, 0.49);
+      const yesTick = createTick('yes-token', 'market-1', 0.492, 0.492);
+      const noTick = createTick('no-token', 'market-1', 0.492, 0.492);
 
-      // Sum = 0.98, edge = 0.02 (at threshold)
+      // Sum = 0.984, edge = 0.016 (below 0.02 threshold)
       const result = strategy.checkArbitrage(yesTick, noTick);
 
       expect(result.hasArb).toBe(false);
