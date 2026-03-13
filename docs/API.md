@@ -1,5 +1,9 @@
 # API Reference
 
+> **ROIaaS Phase 8** — Comprehensive API documentation for algorithmic trading platform.
+>
+> **Base URL:** `https://algo-trader.api.com/api/v1` | **Dev:** `http://localhost:3000/api/v1`
+
 ## CLI Commands
 
 All commands run via: `node dist/index.js <command> [options]` or `npm run dev -- <command>`
