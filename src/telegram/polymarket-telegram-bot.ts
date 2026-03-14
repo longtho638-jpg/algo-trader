@@ -95,6 +95,8 @@ export class PolymarketTelegramBot {
     this.commandHandler.registerCommand('/pm_pnl', async () => this.handlePnl());
     this.commandHandler.registerCommand('/pm_positions', async () => this.handlePositions());
     this.commandHandler.registerCommand('/pm_summary', async () => this.handleDailySummary());
+    this.commandHandler.registerCommand('/pm_set', async (args) => this.handleSet(args));
+    this.commandHandler.registerCommand('/pm_config', async () => this.handleConfig());
   }
 
   private helpText(): string {
@@ -110,6 +112,10 @@ export class PolymarketTelegramBot {
       '  /pm\\_pnl — Current P&L',
       '  /pm\\_positions — Open positions',
       '  /pm\\_summary — Daily summary report',
+      '',
+      '⚙️ Config:',
+      '  /pm\\_set <param> <value> — Set param',
+      '  /pm\\_config — View current config',
       '',
       '💡 Alerts auto-sent on trade execution.',
     ].join('\n');
@@ -285,5 +291,42 @@ export class PolymarketTelegramBot {
     }, 5 * 60 * 1000);
 
     this.dailySummaryTimer.unref();
+  }
+
+  /** Runtime parameter config: /pm_set spread 0.08 */
+  private handleSet(args: string): string {
+    const parts = args.trim().split(/\s+/);
+    if (parts.length < 2) {
+      return '⚠️ Usage: /pm\\_set <param> <value>\nParams: spread, size, edge, bankroll, dry\\_run';
+    }
+    const [param, value] = parts;
+    const ALLOWED: Record<string, { envKey: string; parse: (v: string) => any }> = {
+      spread: { envKey: 'MM_SPREAD', parse: parseFloat },
+      size: { envKey: 'MM_SIZE', parse: parseFloat },
+      edge: { envKey: 'MIN_ARB_EDGE', parse: parseFloat },
+      bankroll: { envKey: 'MAX_BANKROLL', parse: parseFloat },
+      dry_run: { envKey: 'DRY_RUN', parse: (v: string) => v === 'true' },
+    };
+    const cfg = ALLOWED[param];
+    if (!cfg) return `❌ Unknown param: ${param}\nAllowed: ${Object.keys(ALLOWED).join(', ')}`;
+    const parsed = cfg.parse(value);
+    if (typeof parsed === 'number' && isNaN(parsed)) return `❌ Invalid number: ${value}`;
+    process.env[cfg.envKey] = String(parsed);
+    logger.info(`[PolyTgBot] Config updated: ${param} = ${parsed}`);
+    return `✅ *${param}* set to \`${parsed}\`\n⚠️ Takes effect on next strategy tick.`;
+  }
+
+  /** Show current config: /pm_config */
+  private handleConfig(): string {
+    const env = process.env;
+    return [
+      '⚙️ *Current Config*',
+      `spread: ${env.MM_SPREAD || '0.10'}`,
+      `size: ${env.MM_SIZE || '50'}`,
+      `edge: ${env.MIN_ARB_EDGE || '0.02'}`,
+      `bankroll: ${env.MAX_BANKROLL || '5000'}`,
+      `dry\\_run: ${env.DRY_RUN || 'true'}`,
+      `scan\\_ms: ${env.SCAN_INTERVAL_MS || '60000'}`,
+    ].join('\n');
   }
 }
