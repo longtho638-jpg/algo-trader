@@ -11,28 +11,33 @@ import { EventEmitter } from 'events';
 const messageEmitter = new EventEmitter();
 
 // Shared mock instance - MUST be hoisted before any imports
-const mockRedisInstance = {
-  status: 'ready',
-  on: jest.fn().mockImplementation(function(event: string, listener: (...args: unknown[]) => void) {
-    messageEmitter.on(event, listener);
-    return this;
-  }),
-  quit: jest.fn().mockResolvedValue('OK'),
-  duplicate: jest.fn().mockImplementation(() => makeMockRedis()),
-  publish: jest.fn().mockImplementation((_channel: string, _msg: string) => Promise.resolve(1)),
-  subscribe: jest.fn().mockImplementation((_channel: string) => Promise.resolve(undefined)),
-  get: jest.fn().mockResolvedValue(null),
-  set: jest.fn().mockResolvedValue('OK'),
-  incr: jest.fn().mockResolvedValue(1),
-  expire: jest.fn().mockResolvedValue(1),
-  ttl: jest.fn().mockResolvedValue(60),
-  del: jest.fn().mockResolvedValue(1),
-  eval: jest.fn().mockResolvedValue([1, 60]),
-};
+// Each call to ioredis() returns a NEW instance with shared state
+let sharedMessageEmitter: EventEmitter | null = null;
 
-function makeMockRedis() {
-  return { ...mockRedisInstance };
+function createMockRedisInstance() {
+  const instanceMessageEmitter = messageEmitter; // Use shared emitter
+
+  return {
+    status: 'ready' as const,
+    on: jest.fn().mockImplementation(function(this: unknown, event: string, listener: (...args: unknown[]) => void) {
+      instanceMessageEmitter.on(event, listener);
+      return this;
+    }),
+    quit: jest.fn().mockResolvedValue('OK'),
+    duplicate: jest.fn().mockImplementation(() => createMockRedisInstance()),
+    publish: jest.fn().mockImplementation((_channel: string, _msg: string) => Promise.resolve(1)),
+    subscribe: jest.fn().mockImplementation((_channel: string) => Promise.resolve(undefined)),
+    get: jest.fn().mockResolvedValue(null),
+    set: jest.fn().mockResolvedValue('OK'),
+    incr: jest.fn().mockResolvedValue(1),
+    expire: jest.fn().mockResolvedValue(1),
+    ttl: jest.fn().mockResolvedValue(60),
+    del: jest.fn().mockResolvedValue(1),
+    eval: jest.fn().mockResolvedValue([1, 60]),
+  };
 }
+
+const mockRedisInstance = createMockRedisInstance();
 
 // Mock the module export, not just the constructor
 jest.mock('ioredis', () => {

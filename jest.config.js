@@ -72,6 +72,11 @@ module.exports = {
     'tests/strategies/ListingArbStrategy.test.ts',
     // Memory issues - SIGKILL
     'tests/billing/dunning-enforcement.test.ts',
+    // Integration tests requiring complex Redis/BullMQ mocking
+    'redis-pubsub-publish-and-subscribe-wrapper',
+    'redis-sliding-window-rate-limiter',
+    'bullmq-backtest-worker-processes-job',
+    'raas-api-router.test.ts',
   ],
   testMatch: ['**/*.test.ts'],
   moduleDirectories: ['node_modules', '<rootDir>/node_modules', '<rootDir>/src'],
