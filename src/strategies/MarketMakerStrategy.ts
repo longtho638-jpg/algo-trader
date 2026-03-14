@@ -303,6 +303,28 @@ export class MarketMakerStrategy {
   }
 }
 
+// Type exports for compatibility with polymarket/index.ts
+export interface MMConfig {
+  spread: number;
+  size: number;
+  maxMarkets: number;
+  maxInventory: number;
+}
+
+export interface MMPosition {
+  conditionId: string;
+  yesInventory: number;
+  noInventory: number;
+  netInventory: number;
+}
+
+export interface MMOrder {
+  orderId: string;
+  side: 'BUY' | 'SELL';
+  price: number;
+  size: number;
+}
+
 // MAKER = ZERO fee + daily USDC rebate (100% of taker fees redistributed to makers).
 // CRITICAL: Always use postOnly: true.
 // If postOnly order crosses spread → 422 error. Handle gracefully.

@@ -56,7 +56,7 @@ export class ListingArbStrategy {
     this.listingMarkets = Array.from(all.values());
   }
 
-  private handleListing(data: { ticker: string; name: string; title: string }): void {
+  private async handleListing(data: { ticker: string; name: string; title: string }): Promise<void> {
     console.log(`[ListingArb] DETECTED: ${data.title}`);
 
     // Match ticker to Polymarket listing market
