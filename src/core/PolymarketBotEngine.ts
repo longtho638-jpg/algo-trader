@@ -4,6 +4,8 @@
 
 import { ClobClient, Side, OrderType } from '@polymarket/clob-client';
 import { Wallet } from 'ethers';
+import fs from 'fs';
+import path from 'path';
 import { PolymarketWS } from '../adapters/PolymarketWS';
 import { GammaClient, ParsedMarket } from '../adapters/GammaClient';
 import { MarketMakerStrategy } from '../strategies/MarketMakerStrategy';
@@ -67,6 +69,35 @@ export class PolymarketBotEngine {
 
     // 4. Scan markets
     await this.scanMarkets();
+
+    // 4b. Auto-create fair-values.json template if missing
+    const fvPath = path.join(process.cwd(), 'data', 'fair-values.json');
+    if (!fs.existsSync(fvPath)) {
+      const dir = path.dirname(fvPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      const top5 = this.markets.slice(0, 5);
+      const template: any = {
+        _README: 'YOUR EDGE: estimate probability for each market. Bot quotes around YOUR value instead of midpoint.',
+        _HOWTO: '1. Research market 2. Set value (0.01-0.99) 3. Set confidence 4. Save file 5. Bot picks up changes automatically',
+        markets: {},
+        defaults: {
+          min_confidence_to_quote: 'low',
+          spread_by_confidence: { high: 0.06, medium: 0.08, low: 0.12 },
+        },
+      };
+      for (const m of top5) {
+        const key = m.slug || m.conditionId;
+        template.markets[key] = {
+          value: Math.round(m.yesPrice * 100) / 100,
+          confidence: 'low',
+          spread_override: null,
+          notes: `${m.question} — CHANGE THIS`,
+          updated: new Date().toISOString().slice(0, 10),
+        };
+      }
+      fs.writeFileSync(fvPath, JSON.stringify(template, null, 2));
+      console.log(`[FairValue] Created template: ${fvPath}`);
+    }
 
     // 5. Init MM with selected markets (license enforced inside)
     await this.mm.init(this.markets, this.license);

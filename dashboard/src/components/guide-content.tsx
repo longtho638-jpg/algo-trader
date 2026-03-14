@@ -285,7 +285,98 @@ MM_MAX_MARKETS=5
         </div>
       </section>
 
-      {/* Section 6: Troubleshooting */}
+      {/* Section 6: Fair Value Mode */}
+      <section id="fair-value">
+        <h2 className="text-xl font-bold font-mono text-white mb-4">Fair Value Mode</h2>
+        <div className="space-y-4 text-sm font-mono leading-relaxed">
+          <p>
+            By default, the bot quotes around the <span className="text-white">market midpoint</span> — it has no opinion on the true probability.
+            This is <span className="text-yellow-400">BLIND MODE</span>: you earn spread but risk adverse selection from informed traders.
+          </p>
+          <p>
+            When you set your own probability estimate in <span className="text-[#00D9FF]">data/fair-values.json</span>, the bot quotes
+            around <span className="text-white">your value</span> instead. This is{' '}
+            <span className="text-[#00FF41] font-bold">INFORMED MODE</span>: your edge comes from knowing the true probability better than the market.
+          </p>
+
+          <div className="bg-[#1A1A2E] border border-[#2D3142] rounded-lg p-4">
+            <p className="text-[#00D9FF] font-bold mb-2">Example</p>
+            <p>Market mid: <span className="text-white">0.45</span> — Your estimate: <span className="text-[#00FF41]">0.30</span></p>
+            <p className="mt-1">Bot quotes BID @ <span className="text-[#00FF41]">0.27</span> / ASK @ <span className="text-[#00FF41]">0.33</span> (around your 0.30)</p>
+            <p className="mt-1 text-[#8892B0]">You buy cheap if wrong-side takers push it up. You sell high when it reverts.</p>
+          </div>
+
+          <div>
+            <p className="text-white font-bold mb-2">Confidence levels &amp; spreads</p>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b border-[#2D3142]">
+                    <th className="text-left py-2 pr-6 text-[#00D9FF]">Confidence</th>
+                    <th className="text-left py-2 pr-6 text-[#00D9FF]">Auto Spread</th>
+                    <th className="text-left py-2 text-[#00D9FF]">When to use</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#2D3142]">
+                  <tr>
+                    <td className="py-2 pr-6 text-[#00FF41]">high</td>
+                    <td className="py-2 pr-6">6¢</td>
+                    <td className="py-2 text-[#8892B0]">Strong research, primary sources, high conviction</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-6 text-yellow-400">medium</td>
+                    <td className="py-2 pr-6">8¢</td>
+                    <td className="py-2 text-[#8892B0]">Good data, reasonable estimate, moderate conviction</td>
+                  </tr>
+                  <tr>
+                    <td className="py-2 pr-6 text-[#8892B0]">low</td>
+                    <td className="py-2 pr-6">12¢</td>
+                    <td className="py-2 text-[#8892B0]">Rough guess, directional only, use wide spread</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-white font-bold mb-2">Set a fair value</p>
+            <CopyBlock code={`# List current estimates
+pnpm fv:list
+
+# Set estimate: slug value confidence [notes]
+pnpm fv -- set will-btc-hit-100k 0.35 medium "Based on on-chain flow data"
+
+# Remove estimate (reverts to blind mode for that market)
+pnpm fv -- remove will-btc-hit-100k`} />
+          </div>
+
+          <div>
+            <p className="text-white font-bold mb-2">Or edit data/fair-values.json directly</p>
+            <CopyBlock code={`{
+  "markets": {
+    "will-btc-hit-100k": {
+      "value": 0.35,
+      "confidence": "medium",
+      "spread_override": null,
+      "notes": "Based on on-chain flow data",
+      "updated": "2025-01-15"
+    }
+  }
+}`} />
+            <p className="text-[#8892B0] mt-2">The bot picks up file changes automatically — no restart needed.</p>
+          </div>
+
+          <div className="border-l-4 border-yellow-500 bg-yellow-500/10 px-4 py-3 rounded-r-lg">
+            <p className="text-yellow-400 font-bold mb-1">Warning</p>
+            <p className="text-yellow-300">
+              If your fair value is more than 20¢ from the market mid, the bot logs a warning.
+              Double-check your estimate — a large gap means either a big edge or a mistake.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Section 7: Troubleshooting */}
       <section id="troubleshooting">
         <h2 className="text-xl font-bold font-mono text-white mb-4">Troubleshooting</h2>
         <div className="space-y-2">

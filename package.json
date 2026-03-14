@@ -59,7 +59,10 @@
     "audit": "pnpm exec ts-node src/audit/index.ts",
     "chaos-test": "pnpm exec ts-node src/testing/chaos/index.ts",
     "risk:dashboard": "pnpm exec ts-node src/index.ts risk:dashboard",
-    "license:generate": "pnpm exec ts-node scripts/generate-license-key.ts"
+    "license:generate": "pnpm exec ts-node scripts/generate-license-key.ts",
+    "fv": "ts-node scripts/set-fair-value.ts",
+    "fv:list": "ts-node scripts/set-fair-value.ts list",
+    "fv:set": "ts-node scripts/set-fair-value.ts set"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.0.0",

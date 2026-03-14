@@ -8,6 +8,7 @@ import { ENV } from '../config/env';
 import { MarketSelector, MarketScore } from './mm/MarketSelector';
 import { PositionMerger } from './mm/PositionMerger';
 import { LicenseGate } from '../core/LicenseGate';
+import { FairValueStore } from './mm/FairValueStore';
 
 interface MMState {
   market: ParsedMarket;
@@ -26,6 +27,7 @@ export class MarketMakerStrategy {
   private states: Map<string, MMState> = new Map();
   private selector: MarketSelector;
   private merger: PositionMerger;
+  private fairValues = new FairValueStore();
   private cancelThreshold = 0.015; // 1.5%
   private readonly maxInventory: number;
   private license: LicenseGate | null = null;
@@ -69,6 +71,14 @@ export class MarketMakerStrategy {
       console.log(`[MM] Selected: ${s.market.question.slice(0,50)}... (score: ${(s.score*100).toFixed(0)}, vol:${s.breakdown.volume} spr:${s.breakdown.spread} time:${s.breakdown.time})`);
     }
     console.log(`[MM] ${this.states.size} markets selected from ${markets.length} total`);
+
+    this.fairValues.reload();
+    const fvCount = this.fairValues.marketCount;
+    if (fvCount > 0) {
+      console.log(`[MM] INFORMED MODE: ${fvCount} markets with operator fair values`);
+    } else {
+      console.log('[MM] BLIND MODE: no fair values. Edit data/fair-values.json for edge.');
+    }
   }
 
   // Full tick: iterate all markets (called every 10s as fallback)
@@ -153,13 +163,34 @@ export class MarketMakerStrategy {
     // Skip extreme prices
     if (bestBid <= 0.02 || bestAsk >= 0.98) return;
 
-    // Micro-price (PRO/ENTERPRISE) vs simple midpoint (FREE)
-    const microPrice = (this.license?.canMicroPrice !== false)
-      ? (bestBid * askSize + bestAsk * bidSize) / (bidSize + askSize)
-      : (bestBid + bestAsk) / 2;
+    // Hot-reload fair values (only re-reads file if mtime changed)
+    this.fairValues.reload();
+
+    const fv = this.fairValues.get(m.slug, m.conditionId);
+    let fairPrice: number;
+    let spreadOverride: number | null = null;
+    let source: string;
+
+    if (fv && fv.value >= 0.01 && fv.value <= 0.99) {
+      // INFORMED: operator estimate overrides market midpoint
+      fairPrice = fv.value;
+      spreadOverride = fv.spread_override ?? this.fairValues.getSpread(fv.confidence);
+      source = `FV:${fv.value.toFixed(2)}(${fv.confidence})`;
+      // Warn if fair value is far from current market mid
+      const marketMid = (bestBid + bestAsk) / 2;
+      if (Math.abs(fairPrice - marketMid) > 0.20) {
+        console.warn(`[MM] WARNING: ${m.slug} FV ${fairPrice} is ${(Math.abs(fairPrice - marketMid) * 100).toFixed(0)}¢ from mid ${marketMid.toFixed(2)}`);
+      }
+    } else if (this.license?.canMicroPrice !== false) {
+      fairPrice = (bestBid * askSize + bestAsk * bidSize) / (bidSize + askSize);
+      source = `µ:${fairPrice.toFixed(3)}`;
+    } else {
+      fairPrice = (bestBid + bestAsk) / 2;
+      source = `mid:${fairPrice.toFixed(3)}`;
+    }
 
     // 2. Calculate inventory-skewed quotes
-    const { bid, ask } = this.calculateQuotes(microPrice, state);
+    const { bid, ask } = this.calculateQuotes(fairPrice, state, spreadOverride);
 
     // 3. Check if current quotes are still fresh enough
     if (state.lastBid > 0 && state.lastAsk > 0) {
@@ -222,7 +253,7 @@ export class MarketMakerStrategy {
 
     if (newOrders.length > 0) {
       if (ENV.DRY_RUN) {
-        console.log(`[MM] ${m.question.slice(0,35)}... BID:${bid.toFixed(2)} ASK:${ask.toFixed(2)} (µ:${microPrice.toFixed(3)} inv:${netInventory})`);
+        console.log(`[MM] ${m.question.slice(0,35)}... BID:${bid.toFixed(2)} ASK:${ask.toFixed(2)} (${source} inv:${netInventory})`);
       } else {
         try {
           const resp = await client.postOrders(newOrders);
@@ -243,8 +274,8 @@ export class MarketMakerStrategy {
     state.lastQuoteTime = Date.now();
   }
 
-  private calculateQuotes(fairPrice: number, state: MMState): { bid: number; ask: number } {
-    const halfSpread = ENV.MM_SPREAD / 2;
+  private calculateQuotes(fairPrice: number, state: MMState, spreadOverride?: number | null): { bid: number; ask: number } {
+    const halfSpread = (spreadOverride ?? ENV.MM_SPREAD) / 2;
 
     // Inventory skew: push quotes away from accumulated side
     const netInventory = state.yesInventory - state.noInventory;

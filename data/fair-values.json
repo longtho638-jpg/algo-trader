@@ -1,0 +1,9 @@
+{
+  "_README": "YOUR EDGE: estimate probability for each market. Bot quotes around YOUR value instead of midpoint.",
+  "_HOWTO": "1. Research market 2. Set value (0.01-0.99) 3. Set confidence 4. Save file 5. Bot picks up changes automatically",
+  "markets": {},
+  "defaults": {
+    "min_confidence_to_quote": "low",
+    "spread_by_confidence": { "high": 0.06, "medium": 0.08, "low": 0.12 }
+  }
+}
