@@ -12,6 +12,35 @@ npm run quickstart    # Demo backtest + system status + next steps
 
 Backtest works immediately without API keys. For live trading/arbitrage, enter your exchange keys during setup.
 
+## Polymarket Bot Quick Start
+
+### 1. Install
+```bash
+pnpm install
+```
+
+### 2. Configure
+```bash
+cp .env.example .env
+# Edit .env with your keys:
+# - PRIVATE_KEY: Polygon wallet private key (with USDC.e balance)
+# - POLYMARKET_API_KEY/SECRET/PASSPHRASE: Leave empty, bot derives on first run
+# - KALSHI_API_KEY_ID + KALSHI_PRIVATE_KEY_PATH: For cross-platform arb
+# - BINANCE_API_KEY/SECRET: For listing detection
+```
+
+### 3. Test (DRY_RUN)
+```bash
+pnpm run polymarket
+# Bot starts in DRY_RUN mode — logs trades without executing
+```
+
+### 4. Go Live
+```bash
+# In .env, set DRY_RUN=false and MAX_BANKROLL=100
+pnpm run polymarket
+```
+
 ## Alternative: One-Click Shell Script
 
 ```bash
