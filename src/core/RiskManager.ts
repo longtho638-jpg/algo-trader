@@ -631,6 +631,40 @@ export class RiskManager {
   }
 
   // ============================================================
+  // SPEC SECTION 10: Instance-based validate/recordPnl/resetDaily
+  // Used by BotEngine for Polymarket signal validation
+  // ============================================================
+
+  private dailyPnl = 0;
+  private maxDailyLoss = 0;
+
+  initDailyLoss(maxBankroll: number): void {
+    this.maxDailyLoss = maxBankroll * 0.05;
+  }
+
+  validate(signal: any, bankroll: number): any | null {
+    if (this.dailyPnl < -this.maxDailyLoss) return null;
+
+    const { ENV } = require("../config/env");
+    const { kellyFraction } = require("../utils/math");
+    const { polyTakerFee } = require("../config/constants");
+
+    if (signal.edge < ENV.MIN_ARB_EDGE) return null;
+
+    const kelly = kellyFraction(signal.price + signal.edge, signal.price, ENV.MAX_POS_PCT);
+    const max = Math.floor((bankroll * kelly) / signal.price);
+    if (max <= 0) return null;
+
+    const fee = polyTakerFee(signal.size, signal.price);
+    if (fee > signal.size * signal.edge * 0.5) return null;
+
+    return { ...signal, size: Math.min(signal.size, max) };
+  }
+
+  recordPnl(amt: number): void { this.dailyPnl += amt; }
+  resetDaily(): void { this.dailyPnl = 0; }
+
+  // ============================================================
   // INVENTORY SKEW (Market Making)
   // ============================================================
 

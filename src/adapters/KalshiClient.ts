@@ -1,167 +1,90 @@
-/**
- * Kalshi REST API Client
- *
- * HTTP client for Kalshi trading API with RSA-PSS authentication.
- * REST: https://api.elections.kalshi.com/trade-api/v2
- */
-
-import axios, { AxiosInstance, AxiosError } from 'axios';
-import {
-  KalshiClientConfig,
-  KalshiMarket,
-  OrderBook,
-  Balance,
-  CreateOrderParams,
-  OrderResponse,
-  OpenOrder,
-  Trade,
-} from '../interfaces/IKalshi';
-import { loadPrivateKey, createKeyObject, buildAuthHeaders, AuthConfig } from './kalshi-auth';
-
-const DEFAULT_BASE_URL = 'https://api.elections.kalshi.com/trade-api/v2';
-const DEFAULT_RATE_LIMIT = 100;
-const DEFAULT_RATE_LIMIT_MINUTE = 1000;
-
-interface TokenBucket {
-  tokens: number;
-  lastRefill: number;
-  refillRate: number;
-  capacity: number;
-}
+// src/adapters/KalshiClient.ts
+// Spec-aligned: RSA-PSS auth via axios interceptor (Section 6.1)
+import axios, { AxiosInstance } from "axios";
+import crypto from "crypto";
+import { ENV } from "../config/env";
 
 export class KalshiClient {
-  private client: AxiosInstance;
-  private authConfig: AuthConfig;
-  private bucket: TokenBucket;
-  private minuteBucket: TokenBucket;
+  private http: AxiosInstance;
 
-  constructor(config: KalshiClientConfig) {
-    if (!config.apiKey) throw new Error('KalshiClient: apiKey required');
-    if (!config.privateKey && !config.privateKeyPath) {
-      throw new Error('KalshiClient: privateKey or privateKeyPath required');
-    }
+  constructor() {
+    this.http = axios.create({ baseURL: ENV.KALSHI_BASE, timeout: 10000 });
+    this.http.interceptors.request.use(config => {
+      const method = (config.method || "GET").toUpperCase();
+      const path = (config.url || "").split("?")[0]; // CRITICAL: strip query params
+      const ts = Date.now().toString();
+      const msg = ts + method + path;
 
-    const keyData = config.privateKey ?? loadPrivateKey(config.privateKeyPath!);
-    const privateKey = createKeyObject(keyData);
+      const sign = crypto.createSign("RSA-SHA256");
+      sign.update(msg);
+      const sig = sign.sign({
+        key: ENV.KALSHI_PEM,
+        padding: crypto.constants.RSA_PKCS1_PSS_PADDING,
+        saltLength: crypto.constants.RSA_PSS_SALTLEN_DIGEST,
+      }, "base64");
 
-    this.authConfig = {
-      apiKey: config.apiKey,
-      privateKey,
-      useServerTime: config.useServerTime ?? false,
-      serverTimeOffset: 0,
-    };
-
-    this.bucket = {
-      tokens: config.rateLimitPerSecond ?? DEFAULT_RATE_LIMIT,
-      lastRefill: Date.now(),
-      refillRate: (config.rateLimitPerSecond ?? DEFAULT_RATE_LIMIT) / 1000,
-      capacity: config.rateLimitPerSecond ?? DEFAULT_RATE_LIMIT,
-    };
-
-    this.minuteBucket = {
-      tokens: config.rateLimitPerMinute ?? DEFAULT_RATE_LIMIT_MINUTE,
-      lastRefill: Date.now(),
-      refillRate: (config.rateLimitPerMinute ?? DEFAULT_RATE_LIMIT_MINUTE) / 60000,
-      capacity: config.rateLimitPerMinute ?? DEFAULT_RATE_LIMIT_MINUTE,
-    };
-
-    this.client = axios.create({
-      baseURL: config.baseUrl ?? DEFAULT_BASE_URL,
-      timeout: 30000,
-      headers: { 'Content-Type': 'application/json' },
+      config.headers["KALSHI-ACCESS-KEY"] = ENV.KALSHI_KEY_ID;
+      config.headers["KALSHI-ACCESS-SIGNATURE"] = sig;
+      config.headers["KALSHI-ACCESS-TIMESTAMP"] = ts;
+      return config;
     });
-
-    this.client.interceptors.response.use((res) => res, (err) => this.handleError(err));
   }
 
-  private refillBucket(bucket: TokenBucket): void {
-    const now = Date.now();
-    const elapsed = now - bucket.lastRefill;
-    bucket.tokens = Math.min(bucket.capacity, bucket.tokens + elapsed * bucket.refillRate);
-    bucket.lastRefill = now;
+  // ===== Markets =====
+  async getMarkets(params: { limit?: number; event_ticker?: string; status?: string } = {}): Promise<any[]> {
+    const r = await this.http.get("/markets", { params: { limit: 100, ...params } });
+    return r.data.markets || [];
   }
 
-  private async acquireToken(): Promise<void> {
-    this.refillBucket(this.bucket);
-    this.refillBucket(this.minuteBucket);
-
-    if (this.bucket.tokens < 1 || this.minuteBucket.tokens < 1) {
-      const waitMs = Math.max(
-        this.bucket.tokens < 1 ? (1 - this.bucket.tokens) / this.bucket.refillRate : 0,
-        this.minuteBucket.tokens < 1
-          ? (1 - this.minuteBucket.tokens) / this.minuteBucket.refillRate
-          : 0
-      );
-      await new Promise((resolve) => setTimeout(resolve, waitMs + 1));
-      return this.acquireToken();
-    }
-
-    this.bucket.tokens -= 1;
-    this.minuteBucket.tokens -= 1;
+  async getMarket(ticker: string): Promise<any> {
+    const r = await this.http.get(`/markets/${ticker}`);
+    return r.data.market;
   }
 
-  private async request<T>(method: string, path: string, data?: unknown): Promise<T> {
-    await this.acquireToken();
-    const body = data ? JSON.stringify(data) : undefined;
-    const headers = buildAuthHeaders(method, path, body, this.authConfig);
-
-    const response = await this.client.request<T>({ method, url: path, data: body, headers });
-    return response.data;
+  async getOrderbook(ticker: string, depth = 10): Promise<any> {
+    const r = await this.http.get(`/markets/${ticker}/orderbook`, { params: { depth } });
+    return r.data.orderbook;
+    // orderbook.yes: [[price, size], ...], orderbook.no: [[price, size], ...]
+    // In binary markets: YES_ASK = 1.00 - highest NO BID price
   }
 
-  private handleError(error: AxiosError): never {
-    const status = error.response?.status;
-    const message =
-      (error.response?.data as { message?: string })?.message ?? error.message;
-    throw new Error(`KalshiClient [${status}]: ${message}`);
-  }
-
-  async getMarket(eventId: string): Promise<KalshiMarket> {
-    return this.request<KalshiMarket>('GET', `/events/${eventId}/market`);
-  }
-
-  async getOrderBook(marketId: string): Promise<OrderBook> {
-    return this.request<OrderBook>('GET', `/markets/${marketId}/orderbook`);
-  }
-
-  async getBalance(): Promise<Balance> {
-    return this.request<Balance>('GET', '/balance');
-  }
-
-  async createOrder(params: CreateOrderParams): Promise<OrderResponse> {
-    return this.request<OrderResponse>('POST', '/orders', params);
+  // ===== Orders =====
+  async placeOrder(params: {
+    ticker: string;
+    side: "yes" | "no";
+    action: "buy" | "sell";
+    count: number;
+    price: number;          // dollars, e.g. 0.50
+    timeInForce?: "gtc" | "fill_or_kill";
+  }): Promise<any> {
+    const r = await this.http.post("/portfolio/orders", {
+      ticker: params.ticker,
+      side: params.side,
+      action: params.action,
+      count_fp: params.count.toFixed(2),
+      [`${params.side}_price_dollars`]: params.price.toFixed(4),
+      client_order_id: crypto.randomUUID(),
+      time_in_force: params.timeInForce || "gtc",
+      type: "limit",
+    });
+    return r.data.order;
   }
 
   async cancelOrder(orderId: string): Promise<void> {
-    await this.request<void>('DELETE', `/orders/${orderId}`);
+    await this.http.delete(`/portfolio/orders/${orderId}`);
   }
 
-  async cancelAllOrders(): Promise<void> {
-    await this.request<void>('DELETE', '/orders');
+  async getBalance(): Promise<number> {
+    const r = await this.http.get("/portfolio/balance");
+    return parseFloat(r.data.balance) / 100; // Kalshi returns cents
   }
 
-  async getOrder(orderId: string): Promise<OpenOrder> {
-    return this.request<OpenOrder>('GET', `/orders/${orderId}`);
-  }
-
-  async getOpenOrders(marketId?: string): Promise<OpenOrder[]> {
-    const path = marketId ? `/orders?market_id=${marketId}` : '/orders';
-    return this.request<OpenOrder[]>('GET', path);
-  }
-
-  async getTrades(marketId?: string): Promise<Trade[]> {
-    const path = marketId ? `/trades?market_id=${marketId}` : '/trades';
-    return this.request<Trade[]>('GET', path);
-  }
-
-  async syncTime(): Promise<void> {
-    const start = Date.now();
-    const { server_time } = await this.request<{ server_time: number }>('GET', '/time');
-    const end = Date.now();
-    this.authConfig.serverTimeOffset = server_time - (start + end) / 2;
-  }
-
-  isReady(): boolean {
-    return !!this.authConfig.apiKey && !!this.authConfig.privateKey;
+  async getPositions(): Promise<any[]> {
+    const r = await this.http.get("/portfolio/positions");
+    return r.data.market_positions || [];
   }
 }
+
+// Rate limits: Basic tier = 20 read/s, 10 write/s
+// Advanced (apply): 30/30. Premier (≥3.75% vol): 100/100.
+// Fee: ceil(0.07 × contracts × price × (1-price)) — max ~1.75¢/contract at 50¢
