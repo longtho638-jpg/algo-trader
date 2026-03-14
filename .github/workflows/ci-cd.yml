@@ -130,11 +130,11 @@ jobs:
 
       - name: Install dashboard dependencies
         run: npm install
-        working-directory: apps/algo-trader/dashboard
+        working-directory: dashboard
 
       - name: Build dashboard
         run: npx tsc -b && npx vite build
-        working-directory: apps/algo-trader/dashboard
+        working-directory: dashboard
 
       # Upload build artifacts for deployment
       - name: Upload build artifacts
@@ -143,7 +143,7 @@ jobs:
           name: build-artifacts
           path: |
             apps/algo-trader/dist
-            apps/algo-trader/dashboard/dist
+            dashboard/dist
           retention-days: 7
 
       # Cache stats report

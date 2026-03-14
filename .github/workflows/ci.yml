@@ -78,8 +78,8 @@ jobs:
 
       - name: Install dashboard dependencies
         run: npm install
-        working-directory: apps/algo-trader/dashboard
+        working-directory: dashboard
 
       - name: Build dashboard
         run: npx tsc -b && npx vite build
-        working-directory: apps/algo-trader/dashboard
+        working-directory: dashboard
