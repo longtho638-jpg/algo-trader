@@ -4,6 +4,7 @@
  */
 import { useState, useCallback, useEffect } from 'react';
 import { useApiClient } from './use-api-client';
+import { useAuthStore } from '../stores/auth-store';
 
 export interface License {
   id: string;
@@ -34,7 +35,7 @@ export interface LicenseFilters {
 }
 
 export function useLicenses() {
-  const { fetchApi, setToken } = useApiClient();
+  const { fetchApi } = useApiClient();
   const [licenses, setLicenses] = useState<License[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -128,11 +129,11 @@ export function useLicenses() {
       body: JSON.stringify({ key, domain }),
     });
 
-    if (result) {
-      setToken(result.jwt);
+    if (result?.jwt) {
+      useAuthStore.setState({ token: result.jwt });
     }
     return result || null;
-  }, [fetchApi, setToken]);
+  }, [fetchApi]);
 
   useEffect(() => {
     loadLicenses();

@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { LayoutShell } from './components/layout-shell';
+import { AuthGuard } from './components/auth-guard';
 import { DashboardPage } from './pages/dashboard-page';
 import { BacktestsPage } from './pages/backtests-page';
 import { MarketplacePage } from './pages/marketplace-page';
@@ -12,6 +13,7 @@ import { LoginPage } from './pages/login-page';
 import { SignupPage } from './pages/signup-page';
 import { DocsPage } from './pages/docs-page';
 import { GuidePage } from './pages/guide-page';
+import { AccountPage } from './pages/account-page';
 
 export function App() {
   return (
@@ -23,14 +25,15 @@ export function App() {
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
 
-      {/* App routes - sidebar layout */}
-      <Route path="/app" element={<LayoutShell><DashboardPage /></LayoutShell>} />
-      <Route path="/app/strategies" element={<LayoutShell><MarketplacePage /></LayoutShell>} />
-      <Route path="/app/backtests" element={<LayoutShell><BacktestsPage /></LayoutShell>} />
-      <Route path="/app/licenses" element={<LayoutShell><LicensePage /></LayoutShell>} />
-      <Route path="/app/reporting" element={<LayoutShell><ReportingPage /></LayoutShell>} />
-      <Route path="/app/settings" element={<LayoutShell><SettingsPage /></LayoutShell>} />
-      <Route path="/app/guide" element={<LayoutShell><GuidePage /></LayoutShell>} />
+      {/* App routes - sidebar layout, auth required */}
+      <Route path="/app" element={<AuthGuard><LayoutShell><DashboardPage /></LayoutShell></AuthGuard>} />
+      <Route path="/app/strategies" element={<AuthGuard><LayoutShell><MarketplacePage /></LayoutShell></AuthGuard>} />
+      <Route path="/app/backtests" element={<AuthGuard><LayoutShell><BacktestsPage /></LayoutShell></AuthGuard>} />
+      <Route path="/app/licenses" element={<AuthGuard><LayoutShell><LicensePage /></LayoutShell></AuthGuard>} />
+      <Route path="/app/reporting" element={<AuthGuard><LayoutShell><ReportingPage /></LayoutShell></AuthGuard>} />
+      <Route path="/app/settings" element={<AuthGuard><LayoutShell><SettingsPage /></LayoutShell></AuthGuard>} />
+      <Route path="/app/guide" element={<AuthGuard><LayoutShell><GuidePage /></LayoutShell></AuthGuard>} />
+      <Route path="/app/account" element={<AuthGuard><LayoutShell><AccountPage /></LayoutShell></AuthGuard>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

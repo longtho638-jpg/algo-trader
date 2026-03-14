@@ -77,6 +77,16 @@ const NAV_ITEMS: NavItem[] = [
     ),
   },
   {
+    label: 'Account',
+    path: '/app/account',
+    icon: (
+      <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+      </svg>
+    ),
+  },
+  {
     label: 'Guide',
     path: '/app/guide',
     icon: (
@@ -95,7 +105,14 @@ interface SidebarNavigationProps {
 export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
   const { pathname } = useLocation();
   const connected = useTradingStore((s) => s.connected);
-  const { email, logout } = useAuthStore();
+  const { email, tier, logout } = useAuthStore();
+
+  const tierBadge: Record<string, string> = {
+    free: 'text-[#8892B0] bg-[#2D3142]',
+    pro: 'text-[#00D9FF] bg-[#00D9FF]/10',
+    enterprise: 'text-[#FFD700] bg-[#FFD700]/10',
+  };
+  const badgeClass = tierBadge[tier] ?? tierBadge['free'];
 
   const isActive = (path: string) =>
     path === '/app' ? pathname === '/app' : pathname.startsWith(path);
@@ -127,9 +144,14 @@ export function SidebarNavigation({ onNavigate }: SidebarNavigationProps) {
       </ul>
 
       {/* User info + logout */}
-      <div className="px-4 pb-2 border-t border-bg-border pt-3">
+      <div className="px-4 pb-2 border-t border-bg-border pt-3 space-y-2">
         {email && (
-          <p className="text-muted text-xs font-mono truncate mb-2">{email}</p>
+          <div className="flex items-center gap-2 min-w-0">
+            <p className="text-muted text-xs font-mono truncate flex-1">{email}</p>
+            <span className={`flex-shrink-0 text-[10px] font-bold font-mono px-1.5 py-0.5 rounded uppercase ${badgeClass}`}>
+              {tier}
+            </span>
+          </div>
         )}
         <button
           onClick={logout}

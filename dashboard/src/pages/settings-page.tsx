@@ -6,27 +6,13 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useApiClient } from '../hooks/use-api-client';
+import { useAuthStore } from '../stores/auth-store';
 import { SettingsTenantConfigForm, type TenantInfo } from '../components/settings-tenant-config-form';
 import { SettingsExchangeKeysForm, type ApiKey } from '../components/settings-exchange-keys-form';
 import { SettingsAlertRulesForm, type AlertRule } from '../components/settings-alert-rules-form';
 
-const MOCK_TENANT: TenantInfo = {
-  id: 'tenant-001',
-  name: 'Demo Tenant',
-  tier: 'PRO',
-  createdAt: '2026-01-15T08:00:00Z',
-  allowedExchanges: ['binance', 'kraken', 'coinbase', 'bybit'],
-};
-
-const MOCK_KEYS: ApiKey[] = [
-  { id: 'k1', prefix: 'ak_live', maskedKey: 'ak_live_••••••••3f7a', createdAt: '2026-02-01T10:00:00Z' },
-  { id: 'k2', prefix: 'ak_test', maskedKey: 'ak_test_••••••••9b2c', createdAt: '2026-02-20T14:00:00Z' },
-];
-
-const MOCK_ALERTS: AlertRule[] = [
-  { id: 'a1', metric: 'spread_pct', condition: '>', threshold: 0.5, action: 'webhook', target: 'https://hooks.example.com/alert' },
-  { id: 'a2', metric: 'pnl_usd', condition: '<', threshold: -100, action: 'email', target: 'admin@example.com' },
-];
+const MOCK_KEYS: ApiKey[] = [];
+const MOCK_ALERTS: AlertRule[] = [];
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
@@ -96,15 +82,24 @@ function MmParametersForm() {
 
 export function SettingsPage() {
   const { fetchApi } = useApiClient();
+  const { email, tier, tenantId } = useAuthStore();
 
-  const [tenant, setTenant] = useState<TenantInfo>(MOCK_TENANT);
+  const authTenant: TenantInfo = {
+    id: tenantId ?? 'unknown',
+    name: email || 'My Account',
+    tier: tier.toUpperCase() as TenantInfo['tier'],
+    createdAt: new Date().toISOString(),
+    allowedExchanges: ['binance', 'kraken', 'coinbase', 'bybit'],
+  };
+
+  const [tenant, setTenant] = useState<TenantInfo>(authTenant);
   const [apiKeys, setApiKeys] = useState<ApiKey[]>(MOCK_KEYS);
   const [alerts, setAlerts] = useState<AlertRule[]>(MOCK_ALERTS);
   const [newKeyVisible, setNewKeyVisible] = useState<string | null>(null);
   const [creatingKey, setCreatingKey] = useState(false);
 
   useEffect(() => {
-    fetchApi<TenantInfo>('/tenants/me').then((d) => { if (d) setTenant(d); });
+    fetchApi<TenantInfo>('/tenants/me').then((d) => { if (d) setTenant(d); else setTenant(authTenant); });
     fetchApi<ApiKey[]>(`/tenants/${tenant.id}/api-keys`).then((d) => { if (d) setApiKeys(d); });
     fetchApi<AlertRule[]>(`/tenants/${tenant.id}/alert-rules`).then((d) => { if (d) setAlerts(d); });
     // eslint-disable-next-line react-hooks/exhaustive-deps

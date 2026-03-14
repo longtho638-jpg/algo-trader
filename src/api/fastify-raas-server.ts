@@ -45,6 +45,7 @@ import { registerApiDocsRoute } from './routes/api-docs-route';
 import { usageTrackingPlugin } from './middleware/usage-tracking-middleware';
 import { IdempotencyStore, idempotencyMiddleware, createIdempotencyResponseHandler } from '../middleware/idempotency-middleware';
 import { hardLimitsPlugin } from './middleware/hard-limits-middleware';
+import { authRoutes } from './routes/auth-routes';
 
 export interface RaasServerOptions {
   port?: number;
@@ -83,6 +84,9 @@ export function buildServer(opts: RaasServerOptions = {}): FastifyInstance {
   void server.register(errorHandlerPlugin);
   void server.register(corsPlugin);
 
+  // Auth routes (public — register BEFORE auth middleware)
+  void server.register(authRoutes);
+
   // Idempotency middleware for webhooks
   const idempotencyStore = new IdempotencyStore();
   const idempotencyHook = idempotencyMiddleware(idempotencyStore);
@@ -96,9 +100,10 @@ export function buildServer(opts: RaasServerOptions = {}): FastifyInstance {
   if (!opts.skipAuth) {
     const authMiddleware = createAuthMiddleware(keyStore, rateLimiter);
     server.addHook('preHandler', async (request, reply) => {
-      // Skip auth for health routes
+      // Skip auth for health routes and public auth routes
       if (request.url === '/health' || request.url === '/ready' || request.url === '/metrics'
-        || request.url === '/api/v1/billing/webhook' || request.url === '/api/v1/billing/products') {
+        || request.url === '/api/v1/billing/webhook' || request.url === '/api/v1/billing/products'
+        || request.url.startsWith('/api/auth/')) {
         return;
       }
       return authMiddleware(request as any, reply as any);

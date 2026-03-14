@@ -1,5 +1,5 @@
 /**
- * Login page — centered card, stores session in auth-store, redirects to /app.
+ * Login page — centered card, calls auth-store login(), redirects to /app.
  */
 import { useState, FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
@@ -8,20 +8,26 @@ import { PublicNavbar } from '../components/public-navbar';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const login = useAuthStore((s) => s.login);
+  const { login, loading, error: storeError } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [localError, setLocalError] = useState('');
 
-  function handleSubmit(e: FormEvent) {
+  const displayError = localError || storeError;
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    setError('');
+    setLocalError('');
     if (!email.trim() || !password.trim()) {
-      setError('Email and password are required.');
+      setLocalError('Email and password are required.');
       return;
     }
-    login(email.trim());
-    navigate('/app');
+    await login(email.trim(), password);
+    // If no error in store after login, navigate
+    const { error, loggedIn } = useAuthStore.getState();
+    if (loggedIn && !error) {
+      navigate('/app');
+    }
   }
 
   return (
@@ -37,9 +43,9 @@ export function LoginPage() {
               <h1 className="text-white text-xl font-bold">Sign in to CashClaw</h1>
             </div>
 
-            {error && (
+            {displayError && (
               <div className="mb-4 px-3 py-2 bg-[#FF3366]/10 border border-[#FF3366]/30 rounded text-[#FF3366] text-xs">
-                {error}
+                {displayError}
               </div>
             )}
 
@@ -52,7 +58,8 @@ export function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="you@example.com"
                   autoComplete="email"
-                  className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors"
+                  disabled={loading}
+                  className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -64,15 +71,17 @@ export function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   autoComplete="current-password"
-                  className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors"
+                  disabled={loading}
+                  className="w-full bg-[#0F0F1A] border border-[#2D3142] rounded px-3 py-2.5 text-white text-sm focus:outline-none focus:border-[#00D9FF] placeholder:text-[#8892B0]/50 transition-colors disabled:opacity-50"
                 />
               </div>
 
               <button
                 type="submit"
-                className="w-full bg-[#00D9FF] text-[#0F0F1A] font-bold text-sm py-2.5 rounded hover:bg-[#00D9FF]/80 transition-colors mt-2"
+                disabled={loading}
+                className="w-full bg-[#00D9FF] text-[#0F0F1A] font-bold text-sm py-2.5 rounded hover:bg-[#00D9FF]/80 transition-colors mt-2 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                Sign In
+                {loading ? 'Signing in…' : 'Sign In'}
               </button>
             </form>
 
