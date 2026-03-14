@@ -3,7 +3,7 @@
  */
 
 import { EventEmitter } from 'events';
-import { ExchangeClientBase } from '@agencyos/trading-core/exchanges';
+import { ExchangeClientBase } from '../lib/exchange-client-base';
 import { IArbitrageOpportunity } from '../interfaces/IArbitrageOpportunity';
 import { ArbitrageProfitCalculator } from '../arbitrage/arbitrage-profit-calculator';
 import { logger } from '../utils/logger';

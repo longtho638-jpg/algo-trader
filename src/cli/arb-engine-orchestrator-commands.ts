@@ -5,12 +5,12 @@
  */
 
 import { Command } from 'commander';
-import {
-  SpreadDetectorEngine,
-  ArbitrageOrchestrator,
-  ExchangeConfig,
-} from '@agencyos/trading-core/arbitrage';
-import { ExchangeClientBase } from '@agencyos/trading-core/exchanges';
+import { ExchangeClientBase } from '../lib/exchange-client-base';
+
+// Stub types — SpreadDetectorEngine/ArbitrageOrchestrator not yet implemented locally
+interface ExchangeConfig { id: string; name: string; apiKey: string; secret: string; [key: string]: any; }
+class SpreadDetectorEngine { constructor(_c: any, _f: any) {} init() {} start() {} stop() {} getStats() { return {}; } getProfitSummary() { return {}; } }
+class ArbitrageOrchestrator { constructor(_c: any, _f: any) {} init() {} start() {} stop() {} getStats() { return {}; } }
 import { logger } from '../utils/logger';
 import {
   parseList,

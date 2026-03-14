@@ -3,10 +3,8 @@
  */
 
 import { Command } from 'commander';
-import {
-  ArbitrageScanner,
-  ArbitrageExecutor,
-} from '@agencyos/trading-core/arbitrage';
+import { ArbitrageScanner } from '../arbitrage/arbitrage-scanner';
+import { ArbitrageExecutor } from '../arbitrage/arbitrage-executor';
 import { logger } from '../utils/logger';
 import {
   parseList,

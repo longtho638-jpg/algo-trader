@@ -11,7 +11,7 @@ import {
   BinanceAdapter,
   OkxAdapter,
   BybitAdapter,
-} from '@agencyos/trading-core/exchanges';
+} from '../lib/exchange-client-base';
 import { logger } from '../utils/logger';
 
 /**

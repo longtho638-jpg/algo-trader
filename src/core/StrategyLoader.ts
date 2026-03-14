@@ -4,7 +4,10 @@ import { RsiCrossoverStrategy } from '../strategies/RsiCrossoverStrategy';
 import { BollingerBandStrategy } from '../strategies/BollingerBandStrategy';
 import { MacdCrossoverStrategy } from '../strategies/MacdCrossoverStrategy';
 import { MacdBollingerRsiStrategy } from '../strategies/MacdBollingerRsiStrategy';
-import { CrossExchangeArbitrage, TriangularArbitrage, StatisticalArbitrage } from '@agencyos/vibe-arbitrage-engine/strategies';
+// Stub arb strategies — no real implementation outside @agencyos
+class CrossExchangeArbitrage { name = 'CrossExchangeArbitrage'; async execute() { return { signal: 'hold' }; } }
+class TriangularArbitrage { name = 'TriangularArbitrage'; async execute() { return { signal: 'hold' }; } }
+class StatisticalArbitrage { name = 'StatisticalArbitrage'; async execute() { return { signal: 'hold' }; } }
 import { LicenseService, LicenseTier, LicenseError } from '../lib/raas-gate';
 
 // Polymarket strategies

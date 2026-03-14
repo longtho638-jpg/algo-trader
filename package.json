@@ -19,6 +19,8 @@
     "prepare": "echo skipping prepare",
     "polymarket": "pnpm exec ts-node --transpile-only -r dotenv/config src/polymarket-index.ts",
     "polymarket:build": "tsc && node dist/polymarket-index.js",
+    "cex": "pnpm exec ts-node --transpile-only -r dotenv/config src/cex-index.ts",
+    "cex:build": "tsc && node dist/cex-index.js",
     "sop:run": "node src/agi-sops/index.js",
     "sop:dev": "node --watch src/agi-sops/index.js",
     "disk:check": "pnpm exec ts-node scripts/disk-monitor.ts",

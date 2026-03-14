@@ -5,7 +5,7 @@
  * Handles partial fills with rollback logic.
  */
 
-import { ExchangeClientBase } from '@agencyos/trading-core/exchanges';
+import { ExchangeClientBase } from '../lib/exchange-client-base';
 import { IArbitrageOpportunity } from '../interfaces/IArbitrageOpportunity';
 import { IOrder } from '../interfaces/IExchange';
 import { ArbitrageRiskManager } from './arbitrage-risk-manager';

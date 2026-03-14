@@ -7,7 +7,7 @@ import { Command } from 'commander';
 import { AbiTradeDeepScanner, IArbitrageOpportunity as ArbitrageOpportunity, DeepScanResult, DeepScanAggregate } from '../abi-trade/abi-trade-deep-scanner';
 import { logger } from '../utils/logger';
 import { parseList, validateMinExchanges } from '../cli/exchange-factory';
-import { ExchangeClientBase } from '@agencyos/trading-core/exchanges';
+import { ExchangeClientBase } from '../lib/exchange-client-base';
 import { ArbCliDashboard } from '../ui/arbitrage-cli-realtime-dashboard';
 import { exportArbHistory } from '../reporting/arbitrage-trade-history-exporter';
 import { PaperTradingArbBridge } from '../execution/paper-trading-arbitrage-bridge';

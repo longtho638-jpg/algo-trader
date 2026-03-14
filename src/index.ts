@@ -3,7 +3,7 @@ import { BotEngine } from './core/BotEngine';
 import { RsiSmaStrategy } from './strategies/RsiSmaStrategy';
 import { StrategyLoader } from './core/StrategyLoader';
 import { MockDataProvider } from './data/MockDataProvider';
-import { ExchangeClientBase as ExchangeClient } from '@agencyos/trading-core/exchanges';
+import { ExchangeClientBase as ExchangeClient } from './lib/exchange-client-base';
 import { BacktestRunner, BacktestResult } from './backtest/BacktestRunner';
 import { BacktestEngine } from './backtest/BacktestEngine';
 import { LicenseError } from './lib/raas-gate';

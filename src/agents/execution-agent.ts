@@ -7,7 +7,7 @@ import { BaseAgent, TradingEvent, ActionPlan, ExecutionResult, VerificationResul
 import { AgentEventBus } from '../a2ui/agent-event-bus';
 import { AutonomyLevel, AgentEventType, TradeExecutedEvent } from '../a2ui/types';
 import { logger } from '../utils/logger';
-import { ExchangeClientBase } from '@agencyos/trading-core/exchanges';
+import { ExchangeClientBase } from '../lib/exchange-client-base';
 
 /** Order parameters */
 export interface OrderParams {

@@ -6,12 +6,12 @@
  */
 
 import { Command } from 'commander';
-import {
-  AgiArbitrageEngine,
-  SpreadDetectorEngine,
-  ExchangeConfig,
-} from '@agencyos/trading-core/arbitrage';
-import { ExchangeClientBase } from '@agencyos/trading-core/exchanges';
+import { ExchangeClientBase } from '../lib/exchange-client-base';
+
+// Stub types — AgiArbitrageEngine/SpreadDetectorEngine not yet implemented locally
+interface ExchangeConfig { id: string; name: string; apiKey: string; secret: string; [key: string]: any; }
+class AgiArbitrageEngine { constructor(_c: any, _f: any) {} init() {} start() {} stop() {} getStats() { return {}; } getProfitSummary() { return {}; } execute() { return Promise.resolve(); } }
+class SpreadDetectorEngine { constructor(_c: any, _f: any) {} init() {} start() {} stop() {} getStats() { return {}; } getProfitSummary() { return {}; } }
 import { logger } from '../utils/logger';
 import {
   parseList,
