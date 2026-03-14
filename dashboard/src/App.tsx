@@ -10,6 +10,8 @@ import { LandingPage } from './pages/landing-page';
 import { PricingPage } from './pages/pricing-page';
 import { LoginPage } from './pages/login-page';
 import { SignupPage } from './pages/signup-page';
+import { DocsPage } from './pages/docs-page';
+import { GuidePage } from './pages/guide-page';
 
 export function App() {
   return (
@@ -17,6 +19,7 @@ export function App() {
       {/* Public routes - full page, no sidebar */}
       <Route path="/" element={<LandingPage />} />
       <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/docs" element={<DocsPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
 
@@ -27,6 +30,7 @@ export function App() {
       <Route path="/app/licenses" element={<LayoutShell><LicensePage /></LayoutShell>} />
       <Route path="/app/reporting" element={<LayoutShell><ReportingPage /></LayoutShell>} />
       <Route path="/app/settings" element={<LayoutShell><SettingsPage /></LayoutShell>} />
+      <Route path="/app/guide" element={<LayoutShell><GuidePage /></LayoutShell>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

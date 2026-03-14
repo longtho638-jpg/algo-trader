@@ -36,6 +36,12 @@ export function PublicNavbar() {
             Pricing
           </Link>
           <Link
+            to="/docs"
+            className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
+          >
+            Docs
+          </Link>
+          <Link
             to="/login"
             className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
           >
@@ -76,6 +82,13 @@ export function PublicNavbar() {
             className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
           >
             Pricing
+          </Link>
+          <Link
+            to="/docs"
+            onClick={() => setMenuOpen(false)}
+            className="text-[#8892B0] hover:text-white text-sm font-mono transition-colors"
+          >
+            Docs
           </Link>
           <Link
             to="/login"

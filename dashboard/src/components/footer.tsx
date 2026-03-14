@@ -27,6 +27,11 @@ export function Footer() {
                 </Link>
               </li>
               <li>
+                <Link to="/docs" className="text-[#8892B0] hover:text-white text-xs font-mono transition-colors">
+                  Docs
+                </Link>
+              </li>
+              <li>
                 <Link to="/login" className="text-[#8892B0] hover:text-white text-xs font-mono transition-colors">
                   Login
                 </Link>
