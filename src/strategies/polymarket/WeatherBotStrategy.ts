@@ -15,9 +15,9 @@
  */
 
 import { BasePolymarketStrategy } from './BasePolymarketStrategy';
-import { ICandle } from '../../../interfaces/ICandle';
-import { ISignal, SignalType } from '../../../interfaces/ISignal';
-import { IPolymarketSignal, PolymarketSignalType, IMarketTick } from '../../../interfaces/IPolymarket';
+import { ICandle } from '../../interfaces/ICandle';
+import { ISignal, SignalType } from '../../interfaces/ISignal';
+import { IPolymarketSignal, PolymarketSignalType, IMarketTick } from '../../interfaces/IPolymarket';
 
 export interface WeatherBotConfig {
   minEdgeThreshold: number;    // Minimum edge to trade (default 0.05 = 5%)

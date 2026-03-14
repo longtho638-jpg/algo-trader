@@ -14,9 +14,9 @@
  */
 
 import { BasePolymarketStrategy } from './BasePolymarketStrategy';
-import { ICandle } from '../../../interfaces/ICandle';
-import { ISignal } from '../../../interfaces/ISignal';
-import { IPolymarketSignal, PolymarketSignalType, IMarketTick } from '../../../interfaces/IPolymarket';
+import { ICandle } from '../../interfaces/ICandle';
+import { ISignal } from '../../interfaces/ISignal';
+import { IPolymarketSignal, PolymarketSignalType, IMarketTick } from '../../interfaces/IPolymarket';
 import { logger } from '../../../utils/logger';
 
 export interface MakerBotConfig {

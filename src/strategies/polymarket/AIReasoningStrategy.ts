@@ -16,9 +16,9 @@
  */
 
 import { BasePolymarketStrategy } from './BasePolymarketStrategy';
-import { ICandle } from '../../../interfaces/ICandle';
-import { ISignal } from '../../../interfaces/ISignal';
-import { IPolymarketSignal, PolymarketSignalType, IMarketTick } from '../../../interfaces/IPolymarket';
+import { ICandle } from '../../interfaces/ICandle';
+import { ISignal } from '../../interfaces/ISignal';
+import { IPolymarketSignal, PolymarketSignalType, IMarketTick } from '../../interfaces/IPolymarket';
 
 export interface AIReasoningConfig {
   minEdgeThreshold: number;    // Minimum edge (default 0.08 = 8%)

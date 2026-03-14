@@ -17,7 +17,7 @@
   "scripts": {
     "prepublishOnly": "npm run build && npm test",
     "prepare": "echo skipping prepare",
-    "polymarket": "pnpm exec ts-node src/polymarket-index.ts",
+    "polymarket": "pnpm exec ts-node --transpile-only -r dotenv/config src/polymarket-index.ts",
     "polymarket:build": "tsc && node dist/polymarket-index.js",
     "sop:run": "node src/agi-sops/index.js",
     "sop:dev": "node --watch src/agi-sops/index.js",

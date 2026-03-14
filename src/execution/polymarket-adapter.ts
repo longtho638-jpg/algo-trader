@@ -65,7 +65,7 @@ export class PolymarketAdapter extends EventEmitter {
       throwOnError: config.throwOnError !== false,
       autoHeartbeat: config.autoHeartbeat !== false,
       markets: config.markets || [],
-      funderAddress: config.funderAddress,
+      funderAddress: config.funderAddress || '',
     };
 
     this.clobClient = new PolymarketClobClient(config);

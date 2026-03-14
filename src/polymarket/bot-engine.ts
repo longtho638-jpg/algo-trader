@@ -269,11 +269,7 @@ export class PolymarketBotEngine extends EventEmitter {
     });
 
     // 7. Listing Arbitrage
-    const listingStrategy = new ListingArbStrategy();
-    listingStrategy.updateConfig({
-      minEdgeThreshold: 0.03,
-      maxPositionSize: 50,
-    });
+    const listingStrategy = new ListingArbStrategy((_sig: any) => {});
     this.strategies.set('ListingArb', {
       name: 'ListingArb',
       instance: listingStrategy,
@@ -284,11 +280,6 @@ export class PolymarketBotEngine extends EventEmitter {
 
     // 8. Cross-Platform Arbitrage
     const crossPlatformStrategy = new CrossPlatformArbStrategy();
-    crossPlatformStrategy.updateConfig({
-      minEdgeThreshold: 0.01,
-      maxPositionSize: 100,
-      feeRateBps: 25,
-    });
     this.strategies.set('CrossPlatformArb', {
       name: 'CrossPlatformArb',
       instance: crossPlatformStrategy,
@@ -299,12 +290,6 @@ export class PolymarketBotEngine extends EventEmitter {
 
     // 9. Market Maker
     const mmStrategy = new MarketMakerStrategy();
-    mmStrategy.updateConfig({
-      targetSpread: 0.10,
-      orderSize: 50,
-      maxInventory: 200,
-      cancelReplaceMs: 5000,
-    });
     this.strategies.set('MarketMaker', {
       name: 'MarketMaker',
       instance: mmStrategy,
@@ -393,8 +378,9 @@ export class PolymarketBotEngine extends EventEmitter {
     const signals: IPolymarketSignal[] = [];
 
     // Try processTick method
-    if (typeof strategy.instance.processTick === 'function') {
-      const signal = strategy.instance.processTick(tick);
+    const inst = strategy.instance as any;
+    if (typeof inst.processTick === 'function') {
+      const signal = inst.processTick(tick);
       if (signal) signals.push(signal);
     }
 
@@ -450,12 +436,13 @@ export class PolymarketBotEngine extends EventEmitter {
    */
   private async executeSignal(signal: IPolymarketSignal): Promise<void> {
     // Record trade for PnL tracking
+    const tradeAction = signal.action === 'CANCEL' ? 'SELL' : signal.action;
     const trade: TradeRecord = {
       tradeId: `trade-${++this.tradeCounter}-${Date.now()}`,
       strategy: signal.metadata.strategy as string || 'Unknown',
       tokenId: signal.tokenId,
       side: signal.side,
-      action: signal.action,
+      action: tradeAction,
       price: signal.price,
       size: signal.size,
       timestamp: Date.now(),

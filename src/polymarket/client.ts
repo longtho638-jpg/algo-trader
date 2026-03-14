@@ -188,7 +188,7 @@ export class PolymarketClobClient {
    * Cancel single order
    */
   async cancelOrder(orderId: string): Promise<any> {
-    return this.client.cancelOrder(orderId);
+    return this.client.cancelOrder(orderId as any);
   }
 
   /**
