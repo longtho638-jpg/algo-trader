@@ -321,20 +321,20 @@ pm2 restart cashclaw`} />
             <thead>
               <tr className="border-b border-[#2D3142]">
                 <th className="text-left py-2 pr-6 text-[#00D9FF] w-1/3">Term</th>
-                <th className="text-left py-2 text-[#00D9FF]">Giải thích</th>
+                <th className="text-left py-2 text-[#00D9FF]">Definition</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2D3142]">
               {[
-                ['bid', 'Giá mua — giá cao nhất bạn sẵn sàng trả'],
-                ['ask', 'Giá bán — giá thấp nhất bạn sẵn sàng bán'],
-                ['spread', 'Chênh lệch giữa bid và ask — đây là lợi nhuận của bạn'],
-                ['fill', 'Khớp lệnh — ai đó chấp nhận giá của bạn'],
-                ['inventory', 'Số lượng token đang nắm giữ trong ví'],
-                ['adverse selection', 'Thua khi người khác biết nhiều hơn bạn về thị trường'],
-                ['maker rebate', 'Phí thưởng Polymarket trả cho bạn khi đặt lệnh trước'],
-                ['micro-price', 'Giá trung bình có trọng số giữa bid và ask'],
-                ['DRY_RUN', 'Chế độ mô phỏng — không dùng tiền thật, test an toàn'],
+                ['bid', 'Buy price — the highest price you are willing to pay'],
+                ['ask', 'Sell price — the lowest price you are willing to sell at'],
+                ['spread', 'Difference between bid and ask — this is your profit per fill'],
+                ['fill', 'Order match — someone accepted your price'],
+                ['inventory', 'Number of tokens currently held in your wallet'],
+                ['adverse selection', 'Losing when counterparty knows more than you about the market outcome'],
+                ['maker rebate', 'Daily reward Polymarket pays you for providing liquidity (placing orders)'],
+                ['micro-price', 'Volume-weighted midpoint between best bid and ask — fairer than simple midpoint'],
+                ['DRY_RUN', 'Simulation mode — no real money, safe to test strategies'],
               ].map(([term, def]) => (
                 <tr key={term}>
                   <td className="py-2 pr-6 text-white">{term}</td>
