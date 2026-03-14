@@ -7,8 +7,8 @@ import { initReactI18next } from 'react-i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 
 // Import translations
-import vi from './locales/vi';
-import en from './locales/en';
+import vi from '../locales/vi';
+import en from '../locales/en';
 
 export const defaultNS = 'common';
 export const resources = {
