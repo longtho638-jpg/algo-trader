@@ -24,7 +24,7 @@ export const usageQueries = {
    * Record a usage event
    */
   async recordUsage(data: UsageEventInput) {
-    return db.usageEvent.create({ data });
+    return db.usageEvent.create({ data: data as any });
   },
 
   /**

@@ -25,7 +25,7 @@ export interface LicenseAuditInput {
 
 export const licenseQueries = {
   async create(data: LicenseCreateInput) {
-    return db.license.create({ data });
+    return db.license.create({ data: data as any });
   },
 
   async findByKey(key: string) {
@@ -45,9 +45,9 @@ export const licenseQueries = {
     const { take = 100, skip = 0, status, tier } = options || {};
     const where: LicenseWhereInput = {};
     if (status) where.status = status;
-    if (tier) where.tier = tier as any;
+    if (tier) where.tier = tier;
     return db.license.findMany({
-      where,
+      where: where as any,
       take,
       skip,
       orderBy: { createdAt: 'desc' },
@@ -57,7 +57,7 @@ export const licenseQueries = {
   async update(id: string, data: Partial<LicenseCreateInput>) {
     return db.license.update({
       where: { id },
-      data,
+      data: data as any,
     });
   },
 
@@ -77,7 +77,7 @@ export const licenseQueries = {
   },
 
   async logAudit(data: LicenseAuditInput) {
-    return db.licenseAuditLog.create({ data });
+    return db.licenseAuditLog.create({ data: data as any });
   },
 
   async getAuditLogs(licenseId: string, take = 50) {

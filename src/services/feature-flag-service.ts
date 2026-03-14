@@ -116,7 +116,7 @@ export class FeatureFlagService {
         enabled: input.enabled ?? true,
         rolloutPercentage: input.rolloutPercentage ?? 100,
         userWhitelist: input.userWhitelist ?? [],
-        metadata: (input.metadata ?? {}) as InputJsonValue
+        metadata: input.metadata ?? {}
       }
     });
 
@@ -137,7 +137,7 @@ export class FeatureFlagService {
         ...(updates.enabled !== undefined && { enabled: updates.enabled }),
         ...(updates.rolloutPercentage !== undefined && { rolloutPercentage: updates.rolloutPercentage }),
         ...(updates.userWhitelist !== undefined && { userWhitelist: updates.userWhitelist }),
-        ...(updates.metadata !== undefined && { metadata: updates.metadata as InputJsonValue })
+        ...(updates.metadata !== undefined && { metadata: updates.metadata })
       }
     });
 
@@ -266,7 +266,7 @@ export class FeatureFlagService {
         where: { id: existing.id },
         data: {
           enabled,
-          overrideValue: overrideValue ?? (null as unknown as InputJsonValue)
+          overrideValue: overrideValue ?? undefined
         }
       });
     }
@@ -276,7 +276,7 @@ export class FeatureFlagService {
         licenseId,
         featureFlagId: flag.id,
         enabled,
-        overrideValue: overrideValue ?? (null as unknown as InputJsonValue)
+        overrideValue: overrideValue ?? undefined
       }
     });
   }
