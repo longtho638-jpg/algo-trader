@@ -54,6 +54,26 @@ export function GuideContent() {
   return (
     <div className="space-y-16 text-[#8892B0]">
 
+      {/* Self-Hosted Banner */}
+      <div className="border border-[#00D9FF]/30 bg-[#00D9FF]/5 rounded-lg p-4">
+        <p className="text-sm font-mono text-[#00D9FF] font-bold mb-1">CashClaw v1 — Self-Hosted</p>
+        <p className="text-sm font-mono text-[#8892B0] leading-relaxed">
+          You run the bot on your own VPS. Your keys, your server, your profits.
+          CashClaw provides the software + dashboard + updates. You provide the infrastructure ($10-20/mo VPS) and Polymarket wallet.
+        </p>
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-mono">
+          <div className="bg-[#1A1A2E] rounded p-2">
+            <span className="text-[#00FF41]">You own:</span> Private keys, VPS, profits
+          </div>
+          <div className="bg-[#1A1A2E] rounded p-2">
+            <span className="text-[#00D9FF]">We provide:</span> Bot code, dashboard, updates
+          </div>
+          <div className="bg-[#1A1A2E] rounded p-2">
+            <span className="text-yellow-400">Cost:</span> $10-20/mo VPS + CashClaw tier
+          </div>
+        </div>
+      </div>
+
       {/* Section 1: How It Works */}
       <section id="how-it-works">
         <h2 className="text-xl font-bold font-mono text-white mb-4">How It Works</h2>
@@ -109,7 +129,10 @@ export function GuideContent() {
 
       {/* Section 3: Quick Start */}
       <section id="quick-start">
-        <h2 className="text-xl font-bold font-mono text-white mb-4">Quick Start</h2>
+        <h2 className="text-xl font-bold font-mono text-white mb-2">Quick Start</h2>
+        <p className="text-sm font-mono text-[#8892B0] mb-4">
+          Setup takes ~15 minutes. You need: a Polymarket account, a VPS ($10-20/mo), and a terminal.
+        </p>
         <div className="space-y-6">
           <div>
             <p className="text-sm font-mono text-white mb-2">
