@@ -14,7 +14,8 @@
  * - DUNNING_REVOCATION_DAYS: Days after revocation before data deletion (default: 30)
  */
 
-import { PrismaClient, DunningStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { DunningStatus } from '../db/prisma-types';
 import { logger } from '../utils/logger';
 import { BillingNotificationService } from '../notifications/billing-notification-service';
 import { raasKVClient } from '../lib/raas-gateway-kv-client';
@@ -333,7 +334,16 @@ export class DunningStateMachine {
       orderBy: { updatedAt: 'desc' },
     });
 
-    return states.map((s) => this.toResult(s));
+    type DunningStateRow = {
+      tenantId: string;
+      status: DunningStatus;
+      failedPayments: number;
+      suspendedAt?: Date | null;
+      revokedAt?: Date | null;
+      createdAt: Date;
+      lastPaymentFailedAt?: Date | null;
+    };
+    return (states as DunningStateRow[]).map((s) => this.toResult(s));
   }
 
   /**

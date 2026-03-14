@@ -2,14 +2,14 @@
  * License CRUD queries for RaaS License Management
  */
 import { db } from '../client';
-import { Prisma } from '@prisma/client';
+import { InputJsonValue, LicenseWhereInput } from '../prisma-types';
 
 export interface LicenseCreateInput {
   key: string;
   tier: 'FREE' | 'PRO' | 'ENTERPRISE';
   tenantId?: string;
   expiresAt?: Date;
-  metadata?: Prisma.InputJsonValue;
+  metadata?: InputJsonValue;
   domain?: string;              // NEW: Associated domain
   overageUnits?: number;        // NEW: Overage units consumed
   overageAllowed?: boolean;     // NEW: Whether overage is allowed
@@ -20,7 +20,7 @@ export interface LicenseAuditInput {
   event: string;
   tier?: string;
   ip?: string;
-  metadata?: Prisma.InputJsonValue;
+  metadata?: InputJsonValue;
 }
 
 export const licenseQueries = {
@@ -43,7 +43,7 @@ export const licenseQueries = {
     tier?: string;
   }) {
     const { take = 100, skip = 0, status, tier } = options || {};
-    const where: Prisma.LicenseWhereInput = {};
+    const where: LicenseWhereInput = {};
     if (status) where.status = status;
     if (tier) where.tier = tier as any;
     return db.license.findMany({
@@ -97,15 +97,16 @@ export const licenseQueries = {
       },
     });
 
+    type LicenseSummary = { id: string; tier: string; status: string };
     const byTier = {
-      free: licenses.filter((l) => l.tier === 'FREE').length,
-      pro: licenses.filter((l) => l.tier === 'PRO').length,
-      enterprise: licenses.filter((l) => l.tier === 'ENTERPRISE').length,
+      free: licenses.filter((l: LicenseSummary) => l.tier === 'FREE').length,
+      pro: licenses.filter((l: LicenseSummary) => l.tier === 'PRO').length,
+      enterprise: licenses.filter((l: LicenseSummary) => l.tier === 'ENTERPRISE').length,
     };
 
     const byStatus = {
-      active: licenses.filter((l) => l.status === 'active').length,
-      revoked: licenses.filter((l) => l.status === 'revoked').length,
+      active: licenses.filter((l: LicenseSummary) => l.status === 'active').length,
+      revoked: licenses.filter((l: LicenseSummary) => l.status === 'revoked').length,
     };
 
     return { total: licenses.length, byTier, byStatus };

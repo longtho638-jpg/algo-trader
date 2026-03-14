@@ -89,8 +89,9 @@ export class PrismaBackedPnlStore implements PnlStore {
       orderBy: { snapshotAt: 'desc' },
       take: opts.limit ?? 100,
     });
-    return rows.map((r) => ({
-      id: r.id.toString(),
+    type PnlRow = { id: unknown; tenantId: string; totalPnl: unknown; realizedPnl: unknown; unrealizedPnl: unknown; openPositions: number; equity: unknown; snapshotAt: Date };
+    return (rows as PnlRow[]).map((r: PnlRow) => ({
+      id: String(r.id),
       tenantId: r.tenantId,
       totalPnl: Number(r.totalPnl),
       realizedPnl: Number(r.realizedPnl),

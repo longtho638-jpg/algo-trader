@@ -311,7 +311,7 @@ export async function licenseManagementRoutes(fastify: FastifyInstance) {
           byTier: licenseStats.byTier,
           byStatus: licenseStats.byStatus,
           usage,
-          recentActivity: recentActivity.map((log) => ({
+          recentActivity: recentActivity.map((log: { id: unknown; licenseId: string; event: string; createdAt: Date }) => ({
             event: log.event,
             timestamp: log.createdAt.toISOString(),
             licenseId: log.licenseId,

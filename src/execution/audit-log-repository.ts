@@ -11,7 +11,8 @@
  * - Integrity verification
  */
 
-import { PrismaClient, AuditLog as PrismaAuditLog } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { AuditLog as PrismaAuditLog } from '../db/prisma-types';
 import { Decimal } from '@prisma/client/runtime/library';
 import { createHash } from 'crypto';
 import { R2Bucket } from '@cloudflare/workers-types';

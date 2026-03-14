@@ -9,7 +9,8 @@
  * - Hash-based deterministic rollout
  */
 
-import { PrismaClient, FeatureFlag, LicenseFeatureFlag, Prisma } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { FeatureFlag, LicenseFeatureFlag, InputJsonValue } from '../db/prisma-types';
 import { createHash } from 'crypto';
 
 const prisma = new PrismaClient();
@@ -26,7 +27,7 @@ export interface CreateFeatureFlagInput {
   enabled?: boolean;
   rolloutPercentage?: number;
   userWhitelist?: string[];
-  metadata?: Prisma.InputJsonValue;
+  metadata?: InputJsonValue;
 }
 
 export class FeatureFlagService {
@@ -68,7 +69,7 @@ export class FeatureFlagService {
 
     // Update cache
     this.cache.clear();
-    flags.forEach(flag => this.cache.set(flag.name, flag));
+    flags.forEach((flag: FeatureFlag & { licenses?: LicenseFeatureFlag[] }) => this.cache.set(flag.name, flag));
     this.lastCacheUpdate = now;
 
     return flags;
@@ -115,7 +116,7 @@ export class FeatureFlagService {
         enabled: input.enabled ?? true,
         rolloutPercentage: input.rolloutPercentage ?? 100,
         userWhitelist: input.userWhitelist ?? [],
-        metadata: (input.metadata ?? {}) as Prisma.InputJsonValue
+        metadata: (input.metadata ?? {}) as InputJsonValue
       }
     });
 
@@ -136,7 +137,7 @@ export class FeatureFlagService {
         ...(updates.enabled !== undefined && { enabled: updates.enabled }),
         ...(updates.rolloutPercentage !== undefined && { rolloutPercentage: updates.rolloutPercentage }),
         ...(updates.userWhitelist !== undefined && { userWhitelist: updates.userWhitelist }),
-        ...(updates.metadata !== undefined && { metadata: updates.metadata as Prisma.InputJsonValue })
+        ...(updates.metadata !== undefined && { metadata: updates.metadata as InputJsonValue })
       }
     });
 
@@ -246,7 +247,7 @@ export class FeatureFlagService {
     licenseId: string,
     featureName: string,
     enabled: boolean,
-    overrideValue?: Prisma.InputJsonValue
+    overrideValue?: InputJsonValue
   ): Promise<LicenseFeatureFlag> {
     const flag = await this.getFlagByName(featureName);
     if (!flag) {
@@ -265,7 +266,7 @@ export class FeatureFlagService {
         where: { id: existing.id },
         data: {
           enabled,
-          overrideValue: overrideValue ?? (null as unknown as Prisma.InputJsonValue)
+          overrideValue: overrideValue ?? (null as unknown as InputJsonValue)
         }
       });
     }
@@ -275,7 +276,7 @@ export class FeatureFlagService {
         licenseId,
         featureFlagId: flag.id,
         enabled,
-        overrideValue: overrideValue ?? (null as unknown as Prisma.InputJsonValue)
+        overrideValue: overrideValue ?? (null as unknown as InputJsonValue)
       }
     });
   }

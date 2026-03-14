@@ -14,7 +14,8 @@
  * - Approval workflow for tier upgrades
  */
 
-import { PrismaClient, ExtensionEligibility, License } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+import { ExtensionEligibility, License } from '../db/prisma-types';
 
 const prisma = new PrismaClient();
 
@@ -342,7 +343,7 @@ export class ExtensionEligibilityService {
       where: { licenseId }
     });
 
-    return eligibilities.map(e => this.toExtensionStatus(e));
+    return (eligibilities as ExtensionEligibility[]).map((e: ExtensionEligibility) => this.toExtensionStatus(e));
   }
 
   /**

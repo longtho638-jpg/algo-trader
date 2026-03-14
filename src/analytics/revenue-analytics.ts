@@ -615,7 +615,8 @@ export class RevenueAnalyticsService {
     const monthStart = new Date(year, monthNum - 1, 1);
     const monthEnd = new Date(year, monthNum, 0, 23, 59, 59, 999);
 
-    const filteredEvents = usageEvents.filter(event => {
+    type UsageEventRow = { licenseKey: string; eventType: string; units: number; createdAt: Date | string; tenantId?: string | null };
+    const filteredEvents = (usageEvents as UsageEventRow[]).filter((event: UsageEventRow) => {
       const eventDate = new Date(event.createdAt);
       return eventDate >= monthStart && eventDate <= monthEnd;
     });

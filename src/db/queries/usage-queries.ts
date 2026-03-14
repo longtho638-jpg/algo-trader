@@ -3,14 +3,14 @@
  * Records and aggregates usage events for billing and analytics
  */
 import { db } from '../client';
-import { Prisma } from '@prisma/client';
+import { InputJsonValue, UsageEventWhereInput } from '../prisma-types';
 
 export interface UsageEventInput {
   licenseKey: string;
   eventType: string; // api_call, compute_minute, ml_inference
   units: number;
   tenantId?: string;
-  metadata?: Prisma.InputJsonValue;
+  metadata?: InputJsonValue;
 }
 
 export interface UsageFilters {
@@ -36,7 +36,7 @@ export const usageQueries = {
   ) {
     const { startDate, endDate, eventType } = filters || {};
 
-    const where: Prisma.UsageEventWhereInput = {
+    const where: UsageEventWhereInput = {
       licenseKey,
     };
 
@@ -86,7 +86,8 @@ export const usageQueries = {
       },
     });
 
-    return events.map((e) => ({
+    type GroupedEvent = { eventType: string; _sum: { units: number | null }; _count: { id: number } };
+    return (events as GroupedEvent[]).map((e) => ({
       eventType: e.eventType,
       totalUnits: e._sum.units ?? 0,
       eventCount: e._count.id,
@@ -123,9 +124,11 @@ export const usageQueries = {
       },
     });
 
+    type GroupedEvent = { eventType: string; _sum: { units: number | null }; _count: { id: number } };
+    const typedEvents = events as GroupedEvent[];
     return {
-      totalEvents: events.reduce((sum, e) => sum + e._count.id, 0),
-      byEventType: events.map((e) => ({
+      totalEvents: typedEvents.reduce((sum: number, e: GroupedEvent) => sum + e._count.id, 0),
+      byEventType: typedEvents.map((e: GroupedEvent) => ({
         eventType: e.eventType,
         totalUnits: e._sum.units ?? 0,
         eventCount: e._count.id,
