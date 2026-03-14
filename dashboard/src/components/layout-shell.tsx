@@ -25,8 +25,8 @@ export function LayoutShell({ children }: { children: ReactNode }) {
         ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
       `}>
         <div className="p-4 border-b border-bg-border">
-          <h1 className="text-accent font-bold text-lg">Algo Trader</h1>
-          <p className="text-muted text-xs mt-1">Trading Dashboard</p>
+          <h1 className="text-accent font-bold text-lg">CashClaw</h1>
+          <p className="text-muted text-xs mt-1">Polymarket Market Maker</p>
         </div>
         <SidebarNavigation onNavigate={() => setSidebarOpen(false)} />
       </aside>
@@ -43,7 +43,7 @@ export function LayoutShell({ children }: { children: ReactNode }) {
               <path d="M3 12h18M3 6h18M3 18h18" />
             </svg>
           </button>
-          <span className="ml-3 text-accent font-bold">Algo Trader</span>
+          <span className="ml-3 text-accent font-bold">CashClaw</span>
         </div>
         <div className="p-4 lg:p-6">
           {children}

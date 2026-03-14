@@ -6,30 +6,29 @@ import { MarketplacePage } from './pages/marketplace-page';
 import { SettingsPage } from './pages/settings-page';
 import { ReportingPage } from './pages/reporting-page';
 import { LicensePage } from './pages/license-page';
-import { Phase2Page } from './pages/phase2-page';
-import { Phase3Page } from './pages/phase3-page';
-import { Phase9Page } from './pages/phase9-page';
-import { Phase10Page } from './pages/phase10-page';
-import { Phase11Page } from './pages/phase11-page';
+import { LandingPage } from './pages/landing-page';
+import { PricingPage } from './pages/pricing-page';
+import { LoginPage } from './pages/login-page';
+import { SignupPage } from './pages/signup-page';
 
 export function App() {
   return (
-    <LayoutShell>
-      <Routes>
-        <Route path="/" element={<DashboardPage />} />
-        <Route path="/backtests" element={<BacktestsPage />} />
-        <Route path="/marketplace" element={<MarketplacePage />} />
-        <Route path="/licenses" element={<LicensePage />} />
-        <Route path="/admin/licenses" element={<LicensePage />} />
-        <Route path="/phase2" element={<Phase2Page />} />
-        <Route path="/phase3" element={<Phase3Page />} />
-        <Route path="/phase9" element={<Phase9Page />} />
-        <Route path="/phase10" element={<Phase10Page />} />
-        <Route path="/phase11" element={<Phase11Page />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/reporting" element={<ReportingPage />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
-    </LayoutShell>
+    <Routes>
+      {/* Public routes - full page, no sidebar */}
+      <Route path="/" element={<LandingPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/signup" element={<SignupPage />} />
+
+      {/* App routes - sidebar layout */}
+      <Route path="/app" element={<LayoutShell><DashboardPage /></LayoutShell>} />
+      <Route path="/app/strategies" element={<LayoutShell><MarketplacePage /></LayoutShell>} />
+      <Route path="/app/backtests" element={<LayoutShell><BacktestsPage /></LayoutShell>} />
+      <Route path="/app/licenses" element={<LayoutShell><LicensePage /></LayoutShell>} />
+      <Route path="/app/reporting" element={<LayoutShell><ReportingPage /></LayoutShell>} />
+      <Route path="/app/settings" element={<LayoutShell><SettingsPage /></LayoutShell>} />
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
   );
 }

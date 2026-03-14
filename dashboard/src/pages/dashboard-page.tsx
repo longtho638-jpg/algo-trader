@@ -53,7 +53,7 @@ export function DashboardPage() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h2 className="text-white text-lg font-bold tracking-tight">Dashboard</h2>
-          <p className="text-muted text-xs mt-0.5">Real-time arbitrage monitor</p>
+          <p className="text-muted text-xs mt-0.5">Polymarket Market Maker</p>
         </div>
         <div className="flex items-center gap-3">
           <CacheStatus />
