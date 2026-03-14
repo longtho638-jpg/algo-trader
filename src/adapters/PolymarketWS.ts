@@ -27,6 +27,7 @@ export class PolymarketWS extends EventEmitter {
     });
     this.mws.on("message", r => { const m = r.toString(); if (m==="PONG") return; try { const d=JSON.parse(m); this.emit(d.event_type,d); } catch{} });
     this.mws.on("close", async () => {
+      console.warn('[WS] Market feed DISCONNECTED');
       if (this.cancelCallback) { try { await this.cancelCallback(); } catch {} }
       setTimeout(() => this.connectMarket(Array.from(this.tokens)), 2000);
     });
@@ -41,6 +42,7 @@ export class PolymarketWS extends EventEmitter {
     });
     this.uws.on("message", r => { const m=r.toString(); if(m==="PONG") return; try { const d=JSON.parse(m); this.emit(`user:${d.event_type}`,d); } catch{} });
     this.uws.on("close", async () => {
+      console.warn('[WS] User feed DISCONNECTED');
       if (this.cancelCallback) { try { await this.cancelCallback(); } catch {} }
       setTimeout(() => this.connectUser(conditionIds), 2000);
     });

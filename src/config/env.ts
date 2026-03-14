@@ -31,6 +31,8 @@ export const ENV = {
   MIN_ARB_EDGE: parseFloat(opt("MIN_ARB_EDGE", "0.02")),
   MM_SPREAD: parseFloat(opt("MM_SPREAD", "0.10")),
   MM_SIZE: parseFloat(opt("MM_SIZE", "50")),
+  MM_MAX_MARKETS: parseInt(opt("MM_MAX_MARKETS", "10")),
+  MM_MAX_INVENTORY: parseInt(opt("MM_MAX_INVENTORY", "200")),
   HEARTBEAT_MS: parseInt(opt("HEARTBEAT_MS", "5000")),
   SCAN_MS: parseInt(opt("SCAN_INTERVAL_MS", "60000")),
 } as const;
