@@ -131,10 +131,38 @@ export class CrossPlatformArbStrategy {
       }),
     ]);
 
-    return {
-      polySuccess: polyResult.status === "fulfilled",
-      kalshiSuccess: kalshiResult.status === "fulfilled",
-    };
+    const polySuccess = polyResult.status === "fulfilled";
+    const kalshiSuccess = kalshiResult.status === "fulfilled";
+
+    // One-leg unwind: if only one leg filled, immediately unwind to avoid naked exposure
+    if (polySuccess && !kalshiSuccess) {
+      console.error(`[CrossArb] Kalshi leg FAILED — unwinding Polymarket YES position for ${opp.polyMarket.yesTokenId}`);
+      try {
+        await polyClient.createAndPostMarketOrder(
+          { tokenID: opp.polyMarket.yesTokenId, amount: opp.contracts * opp.polyYesAsk,
+            side: "SELL", feeRateBps: await polyClient.getFeeRateBps(opp.polyMarket.yesTokenId) },
+          { tickSize: await polyClient.getTickSize(opp.polyMarket.yesTokenId), negRisk: opp.polyMarket.negRisk },
+          "FOK",
+        );
+        console.log(`[CrossArb] Polymarket unwind successful for ${opp.polyMarket.yesTokenId}`);
+      } catch (unwindErr: any) {
+        console.error(`[CrossArb] CRITICAL: Polymarket unwind FAILED — manual intervention required for ${opp.polyMarket.yesTokenId}:`, unwindErr.message);
+      }
+    } else if (!polySuccess && kalshiSuccess) {
+      console.error(`[CrossArb] Polymarket leg FAILED — unwinding Kalshi NO position for ${opp.kalshiTicker}`);
+      try {
+        await this.kalshi.placeOrder({
+          ticker: opp.kalshiTicker, side: "no", action: "sell",
+          count: opp.contracts, price: opp.kalshiNoAsk,
+          timeInForce: "fill_or_kill",
+        });
+        console.log(`[CrossArb] Kalshi unwind successful for ${opp.kalshiTicker}`);
+      } catch (unwindErr: any) {
+        console.error(`[CrossArb] CRITICAL: Kalshi unwind FAILED — manual intervention required for ${opp.kalshiTicker}:`, unwindErr.message);
+      }
+    }
+
+    return { polySuccess, kalshiSuccess };
   }
 
   shutdown(): void {}

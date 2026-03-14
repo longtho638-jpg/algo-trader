@@ -7,8 +7,14 @@ export class PolymarketWS extends EventEmitter {
   private uws: WebSocket | null = null;
   private pings: NodeJS.Timeout[] = [];
   private tokens = new Set<string>();
+  private cancelCallback: (() => Promise<void>) | null = null;
 
   constructor(private creds: { key: string; secret: string; passphrase: string }) { super(); }
+
+  /** Register a callback to run on disconnect before reconnecting */
+  onDisconnect(cb: () => Promise<void>): void {
+    this.cancelCallback = cb;
+  }
 
   connectMarket(tokenIds: string[]): void {
     tokenIds.forEach(id => this.tokens.add(id));
@@ -20,7 +26,10 @@ export class PolymarketWS extends EventEmitter {
       this.pings.push(setInterval(() => { if (this.mws?.readyState === 1) this.mws.send("PING"); }, 5000));
     });
     this.mws.on("message", r => { const m = r.toString(); if (m==="PONG") return; try { const d=JSON.parse(m); this.emit(d.event_type,d); } catch{} });
-    this.mws.on("close", () => setTimeout(() => this.connectMarket(Array.from(this.tokens)), 2000));
+    this.mws.on("close", async () => {
+      if (this.cancelCallback) { try { await this.cancelCallback(); } catch {} }
+      setTimeout(() => this.connectMarket(Array.from(this.tokens)), 2000);
+    });
     this.mws.on("error", e => this.emit("error", e));
   }
 
@@ -31,7 +40,10 @@ export class PolymarketWS extends EventEmitter {
       this.pings.push(setInterval(() => { if (this.uws?.readyState === 1) this.uws.send("PING"); }, 5000));
     });
     this.uws.on("message", r => { const m=r.toString(); if(m==="PONG") return; try { const d=JSON.parse(m); this.emit(`user:${d.event_type}`,d); } catch{} });
-    this.uws.on("close", () => setTimeout(() => this.connectUser(conditionIds), 2000));
+    this.uws.on("close", async () => {
+      if (this.cancelCallback) { try { await this.cancelCallback(); } catch {} }
+      setTimeout(() => this.connectUser(conditionIds), 2000);
+    });
   }
 
   subscribe(tokenIds: string[]): void {

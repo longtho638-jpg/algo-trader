@@ -38,6 +38,7 @@ import { logger } from '../utils/logger';
 import { CircuitBreaker } from '../risk/circuit-breaker';
 import { DrawdownTracker } from '../risk/drawdown-tracker';
 import { PnLTracker, PnLAlerts, AlertRules, type TradeRecord } from '../risk';
+import { saveState, loadState, type BotPersistentState } from '../core/state-manager';
 
 interface BotStatus {
   running: boolean;
@@ -104,6 +105,16 @@ export class PolymarketBotEngine extends EventEmitter {
   private circuitBreaker: CircuitBreaker;
   private drawdownTracker: DrawdownTracker;
   private portfolioValue: number = 10000;
+
+  // FIX 1: Heartbeat dead-man switch
+  private heartbeatId: string = '';
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+
+  // FIX 3: Idempotency — prevent duplicate signals
+  private processedSignals = new Set<string>();
+
+  // FIX 4: Periodic state save interval
+  private stateSaveInterval: NodeJS.Timeout | null = null;
 
   constructor(config: Partial<PolymarketBotConfig> = {}) {
     super();
@@ -268,8 +279,25 @@ export class PolymarketBotEngine extends EventEmitter {
       signalCount: 0,
     });
 
-    // 7. Listing Arbitrage
-    const listingStrategy = new ListingArbStrategy((_sig: any) => {});
+    // 7. Listing Arbitrage — pass depth check callback (Fix 6)
+    const listingStrategy = new ListingArbStrategy(
+      (_sig: any) => {},
+      async (tokenId: string) => {
+        try {
+          const book = await this.adapter.getOrderBook(tokenId);
+          if (!book) return 0;
+          // Sum ask-side liquidity in $ (price * size) up to ask < 0.85
+          let depth = 0;
+          for (const level of (book.asks ?? [])) {
+            if (level.price >= 0.85) break;
+            depth += level.price * level.size;
+          }
+          return depth;
+        } catch {
+          return 0;
+        }
+      },
+    );
     this.strategies.set('ListingArb', {
       name: 'ListingArb',
       instance: listingStrategy,
@@ -309,8 +337,38 @@ export class PolymarketBotEngine extends EventEmitter {
 
     logger.info('[BotEngine] Starting...');
 
+    // FIX 4: Load previous state on crash recovery
+    const prevState = loadState();
+    if (prevState) {
+      logger.info('[BotEngine] Crash recovery: restoring previous state...');
+      // Restore idempotency keys
+      for (const key of prevState.processedSignalKeys) {
+        this.processedSignals.add(key);
+      }
+      this.heartbeatId = prevState.lastHeartbeatId || '';
+      // Cancel any stale open orders from previous run
+      if (prevState.openOrders.length > 0) {
+        logger.warn(`[BotEngine] Cancelling ${prevState.openOrders.length} stale orders from previous run`);
+        try {
+          await this.adapter.cancelAllOrders();
+        } catch (err) {
+          logger.error('[BotEngine] Failed to cancel stale orders:', err instanceof Error ? err.message : String(err));
+        }
+      }
+    }
+
     // Connect to Polymarket
     await this.adapter.connect();
+
+    // FIX 2: Cancel-all on disconnect
+    if ((this.adapter as any).ws) {
+      (this.adapter as any).ws.onDisconnect(async () => {
+        try {
+          await this.adapter.cancelAllOrders();
+          logger.warn('[BotEngine] WS disconnect: all orders cancelled');
+        } catch {}
+      });
+    }
 
     // Wire up tick handler
     this.adapter.on('tick', (tick: PolymarketTick) => {
@@ -326,6 +384,14 @@ export class PolymarketBotEngine extends EventEmitter {
     this.state.running = true;
     this.state.startTime = Date.now();
 
+    // FIX 1: Start heartbeat dead-man switch
+    this.startHeartbeat();
+
+    // FIX 4: Save state every 30s
+    this.stateSaveInterval = setInterval(() => {
+      this.persistState();
+    }, 30000);
+
     logger.info(`[BotEngine] Started in ${this.config.dryRun ? 'DRY RUN' : 'LIVE'} mode`);
     this.emit('started', { dryRun: this.config.dryRun });
   }
@@ -337,6 +403,19 @@ export class PolymarketBotEngine extends EventEmitter {
     if (!this.state.running) return;
 
     logger.info('[BotEngine] Stopping...');
+
+    // FIX 1: Stop heartbeat
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+      this.heartbeatInterval = null;
+    }
+
+    // FIX 4: Stop state save interval and persist final state
+    if (this.stateSaveInterval) {
+      clearInterval(this.stateSaveInterval);
+      this.stateSaveInterval = null;
+    }
+    this.persistState();
 
     // Cancel all open orders
     await this.adapter.cancelAllOrders();
@@ -435,6 +514,19 @@ export class PolymarketBotEngine extends EventEmitter {
    * Execute signal (place order)
    */
   private async executeSignal(signal: IPolymarketSignal): Promise<void> {
+    // FIX 3: Idempotency — reject duplicate signals within same time bucket
+    const key = this.signalKey(signal);
+    if (this.processedSignals.has(key)) {
+      logger.debug(`[BotEngine] Duplicate signal rejected: ${key}`);
+      return;
+    }
+    this.processedSignals.add(key);
+    // Evict old keys when cache grows too large
+    if (this.processedSignals.size > 1000) {
+      const oldest = this.processedSignals.values().next().value;
+      if (oldest !== undefined) this.processedSignals.delete(oldest);
+    }
+
     // Record trade for PnL tracking
     const tradeAction = signal.action === 'CANCEL' ? 'SELL' : signal.action;
     const trade: TradeRecord = {
@@ -546,6 +638,43 @@ export class PolymarketBotEngine extends EventEmitter {
    */
   tripCircuitBreaker(reason: string): void {
     this.circuitBreaker.manualTrip(reason);
+  }
+
+  // FIX 1: Heartbeat dead-man switch — sends heartbeat every 5s
+  private startHeartbeat(): void {
+    this.heartbeatInterval = setInterval(async () => {
+      try {
+        this.heartbeatId = `hb-${Date.now()}`;
+        // Send heartbeat via adapter if method available
+        const adapterAny = this.adapter as any;
+        if (typeof adapterAny.sendHeartbeat === 'function') {
+          await adapterAny.sendHeartbeat(this.heartbeatId);
+        }
+        logger.debug(`[BotEngine] Heartbeat: ${this.heartbeatId}`);
+      } catch (err) {
+        logger.warn('[BotEngine] Heartbeat failed:', err instanceof Error ? err.message : String(err));
+      }
+    }, 5000);
+  }
+
+  // FIX 3: Signal key for idempotency dedup
+  private signalKey(signal: IPolymarketSignal): string {
+    const strategy = (signal.metadata?.strategy as string) || 'unknown';
+    const timeBucket = Math.floor(Date.now() / 5000); // 5s bucket
+    return `${strategy}:${signal.tokenId}:${signal.side}:${timeBucket}`;
+  }
+
+  // FIX 4: Persist current state to disk
+  private persistState(): void {
+    const state: BotPersistentState = {
+      openOrders: [],
+      positions: {},
+      processedSignalKeys: Array.from(this.processedSignals),
+      lastHeartbeatId: this.heartbeatId,
+      dailyPnl: this.pnlTracker.getDailyPnL(),
+      lastSaveTime: Date.now(),
+    };
+    saveState(state);
   }
 
   private formatUptime(ms: number): string {

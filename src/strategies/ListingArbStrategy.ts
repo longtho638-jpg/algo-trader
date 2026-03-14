@@ -19,9 +19,14 @@ export class ListingArbStrategy {
   private gamma = new GammaClient();
   private listingMarkets: ParsedMarket[] = [];
   private onSignal: (signal: Signal) => void;
+  private getBookDepth: ((tokenId: string) => Promise<number>) | null;
 
-  constructor(onSignal: (signal: Signal) => void) {
+  constructor(
+    onSignal: (signal: Signal) => void,
+    getBookDepth?: (tokenId: string) => Promise<number>,
+  ) {
     this.onSignal = onSignal;
+    this.getBookDepth = getBookDepth ?? null;
   }
 
   async init(): Promise<void> {
@@ -73,6 +78,25 @@ export class ListingArbStrategy {
     if (matched.yesPrice >= 0.80) {
       console.log(`[ListingArb] ${data.ticker} — YES already at ${matched.yesPrice}, too late`);
       return;
+    }
+
+    // Order book depth check: require min $50 liquidity and best ask < 0.85
+    if (this.getBookDepth) {
+      try {
+        const depth = await this.getBookDepth(matched.yesTokenId);
+        const MIN_LIQUIDITY = 50;
+        if (depth < MIN_LIQUIDITY) {
+          console.log(`[ListingArb] ${data.ticker} — insufficient book depth $${depth} < $${MIN_LIQUIDITY}, skipping`);
+          return;
+        }
+        if (matched.yesPrice >= 0.85) {
+          console.log(`[ListingArb] ${data.ticker} — best ask ${matched.yesPrice} >= 0.85, skipping`);
+          return;
+        }
+      } catch (depthErr: any) {
+        console.warn(`[ListingArb] Book depth check failed for ${matched.yesTokenId}:`, depthErr.message);
+        // Non-fatal: proceed without depth check on error
+      }
     }
 
     const edge = 1.0 - matched.yesPrice; // guaranteed profit per share if resolves YES
