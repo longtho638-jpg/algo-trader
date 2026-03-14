@@ -7,6 +7,7 @@ import { ParsedMarket } from '../adapters/GammaClient';
 import { ENV } from '../config/env';
 import { MarketSelector, MarketScore } from './mm/MarketSelector';
 import { PositionMerger } from './mm/PositionMerger';
+import { LicenseGate } from '../core/LicenseGate';
 
 interface MMState {
   market: ParsedMarket;
@@ -27,6 +28,7 @@ export class MarketMakerStrategy {
   private merger: PositionMerger;
   private cancelThreshold = 0.015; // 1.5%
   private readonly maxInventory: number;
+  private license: LicenseGate | null = null;
 
   constructor() {
     this.selector = new MarketSelector({
@@ -39,18 +41,32 @@ export class MarketMakerStrategy {
     this.maxInventory = ENV.MM_MAX_INVENTORY;
   }
 
-  async init(markets: ParsedMarket[]): Promise<void> {
-    const selected = this.selector.select(markets);
-    for (const scored of selected) {
-      this.states.set(scored.market.conditionId, {
-        market: scored.market,
+  async init(markets: ParsedMarket[], license?: LicenseGate): Promise<void> {
+    if (license) this.license = license;
+
+    let scored = this.selector.select(markets);
+
+    // FREE tier: sort by safest (longest time to resolution) instead of highest score
+    if (this.license?.isFree()) {
+      scored = scored
+        .slice()
+        .sort((a, b) => b.market.endDate.getTime() - a.market.endDate.getTime());
+    }
+
+    // Enforce maxMarkets from license
+    const limit = this.license?.maxMarkets ?? scored.length;
+    scored = scored.slice(0, limit);
+
+    for (const s of scored) {
+      this.states.set(s.market.conditionId, {
+        market: s.market,
         yesInventory: 0, noInventory: 0,
         activeOrderIds: [],
         lastBid: 0, lastAsk: 0,
         lastQuoteTime: 0,
         fillCount: 0, adverseCount: 0,
       });
-      console.log(`[MM] Selected: ${scored.market.question.slice(0,50)}... (score: ${(scored.score*100).toFixed(0)}, vol:${scored.breakdown.volume} spr:${scored.breakdown.spread} time:${scored.breakdown.time})`);
+      console.log(`[MM] Selected: ${s.market.question.slice(0,50)}... (score: ${(s.score*100).toFixed(0)}, vol:${s.breakdown.volume} spr:${s.breakdown.spread} time:${s.breakdown.time})`);
     }
     console.log(`[MM] ${this.states.size} markets selected from ${markets.length} total`);
   }
@@ -75,8 +91,9 @@ export class MarketMakerStrategy {
       }
     }
 
-    // 3. Merge positions if timer elapsed
-    if (this.merger.shouldMerge()) {
+    // 3. Merge positions if timer elapsed (PRO/ENTERPRISE only)
+    const canMerge = this.license ? this.license.canMerge : true;
+    if (canMerge && this.merger.shouldMerge()) {
       const invMap = new Map<string, { yesInventory: number; noInventory: number; yesTokenId: string; noTokenId: string }>();
       for (const [condId, s] of this.states) {
         invMap.set(condId, { yesInventory: s.yesInventory, noInventory: s.noInventory, yesTokenId: s.market.yesTokenId, noTokenId: s.market.noTokenId });
@@ -99,6 +116,9 @@ export class MarketMakerStrategy {
 
   // WS-driven requote: called when price moves on a specific market
   async requote(client: ClobClient, tokenId: string): Promise<void> {
+    // Gate: FREE tier cannot WS-requote
+    if (this.license && !this.license.canWsRequote) return;
+
     const entry = Array.from(this.states.entries()).find(
       ([_, s]) => s.market.yesTokenId === tokenId || s.market.noTokenId === tokenId
     );
@@ -116,9 +136,12 @@ export class MarketMakerStrategy {
   }
 
   private async quoteMarket(client: ClobClient, state: MMState): Promise<void> {
+    // Gate: daily trade limit (FREE tier)
+    if (this.license && !this.license.canTrade()) return;
+
     const m = state.market;
 
-    // 1. Get order book for micro-price (NOT midpoint)
+    // 1. Get order book for fair price
     const book = await client.getOrderBook(m.yesTokenId);
     if (!book?.bids?.length || !book?.asks?.length) return;
 
@@ -130,8 +153,10 @@ export class MarketMakerStrategy {
     // Skip extreme prices
     if (bestBid <= 0.02 || bestAsk >= 0.98) return;
 
-    // Micro-price: weighted toward side with more depth
-    const microPrice = (bestBid * askSize + bestAsk * bidSize) / (bidSize + askSize);
+    // Micro-price (PRO/ENTERPRISE) vs simple midpoint (FREE)
+    const microPrice = (this.license?.canMicroPrice !== false)
+      ? (bestBid * askSize + bestAsk * bidSize) / (bidSize + askSize)
+      : (bestBid + bestAsk) / 2;
 
     // 2. Calculate inventory-skewed quotes
     const { bid, ask } = this.calculateQuotes(microPrice, state);
@@ -263,7 +288,19 @@ export class MarketMakerStrategy {
 
   // Re-select markets (called hourly)
   async refreshMarkets(allMarkets: ParsedMarket[], client: ClobClient): Promise<void> {
-    const newSelected = this.selector.select(allMarkets);
+    let newSelected = this.selector.select(allMarkets);
+
+    // FREE tier: sort by safest first
+    if (this.license?.isFree()) {
+      newSelected = newSelected
+        .slice()
+        .sort((a, b) => b.market.endDate.getTime() - a.market.endDate.getTime());
+    }
+
+    // Enforce license market limit
+    const limit = this.license?.maxMarkets ?? newSelected.length;
+    newSelected = newSelected.slice(0, limit);
+
     const newIds = new Set(newSelected.map(s => s.market.conditionId));
     const currentIds = new Set(this.states.keys());
 

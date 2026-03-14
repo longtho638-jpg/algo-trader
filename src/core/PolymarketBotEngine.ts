@@ -9,6 +9,7 @@ import { GammaClient, ParsedMarket } from '../adapters/GammaClient';
 import { MarketMakerStrategy } from '../strategies/MarketMakerStrategy';
 import { RiskManager } from './RiskManager';
 import { saveState, loadState, clearState } from './StateManager';
+import { LicenseGate } from './LicenseGate';
 import { ENV } from '../config/env';
 
 export class PolymarketBotEngine {
@@ -17,6 +18,7 @@ export class PolymarketBotEngine {
   private gamma = new GammaClient();
   private mm = new MarketMakerStrategy();
   private risk = new RiskManager();
+  private license = new LicenseGate();
   private markets: ParsedMarket[] = [];
   private running = false;
 
@@ -27,7 +29,7 @@ export class PolymarketBotEngine {
   private stateInterval: NodeJS.Timeout | null = null;
 
   async start(): Promise<void> {
-    console.log(`=== MM BOT START (${ENV.DRY_RUN ? 'DRY RUN' : 'LIVE'}) ===`);
+    console.log(`=== MM BOT START (${ENV.DRY_RUN ? 'DRY RUN' : 'LIVE'}) === [tier: ${this.license.tier.toUpperCase()}]`);
 
     // 1. Init Polymarket client
     const wallet = new Wallet(ENV.PRIVATE_KEY);
@@ -45,15 +47,19 @@ export class PolymarketBotEngine {
     const bal = await this.client.getBalanceAllowance({ asset_type: 'COLLATERAL' as any });
     console.log(`Balance: $${bal.balance}`);
 
-    // 2. Crash recovery
-    const prevState = loadState();
-    if (prevState) {
-      console.log(`[Recovery] Restoring state from ${new Date(prevState.lastSaveTime).toISOString()}`);
-      try { await this.client.cancelAll(); } catch {}
-      console.log('[Recovery] Cancelled all stale orders');
-      this.heartbeatId = prevState.lastHeartbeatId || '';
-      prevState.processedSignalKeys.forEach(k => this.processedSignals.add(k));
-      clearState();
+    // 2. Crash recovery (PRO/ENTERPRISE only)
+    if (this.license.canRecover) {
+      const prevState = loadState();
+      if (prevState) {
+        console.log(`[Recovery] Restoring state from ${new Date(prevState.lastSaveTime).toISOString()}`);
+        try { await this.client.cancelAll(); } catch {}
+        console.log('[Recovery] Cancelled all stale orders');
+        this.heartbeatId = prevState.lastHeartbeatId || '';
+        prevState.processedSignalKeys.forEach(k => this.processedSignals.add(k));
+        clearState();
+      }
+    } else {
+      console.log('[License] Crash recovery skipped (FREE tier)');
     }
 
     // 3. Init daily loss tracking
@@ -62,8 +68,8 @@ export class PolymarketBotEngine {
     // 4. Scan markets
     await this.scanMarkets();
 
-    // 5. Init MM with selected markets
-    await this.mm.init(this.markets);
+    // 5. Init MM with selected markets (license enforced inside)
+    await this.mm.init(this.markets, this.license);
 
     // 6. WebSocket
     this.ws = new PolymarketWS({ key: ENV.POLY_KEY, secret: ENV.POLY_SECRET, passphrase: ENV.POLY_PASS });
@@ -76,17 +82,18 @@ export class PolymarketBotEngine {
       try { await this.client.cancelAll(); } catch {}
     });
 
-    // WS-driven MM requoting (react to price moves instantly)
+    // WS-driven MM requoting (PRO/ENTERPRISE only)
     this.ws.on('best_bid_ask', (d: any) => {
       this.updatePrice(d);
-      if (this.mm.hasToken(d.asset_id)) {
+      if (this.license.canWsRequote && this.mm.hasToken(d.asset_id)) {
         this.mm.requote(this.client, d.asset_id).catch(() => {});
       }
     });
 
-    // Fill tracking
+    // Fill tracking + license trade counter
     this.ws.on('user:trade', (d: any) => {
       console.log(`[FILL] ${d.side} ${d.size}@${d.price} ${d.status}`);
+      this.license.recordTrade();
       if (d.market) {
         this.mm.onFill(d.market, d.side, parseFloat(d.size));
       }
@@ -108,17 +115,19 @@ export class PolymarketBotEngine {
     this.loopMM();
     this.loopScanAndRotate();
 
-    // 9. State persistence (every 30s)
-    this.stateInterval = setInterval(() => {
-      try {
-        saveState({
-          processedSignalKeys: Array.from(this.processedSignals).slice(-200),
-          lastHeartbeatId: this.heartbeatId,
-          lastSaveTime: Date.now(),
-          inventories: Object.fromEntries(this.mm.getInventories()),
-        });
-      } catch {}
-    }, 30000);
+    // 9. State persistence (every 30s, PRO/ENTERPRISE only)
+    if (this.license.canRecover) {
+      this.stateInterval = setInterval(() => {
+        try {
+          saveState({
+            processedSignalKeys: Array.from(this.processedSignals).slice(-200),
+            lastHeartbeatId: this.heartbeatId,
+            lastSaveTime: Date.now(),
+            inventories: Object.fromEntries(this.mm.getInventories()),
+          });
+        } catch {}
+      }, 30000);
+    }
 
     // 10. Midnight PnL reset
     this.scheduleMidnightReset();

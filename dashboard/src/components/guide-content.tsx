@@ -176,7 +176,31 @@ DRY_RUN=true
 MAX_BANKROLL=200
 MM_SPREAD=0.10
 MM_SIZE=20
-MM_MAX_MARKETS=5`} />
+MM_MAX_MARKETS=5
+# License key (omit = FREE tier: 1 market, 5 trades/day)
+# RAAS_LICENSE_KEY=your_license_key_here`} />
+            <div className="mt-3 border border-yellow-500/30 bg-yellow-500/5 rounded-lg p-3">
+              <p className="text-xs font-mono text-yellow-400 font-bold mb-1">License Tiers</p>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono text-[#8892B0]">
+                <div className="bg-[#1A1A2E] rounded p-2">
+                  <span className="text-white block mb-1">FREE</span>
+                  1 market · 5 trades/day · no WS/micro-price
+                </div>
+                <div className="bg-[#1A1A2E] rounded p-2">
+                  <span className="text-[#00D9FF] block mb-1">PRO</span>
+                  10 markets · unlimited · all features
+                </div>
+                <div className="bg-[#1A1A2E] rounded p-2">
+                  <span className="text-yellow-400 block mb-1">ENTERPRISE</span>
+                  999 markets · unlimited · all features
+                </div>
+              </div>
+              <p className="text-xs font-mono text-[#8892B0] mt-2">
+                Generate key:{' '}
+                <span className="text-[#00FF41]">pnpm license:generate pro 365</span>
+                {' '}(run on your server)
+              </p>
+            </div>
           </div>
 
           <div>
