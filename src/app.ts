@@ -8,7 +8,7 @@ import { EventLogger } from './events/event-logger.js';
 import { getDatabase } from './data/database.js';
 import { TradingEngine } from './engine/engine.js';
 import { createServer, stopServer } from './api/server.js';
-import { createDashboardServer, stopDashboardServer } from './dashboard/dashboard-server.js';
+import { createDashboardServer, stopDashboardServer, type DashboardDeps } from './dashboard/dashboard-server.js';
 import { DashboardDataProvider } from './dashboard/dashboard-data.js';
 import { createWebhookServer, stopWebhookServer } from './webhooks/webhook-server.js';
 import { NotificationRouter } from './notifications/notification-router.js';
@@ -35,6 +35,8 @@ import { setMetricsUserStore } from './api/metrics-route.js';
 import { getMarketplaceService } from './marketplace/marketplace-service.js';
 import { seedDemoStrategies } from './marketplace/seed-demo-strategies.js';
 import { UserStore } from './users/user-store.js';
+import { LeaderBoard } from './copy-trading/leader-board.js';
+import { seedDemoLeaders } from './copy-trading/seed-demo-leaders.js';
 
 // ── Ports ──────────────────────────────────────────────────────────────────
 
@@ -142,14 +144,17 @@ export async function startApp(): Promise<void> {
   logger.info('UserStore initialised', 'App', { path: userDbPath });
   setMetricsUserStore(userStore);
 
+  // 5c. Shared LeaderBoard for copy-trading (used by API server + dashboard)
+  const leaderBoard = new LeaderBoard();
+  seedDemoLeaders(leaderBoard);
+  logger.info('LeaderBoard initialised', 'App');
+
   // 6. API server (port 3000) — auth middleware + rate limiter wired inside createServer
   const jwtSecret = process.env['JWT_SECRET'] ?? 'dev-secret-change-me';
-  _apiServer = createServer({ port: API_PORT, engine: _engine, userStore, jwtSecret });
+  _apiServer = createServer({ port: API_PORT, engine: _engine, userStore, jwtSecret, leaderBoard });
   logger.info('API server started', 'App', { port: API_PORT });
 
-  // 7. Dashboard server (port 3001) — UserStore enables real revenue analytics
-  _dashServer = createDashboardServer(DASHBOARD_PORT, new DashboardDataProvider(_engine), userStore);
-  logger.info('Dashboard server started', 'App', { port: DASHBOARD_PORT });
+  // 7. Dashboard server — deferred to step 14b (after OpenClaw wiring provides live AI data)
 
   // 8. Webhook server (port 3004)
   _webhookServer = createWebhookServer(WEBHOOK_PORT, async (signal) => {
@@ -199,6 +204,15 @@ export async function startApp(): Promise<void> {
   logger.info('OpenClaw AI subsystem ready', 'App', {
     gateway: _openClaw.deps.controller ? 'configured' : 'none',
   });
+
+  // 14b. Dashboard server (port 3001) — wired AFTER OpenClaw for live AI data
+  const dashDeps: DashboardDeps = {
+    signalGenerator: _openClaw.signalGenerator,
+    tradeObserver: _openClaw.observer,
+    leaderBoard,
+  };
+  _dashServer = createDashboardServer(DASHBOARD_PORT, new DashboardDataProvider(_engine), userStore, dashDeps);
+  logger.info('Dashboard server started', 'App', { port: DASHBOARD_PORT });
 
   // 15. Notifications: Telegram bot + trade alerts
   _notifications = startNotifications(eventBus, _engine);

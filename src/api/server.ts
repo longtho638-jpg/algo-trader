@@ -78,6 +78,8 @@ export interface ServerOptions {
   userStore: UserStore;
   /** JWT signing secret; defaults to JWT_SECRET env var */
   jwtSecret?: string;
+  /** Optional shared LeaderBoard — if not provided, one is created internally */
+  leaderBoard?: LeaderBoard;
 }
 
 /**
@@ -114,7 +116,7 @@ export function createServer(
   const bodyLimitMiddleware = createBodyLimitMiddleware(1024 * 1024);
 
   // Copy-trading leaderboard + demo leaders (idempotent)
-  const leaderBoard = new LeaderBoard();
+  const leaderBoard = (typeof portOrOptions !== 'number' && portOrOptions.leaderBoard) || new LeaderBoard();
   const followerManager = new FollowerManager(leaderBoard);
   const copyTradingHandlers: CopyTradingHandlers = { leaderBoard, followerManager };
   seedDemoLeaders(leaderBoard);

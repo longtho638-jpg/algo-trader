@@ -1038,6 +1038,50 @@ const apiPaths = {
       },
     },
   },
+
+  // ── Dashboard API (port 3001) ─────────────────────────────────────────────
+
+  '/dashboard/api/ai-insights': {
+    get: {
+      tags: ['Dashboard'],
+      summary: 'Get AI trading insights (real OpenClaw data)',
+      description: 'Returns live trade signals from AiSignalGenerator, anomaly detection from TradeObserver, and AI health status.',
+      responses: {
+        200: {
+          description: 'AI insights with signals, anomalies, health, and AI status',
+          content: { 'application/json': { schema: { type: 'object' } } },
+        },
+      },
+    },
+  },
+
+  '/dashboard/api/leaderboard': {
+    get: {
+      tags: ['Dashboard'],
+      summary: 'Get copy-trading leaderboard',
+      description: 'Returns top 20 traders ranked by composite score (win rate, return, drawdown, trade count).',
+      responses: {
+        200: {
+          description: 'Leaderboard with leader profiles',
+          content: { 'application/json': { schema: { type: 'object' } } },
+        },
+      },
+    },
+  },
+
+  '/dashboard/api/revenue': {
+    get: {
+      tags: ['Dashboard'],
+      summary: 'Get revenue analytics (real UserStore data)',
+      description: 'Returns MRR, ARR, user tier breakdown, and 30-day revenue timeline from AdminAnalytics.',
+      responses: {
+        200: {
+          description: 'Revenue summary with MRR/ARR and user stats',
+          content: { 'application/json': { schema: { type: 'object' } } },
+        },
+      },
+    },
+  },
 };
 
 // ─── Public export ────────────────────────────────────────────────────────────

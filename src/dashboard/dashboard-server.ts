@@ -8,6 +8,16 @@ import { fileURLToPath } from 'node:url';
 import type { DashboardDataProvider } from './dashboard-data.js';
 import type { UserStore } from '../users/user-store.js';
 import { AdminAnalytics } from '../admin/admin-analytics.js';
+import type { AiSignalGenerator } from '../openclaw/ai-signal-generator.js';
+import type { TradeObserver } from '../openclaw/trade-observer.js';
+import type { LeaderBoard } from '../copy-trading/leader-board.js';
+
+/** Optional AI + social deps injected from app.ts for live data */
+export interface DashboardDeps {
+  signalGenerator?: AiSignalGenerator;
+  tradeObserver?: TradeObserver;
+  leaderBoard?: LeaderBoard;
+}
 
 /** Map file extensions to MIME content-types */
 const MIME_TYPES: Record<string, string> = {
@@ -72,18 +82,48 @@ function formatUptime(ms: number): string {
   return d > 0 ? `${d}d ${h}h ${m}m` : h > 0 ? `${h}h ${m}m` : `${m}m`;
 }
 
-// ── AI Insights (Sprint 49) ──────────────────────────────────────────────
+// ── AI Insights (Sprint 49 → Sprint 58: wired to real OpenClaw data) ─────
 
-function getAiInsights() {
+function getAiInsights(deps: DashboardDeps) {
+  // Real signals from AiSignalGenerator
+  const signals = deps.signalGenerator
+    ? deps.signalGenerator.getSignals(undefined, 10)
+    : [];
+  const signalStats = deps.signalGenerator
+    ? deps.signalGenerator.getStats()
+    : { totalSignals: 0, actionBreakdown: { buy: 0, sell: 0, hold: 0 }, avgConfidence: 0, markets: [] };
+
+  // Real anomalies from TradeObserver
+  let anomalies = { detected: false, severity: 'none' as string, items: [] as string[] };
+  const healthInsights: string[] = [];
+  if (deps.tradeObserver) {
+    const snapshot = deps.tradeObserver.getSnapshot();
+    const isAnomaly = deps.tradeObserver.shouldAlert(snapshot);
+    if (isAnomaly) {
+      const items: string[] = [];
+      if (snapshot.winRate < 0.4) items.push(`Win rate ${(snapshot.winRate * 100).toFixed(1)}% below threshold`);
+      if (snapshot.drawdown > 0.15) items.push(`Drawdown ${(snapshot.drawdown * 100).toFixed(1)}% exceeds limit`);
+      anomalies = { detected: true, severity: items.length > 1 ? 'high' : 'medium', items };
+    }
+    healthInsights.push(`${snapshot.recentTrades.length} trades in observation window`);
+    healthInsights.push(`${snapshot.activeStrategies.length} active strategies`);
+    if (snapshot.winRate > 0) healthInsights.push(`Win rate: ${(snapshot.winRate * 100).toFixed(1)}%`);
+  }
+
   return {
-    signals: [
-      { id: 'sig_1', market: 'POLY-TRUMP-2026', action: 'buy', strength: 'strong', confidence: 0.87, reasoning: 'Probability mispricing detected vs polling aggregates', strategy: 'polymarket-arb', timestamp: Date.now() - 300_000 },
-      { id: 'sig_2', market: 'BTC-USD', action: 'hold', strength: 'moderate', confidence: 0.62, reasoning: 'Consolidation phase, waiting for breakout confirmation', strategy: 'momentum-scalper', timestamp: Date.now() - 900_000 },
-      { id: 'sig_3', market: 'ETH-USD', action: 'sell', strength: 'weak', confidence: 0.54, reasoning: 'Approaching resistance with declining volume', strategy: 'mean-reversion', timestamp: Date.now() - 1_800_000 },
-    ],
-    anomalies: { detected: false, severity: 'none', items: [] },
-    health: { assessment: 'healthy', confidence: 0.91, insights: ['All strategies operating within normal parameters', 'Win rate trending upward over last 24h'] },
-    aiStatus: { gateway: 'Ollama', model: 'llama3.1:8b', lastCallMs: 342, totalCalls: 156, quotaUsed: 23 },
+    signals,
+    anomalies,
+    health: {
+      assessment: anomalies.detected ? 'warning' : 'healthy',
+      confidence: signalStats.avgConfidence || 0,
+      insights: healthInsights.length > 0 ? healthInsights : ['No trade data yet'],
+    },
+    aiStatus: {
+      gateway: process.env['OPENCLAW_GATEWAY_URL'] ?? 'Ollama',
+      model: process.env['OPENCLAW_MODEL_STANDARD'] ?? 'llama3.1:8b',
+      totalSignals: signalStats.totalSignals,
+      markets: signalStats.markets,
+    },
   };
 }
 
@@ -185,7 +225,7 @@ async function serveStatic(res: ServerResponse, filePath: string): Promise<void>
  * @param userStore - Optional UserStore for real revenue/user analytics
  * @returns running http.Server instance
  */
-export function createDashboardServer(port: number, dataProvider: DashboardDataProvider, userStore?: UserStore): Server {
+export function createDashboardServer(port: number, dataProvider: DashboardDataProvider, userStore?: UserStore, deps: DashboardDeps = {}): Server {
   const analytics = userStore ? new AdminAnalytics(userStore) : null;
   const server = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     const url = req.url ?? '/';
@@ -271,9 +311,16 @@ export function createDashboardServer(port: number, dataProvider: DashboardDataP
         return;
       }
 
-      // GET /dashboard/api/ai-insights — AI trading insights summary
+      // GET /dashboard/api/ai-insights — AI trading insights summary (real OpenClaw data)
       if (url === '/dashboard/api/ai-insights') {
-        sendJson(res, 200, getAiInsights());
+        sendJson(res, 200, getAiInsights(deps));
+        return;
+      }
+
+      // GET /dashboard/api/leaderboard — copy-trading top traders
+      if (url === '/dashboard/api/leaderboard') {
+        const leaders = deps.leaderBoard ? deps.leaderBoard.getTopTraders(20) : [];
+        sendJson(res, 200, { leaders, total: leaders.length });
         return;
       }
 
