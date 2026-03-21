@@ -4,7 +4,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { TradingEngine } from '../engine/engine.js';
 import { MetricsCollector } from '../metrics/metrics-collector.js';
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const SERVER_START = Date.now();
 
 /** Probe DB availability by checking MetricsCollector (in-process health proxy) */

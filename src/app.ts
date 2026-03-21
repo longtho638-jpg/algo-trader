@@ -17,12 +17,17 @@ import { RecoveryManager } from './resilience/recovery-manager.js';
 import { startAllServers, stopAllServers } from './wiring/servers-wiring.js';
 import { startRecoveryManager, startScheduler, wireProcessSignals } from './wiring/process-wiring.js';
 import { startNotifications, stopNotifications } from './wiring/notifications-wiring.js';
+import { wireStrategies } from './wiring/strategy-wiring.js';
+import { wireWsEvents } from './wiring/ws-event-wiring.js';
+import { setOrchestrator } from './api/pipeline-routes.js';
+import type { StrategyOrchestrator } from './strategies/strategy-orchestrator.js';
+import type { WsEventWiring } from './wiring/ws-event-wiring.js';
 import type { ServersBundle } from './wiring/servers-wiring.js';
 import type { NotificationsBundle } from './wiring/notifications-wiring.js';
 
 // ── Ports ──────────────────────────────────────────────────────────────────
 
-const APP_VERSION    = '0.1.0';
+const APP_VERSION    = '0.2.0';
 const API_PORT       = Number(process.env['API_PORT'])       || 3000;
 const DASHBOARD_PORT = Number(process.env['DASHBOARD_PORT']) || 3001;
 const LANDING_PORT   = Number(process.env['LANDING_PORT'])   || 3002;
@@ -41,6 +46,8 @@ let _scheduler: JobScheduler | null = null;
 let _recovery: RecoveryManager | null = null;
 let _notifier: NotificationRouter | null = null;
 let _notifications: NotificationsBundle | null = null;
+let _orchestrator: StrategyOrchestrator | null = null;
+let _wsWiring: WsEventWiring | null = null;
 let _stopping = false;
 
 // ── Banner ─────────────────────────────────────────────────────────────────
@@ -79,6 +86,8 @@ export async function stopApp(reason = 'manual'): Promise<void> {
     ]);
     _apiServer = _dashServer = _webhookServer = _supplementary = null;
 
+    if (_orchestrator) { _orchestrator.stopAll(); _orchestrator = null; }
+    if (_wsWiring) { _wsWiring.dispose(); _wsWiring = null; }
     if (_notifications) { stopNotifications(_notifications); _notifications = null; }
     if (_scheduler) { _scheduler.stop(); _scheduler = null; }
     if (_recovery)  { _recovery.stopAutoSave(); _recovery.clearState(); _recovery = null; }
@@ -143,26 +152,35 @@ export async function startApp(): Promise<void> {
     pipeline: _supplementary.pipeline.getStatus(),
   });
 
-  // 10. Notifications: Telegram bot + trade alerts
+  // 10. Strategy orchestrator — wire Polymarket arb + Grid/DCA strategies
+  _orchestrator = wireStrategies({ eventBus });
+  setOrchestrator(_orchestrator);
+  logger.info('Strategy orchestrator wired', 'App', { strategies: _orchestrator.getStatus().length });
+
+  // 11. WS event bridge — EventBus → WebSocket real-time streaming
+  _wsWiring = wireWsEvents(eventBus, _supplementary.wsHandle);
+  logger.info('WS event bridge active', 'App');
+
+  // 12. Notifications: Telegram bot + trade alerts
   _notifications = startNotifications(eventBus, _engine);
   _notifier = _notifications.router;
   logger.info('Notification router initialised', 'App', { channels: _notifier.enabledChannels() });
 
-  // 11. Scheduler + built-in jobs
+  // 13. Scheduler + built-in jobs
   _scheduler = new JobScheduler();
   startScheduler(_scheduler);
 
-  // 12. Recovery manager
+  // 14. Recovery manager
   _recovery = new RecoveryManager();
   startRecoveryManager(_recovery, AUTO_SAVE_MS, {
     strategies: config.strategies,
     getOpenPositions: () => db.getOpenPositions(),
   });
 
-  // 13. Process signal handlers (SIGINT/SIGTERM/uncaughtException/unhandledRejection)
+  // 15. Process signal handlers (SIGINT/SIGTERM/uncaughtException/unhandledRejection)
   wireProcessSignals({ eventBus, notifier: _notifier, stopApp });
 
-  // 14. Banner
+  // 16. Banner
   printBanner(config.env, Object.keys(config.exchanges).join(', ') || 'none');
   logger.info('Platform ready', 'App', { version: APP_VERSION });
 }
