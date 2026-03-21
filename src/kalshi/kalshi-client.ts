@@ -1,13 +1,14 @@
-// Kalshi REST API client with RSA private key signing
-// Base URL: https://api.elections.kalshi.com/trade-api/v2
-import { createPrivateKey, createSign } from 'node:crypto';
-import { readFileSync } from 'node:fs';
-import type { MarketInfo, Order, OrderSide, Position } from '../core/types.js';
+// Kalshi REST API client — supports paper mode (default) and live mode
+// Live mode gated by LIVE_TRADING=true env var
+// Auth: HMAC-SHA256 (KALSHI_API_KEY + KALSHI_PRIVATE_KEY env vars)
+// Rate limit: 10 req/s enforced via token bucket
+import { createHmac } from 'node:crypto';
 import { logger } from '../core/logger.js';
 
-const KALSHI_BASE = 'https://api.elections.kalshi.com/trade-api/v2';
+const KALSHI_BASE = 'https://trading-api.kalshi.com/trade-api/v2';
+const RATE_LIMIT_MS = 100; // 10 req/s = 1 req per 100ms
 
-// --- Kalshi-specific API shapes ---
+// --- Kalshi API shapes ---
 
 export interface KalshiMarket {
   ticker: string;
@@ -22,6 +23,14 @@ export interface KalshiMarket {
   open_interest: number;
   close_time: string;
   category?: string;
+}
+
+export interface KalshiEvent {
+  event_ticker: string;
+  title: string;
+  category: string;
+  status: string;
+  markets: KalshiMarket[];
 }
 
 export interface KalshiOrderbookLevel {
@@ -62,46 +71,86 @@ export interface KalshiPosition {
   resting_orders_count: number;
 }
 
+// --- Paper mode simulated responses ---
+
+let _paperOrderSeq = 1;
+
+function paperMarket(ticker: string): KalshiMarket {
+  return {
+    ticker, title: `Paper Market ${ticker}`, status: 'open',
+    yes_bid: 45, yes_ask: 47, no_bid: 53, no_ask: 55,
+    volume: 1000, open_interest: 500, close_time: new Date(Date.now() + 86400000).toISOString(),
+  };
+}
+
+function paperOrder(ticker: string, side: 'yes' | 'no', price: number, count: number): KalshiOrder {
+  return {
+    order_id: `paper-${_paperOrderSeq++}`,
+    ticker, side, type: 'limit', status: 'resting',
+    yes_price: side === 'yes' ? price : 100 - price,
+    no_price: side === 'no' ? price : 100 - price,
+    count, filled_count: 0,
+    created_time: new Date().toISOString(),
+  };
+}
+
 // --- KalshiClient ---
 
-export class KalshiClient {
-  private apiKeyId: string;
-  private privateKey: ReturnType<typeof createPrivateKey>;
+export interface KalshiClientConfig {
+  apiKey?: string;
+  privateKey?: string;
+  /** Paper mode = simulated responses, no real API calls (default: true) */
+  paperMode?: boolean;
+}
 
-  constructor(apiKeyId: string, privateKeyPath: string) {
-    this.apiKeyId = apiKeyId;
-    const pem = readFileSync(privateKeyPath, 'utf-8');
-    this.privateKey = createPrivateKey(pem);
+export class KalshiClient {
+  private apiKey: string;
+  private privateKey: string;
+  private isLive: boolean;
+  private lastRequestAt = 0;
+
+  constructor(config?: KalshiClientConfig) {
+    this.apiKey = config?.apiKey ?? process.env['KALSHI_API_KEY'] ?? '';
+    this.privateKey = config?.privateKey ?? process.env['KALSHI_PRIVATE_KEY'] ?? '';
+    const liveEnv = process.env['LIVE_TRADING'] === 'true';
+    const paperFlag = config?.paperMode ?? true;
+    this.isLive = liveEnv && !paperFlag;
+    if (this.isLive) {
+      logger.info('KalshiClient: LIVE mode enabled', 'KalshiClient');
+    } else {
+      logger.info('KalshiClient: paper mode (simulated)', 'KalshiClient');
+    }
   }
 
-  // Sign: base64url(RSA-PSS-SHA256(method + path + timestamp))
+  // HMAC-SHA256 signature: method + path + timestamp (milliseconds)
   private sign(method: string, path: string, timestamp: string): string {
     const msg = `${timestamp}${method}${path}`;
-    const signer = createSign('RSA-SHA256');
-    signer.update(msg);
-    signer.end();
-    return signer.sign({ key: this.privateKey, padding: 6 /* RSA_PKCS1_PSS_PADDING */ }, 'base64');
+    return createHmac('sha256', this.privateKey).update(msg).digest('base64');
   }
 
-  private async request<T>(
-    method: string,
-    path: string,
-    body?: unknown,
-  ): Promise<T> {
+  // Token-bucket rate limiter: enforce 100ms between requests
+  private async throttle(): Promise<void> {
+    const now = Date.now();
+    const wait = RATE_LIMIT_MS - (now - this.lastRequestAt);
+    if (wait > 0) await new Promise(r => setTimeout(r, wait));
+    this.lastRequestAt = Date.now();
+  }
+
+  private async request<T>(method: string, path: string, body?: unknown): Promise<T> {
+    await this.throttle();
     const timestamp = Date.now().toString();
     const signature = this.sign(method, path, timestamp);
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      'KALSHI-ACCESS-KEY': this.apiKeyId,
+      'KALSHI-ACCESS-KEY': this.apiKey,
       'KALSHI-ACCESS-TIMESTAMP': timestamp,
       'KALSHI-ACCESS-SIGNATURE': signature,
     };
 
     const res = await fetch(`${KALSHI_BASE}${path}`, {
-      method,
-      headers,
+      method, headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
 
@@ -112,8 +161,8 @@ export class KalshiClient {
     return res.json() as Promise<T>;
   }
 
-  /** GET /markets — list prediction markets */
   async getMarkets(params?: { limit?: number; cursor?: string; status?: string }): Promise<KalshiMarket[]> {
+    if (!this.isLive) return [paperMarket('PAPER-MARKET-1'), paperMarket('PAPER-MARKET-2')];
     const qs = new URLSearchParams();
     if (params?.limit) qs.set('limit', params.limit.toString());
     if (params?.cursor) qs.set('cursor', params.cursor);
@@ -123,68 +172,51 @@ export class KalshiClient {
     return data.markets;
   }
 
-  /** GET /markets/{ticker} — single market details */
-  async getMarket(ticker: string): Promise<KalshiMarket> {
-    const data = await this.request<{ market: KalshiMarket }>('GET', `/markets/${ticker}`);
-    return data.market;
+  async getEvent(eventTicker: string): Promise<KalshiEvent> {
+    if (!this.isLive) {
+      return { event_ticker: eventTicker, title: `Paper Event ${eventTicker}`,
+        category: 'paper', status: 'open', markets: [paperMarket(`${eventTicker}-1`)] };
+    }
+    const data = await this.request<{ event: KalshiEvent }>('GET', `/events/${eventTicker}`);
+    return data.event;
   }
 
-  /** GET /markets/{ticker}/orderbook */
   async getOrderbook(ticker: string): Promise<KalshiOrderbook> {
+    if (!this.isLive) {
+      return { ticker, yes: [{ price: 45, delta: 100 }], no: [{ price: 55, delta: 100 }] };
+    }
     const data = await this.request<{ orderbook: KalshiOrderbook }>('GET', `/markets/${ticker}/orderbook`);
     return data.orderbook;
   }
 
-  /** POST /markets/{ticker}/orders — place order */
-  async placeOrder(
-    ticker: string,
-    side: 'yes' | 'no',
-    type: 'limit' | 'market',
-    price: number,
-    count: number,
-  ): Promise<KalshiOrder> {
-    logger.debug('Placing Kalshi order', 'KalshiClient', { ticker, side, price, count });
+  async placeOrder(ticker: string, side: 'yes' | 'no', type: 'limit' | 'market', price: number, count: number): Promise<KalshiOrder> {
+    logger.debug('Placing order', 'KalshiClient', { ticker, side, price, count, live: this.isLive });
+    if (!this.isLive) return paperOrder(ticker, side, price, count);
     const data = await this.request<{ order: KalshiOrder }>('POST', `/markets/${ticker}/orders`, {
-      ticker,
-      side,
-      type,
+      ticker, side, type,
       yes_price: side === 'yes' ? price : 100 - price,
       no_price: side === 'no' ? price : 100 - price,
-      count,
-      time_in_force: 'gtc',
+      count, time_in_force: 'gtc',
     });
     return data.order;
   }
 
-  /** DELETE /orders/{orderId} — cancel order */
   async cancelOrder(orderId: string): Promise<boolean> {
+    logger.info('Cancelling order', 'KalshiClient', { orderId, live: this.isLive });
+    if (!this.isLive) return true;
     await this.request<unknown>('DELETE', `/orders/${orderId}`);
-    logger.info('Kalshi order cancelled', 'KalshiClient', { orderId });
     return true;
   }
 
-  /** GET /portfolio/positions */
   async getPositions(): Promise<KalshiPosition[]> {
+    if (!this.isLive) return [];
     const data = await this.request<{ market_positions: KalshiPosition[] }>('GET', '/portfolio/positions');
     return data.market_positions;
   }
 
-  /** GET /portfolio/balance */
   async getBalance(): Promise<KalshiBalance> {
+    if (!this.isLive) return { balance: 100000, payout: 0, fees_paid: 0 };
     const data = await this.request<{ balance: KalshiBalance }>('GET', '/portfolio/balance');
     return data.balance;
-  }
-
-  /** Map KalshiMarket to core MarketInfo */
-  toMarketInfo(m: KalshiMarket): MarketInfo {
-    return {
-      id: m.ticker,
-      symbol: m.ticker,
-      type: 'polymarket', // prediction market type
-      exchange: 'kalshi',
-      baseCurrency: 'YES',
-      quoteCurrency: 'USD',
-      active: m.status === 'open',
-    };
   }
 }

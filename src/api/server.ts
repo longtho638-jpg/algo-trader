@@ -9,6 +9,8 @@ import { createRateLimitMiddleware } from './api-rate-limiter-middleware.js';
 import { handleRequest } from './routes.js';
 import { UserStore } from '../users/user-store.js';
 import { handleAdminRoutes } from './admin-routes.js';
+import { applySecurityHeaders } from './security-headers-middleware.js';
+import { createBodyLimitMiddleware } from './request-body-limit-middleware.js';
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 
@@ -104,12 +106,16 @@ export function createServer(
 
   const authMiddleware = createAuthMiddleware(userStore, jwtSecret);
   const rateLimitMiddleware = createRateLimitMiddleware();
+  const bodyLimitMiddleware = createBodyLimitMiddleware(1024 * 1024);
 
   const server = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     // 1. CORS headers on every response
     applyCors(req, res);
 
-    // 2. Handle CORS preflight immediately
+    // 2. Security hardening headers
+    applySecurityHeaders(req, res);
+
+    // 3. Handle CORS preflight immediately
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
@@ -119,17 +125,27 @@ export function createServer(
     const parsed = parse(req.url ?? '/');
     const pathname = parsed.pathname ?? '/';
 
-    // 3. Auth middleware — attaches req.user or sends 401
+    // 4. Auth middleware — attaches req.user or sends 401
     let authPassed = false;
     authMiddleware(req as AuthenticatedRequest, res, () => { authPassed = true; });
     if (!authPassed) return;
 
-    // 4. Rate limit middleware — checks per-user/per-IP sliding window
+    // 5. Rate limit middleware — checks per-user/per-IP sliding window
     let ratePassed = false;
     rateLimitMiddleware(req as AuthenticatedRequest, res, () => { ratePassed = true; });
     if (!ratePassed) return;
 
-    // 5. Route to handler
+    // 6. Body size limit for POST requests
+    if (req.method === 'POST') {
+      let bodyPassed = false;
+      await new Promise<void>((resolve) => {
+        bodyLimitMiddleware(req, res, () => { bodyPassed = true; resolve(); });
+        req.once('close', resolve);
+      });
+      if (!bodyPassed) return;
+    }
+
+    // 7. Route to handler
     try {
       // Admin routes: /api/admin/* — requires resolved user from auth middleware
       if (pathname.startsWith('/api/admin/') || pathname === '/api/admin') {

@@ -1,20 +1,19 @@
 // WebSocket server for algo-trade real-time streaming
-// Manages client connections, subscriptions, heartbeat, and message dispatch
+// Manages client connections, channel subscriptions, heartbeat, and message dispatch
 import { WebSocketServer, WebSocket } from 'ws';
-import { validateChannel, serializeMessage, formatMessage } from './ws-channels.js';
+import { validateChannel, serializeMessage, formatMessage, ChannelManager } from './ws-channels.js';
 import type { WsChannel } from './ws-channels.js';
 
 /** Internal state per connected client */
 interface WsClient {
   socket: WebSocket;
-  subscriptions: Set<WsChannel>;
   /** Last pong received timestamp for heartbeat tracking */
   lastPong: number;
 }
 
 /** Inbound message from client */
 interface ClientMessage {
-  type: 'subscribe' | 'unsubscribe';
+  action: 'subscribe' | 'unsubscribe';
   channel: string;
 }
 
@@ -22,28 +21,33 @@ interface ClientMessage {
 export interface WsServerHandle {
   /** Broadcast data to all clients subscribed to the given channel */
   broadcast(channel: WsChannel, data: unknown): void;
+  /** Returns current number of connected clients */
+  getClientCount(): number;
   /** Gracefully close all connections and stop the server */
   shutdown(): Promise<void>;
 }
 
-const HEARTBEAT_INTERVAL_MS = 30_000;
-const HEARTBEAT_TIMEOUT_MS = 60_000;
+// Ping every 30s; close client if no pong received within 10s after ping
+const PING_INTERVAL_MS = 30_000;
+const PONG_TIMEOUT_MS = 10_000;
 
 /**
  * Creates and starts a WebSocket server on the given port.
- * Returns a handle for broadcasting and graceful shutdown.
+ * Returns a handle for broadcasting, client count, and graceful shutdown.
  */
 export function createWsServer(port: number): WsServerHandle {
   const wss = new WebSocketServer({ port });
   const clients = new Map<WebSocket, WsClient>();
+  const channelManager = new ChannelManager();
 
-  // --- Heartbeat timer ---
+  // --- Heartbeat timer: ping all clients every 30s ---
   const heartbeatTimer = setInterval(() => {
-    const now = Date.now();
+    const deadline = Date.now() - PING_INTERVAL_MS - PONG_TIMEOUT_MS;
     for (const [socket, client] of clients) {
-      if (now - client.lastPong > HEARTBEAT_TIMEOUT_MS) {
-        // Client failed to respond to ping — terminate
+      if (client.lastPong < deadline) {
+        // No pong within allowed window — terminate stale connection
         socket.terminate();
+        channelManager.unsubscribeAll(socket);
         clients.delete(socket);
         continue;
       }
@@ -51,21 +55,21 @@ export function createWsServer(port: number): WsServerHandle {
         socket.ping();
       }
     }
-  }, HEARTBEAT_INTERVAL_MS);
+  }, PING_INTERVAL_MS);
 
   // --- Connection handler ---
   wss.on('connection', (socket: WebSocket) => {
-    const client: WsClient = {
-      socket,
-      subscriptions: new Set(),
-      lastPong: Date.now(),
-    };
+    const client: WsClient = { socket, lastPong: Date.now() };
     clients.set(socket, client);
 
-    // Send available channels on connect
+    // Send welcome message with available channels
     const welcomeMsg = formatMessage('system', {
       type: 'connected',
-      channels: Object.keys(validateChannel),
+      channels: Object.keys(
+        Object.fromEntries(
+          ['trades', 'orderbook', 'pnl', 'alerts', 'strategies', 'system'].map((k) => [k, k]),
+        ),
+      ),
     });
     if (socket.readyState === WebSocket.OPEN) {
       socket.send(serializeMessage(welcomeMsg));
@@ -79,38 +83,41 @@ export function createWsServer(port: number): WsServerHandle {
     socket.on('message', (raw: Buffer | string) => {
       try {
         const msg = JSON.parse(raw.toString()) as ClientMessage;
-        handleClientMessage(client, msg);
+        handleClientMessage(socket, msg);
       } catch {
         // Ignore malformed messages
       }
     });
 
     socket.on('close', () => {
+      channelManager.unsubscribeAll(socket);
       clients.delete(socket);
     });
 
     socket.on('error', () => {
+      channelManager.unsubscribeAll(socket);
       clients.delete(socket);
     });
   });
 
-  // --- Message handler ---
-  function handleClientMessage(client: WsClient, msg: ClientMessage): void {
-    if (!msg.type || !msg.channel) return;
+  // --- Subscription message handler ---
+  function handleClientMessage(socket: WebSocket, msg: ClientMessage): void {
+    if (!msg.action || !msg.channel) return;
     if (!validateChannel(msg.channel)) return;
 
     const ch = msg.channel as WsChannel;
-    if (msg.type === 'subscribe') {
-      client.subscriptions.add(ch);
+
+    if (msg.action === 'subscribe') {
+      channelManager.subscribe(socket, ch);
       const ack = formatMessage('system', { type: 'subscribed', channel: ch });
-      if (client.socket.readyState === WebSocket.OPEN) {
-        client.socket.send(serializeMessage(ack));
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(serializeMessage(ack));
       }
-    } else if (msg.type === 'unsubscribe') {
-      client.subscriptions.delete(ch);
+    } else if (msg.action === 'unsubscribe') {
+      channelManager.unsubscribe(socket, ch);
       const ack = formatMessage('system', { type: 'unsubscribed', channel: ch });
-      if (client.socket.readyState === WebSocket.OPEN) {
-        client.socket.send(serializeMessage(ack));
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(serializeMessage(ack));
       }
     }
   }
@@ -118,20 +125,15 @@ export function createWsServer(port: number): WsServerHandle {
   // --- Public handle ---
   return {
     broadcast(channel: WsChannel, data: unknown): void {
-      const payload = serializeMessage(formatMessage(channel, data));
-      for (const [, client] of clients) {
-        if (
-          client.subscriptions.has(channel) &&
-          client.socket.readyState === WebSocket.OPEN
-        ) {
-          client.socket.send(payload);
-        }
-      }
+      channelManager.broadcastToChannel(channel, data);
+    },
+
+    getClientCount(): number {
+      return clients.size;
     },
 
     shutdown(): Promise<void> {
       clearInterval(heartbeatTimer);
-      // Close all client sockets
       for (const [socket] of clients) {
         socket.close(1001, 'Server shutting down');
       }

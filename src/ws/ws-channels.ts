@@ -1,5 +1,6 @@
-// WebSocket channel definitions for algo-trade real-time streaming
-// Defines available channels, message shapes, and validation utilities
+// WebSocket channel definitions and per-channel subscription management
+// Defines available channels, message shapes, validation, and broadcast utilities
+import { WebSocket } from 'ws';
 
 /** All available streaming channels */
 export type WsChannel =
@@ -53,4 +54,58 @@ export function formatMessage(channel: WsChannel, data: unknown): ChannelMessage
  */
 export function serializeMessage(msg: ChannelMessage): string {
   return JSON.stringify(msg);
+}
+
+// ---------------------------------------------------------------------------
+// Channel subscription manager — tracks which clients subscribed to what
+// ---------------------------------------------------------------------------
+
+/**
+ * Manages per-channel subscriber sets.
+ * Used by ws-server to route broadcasts to only subscribed clients.
+ */
+export class ChannelManager {
+  private readonly channels = new Map<WsChannel, Set<WebSocket>>();
+
+  constructor() {
+    // Pre-initialize all channels so getSubscribers never returns undefined
+    for (const ch of Object.keys(CHANNEL_DESCRIPTIONS) as WsChannel[]) {
+      this.channels.set(ch, new Set());
+    }
+  }
+
+  /** Add a client to a channel's subscriber set. */
+  subscribe(ws: WebSocket, channel: WsChannel): void {
+    this.channels.get(channel)!.add(ws);
+  }
+
+  /** Remove a client from a channel's subscriber set. */
+  unsubscribe(ws: WebSocket, channel: WsChannel): void {
+    this.channels.get(channel)!.delete(ws);
+  }
+
+  /** Remove a client from ALL channels (called on disconnect). */
+  unsubscribeAll(ws: WebSocket): void {
+    for (const set of this.channels.values()) {
+      set.delete(ws);
+    }
+  }
+
+  /** Returns the set of WebSocket clients subscribed to the given channel. */
+  getSubscribers(channel: WsChannel): Set<WebSocket> {
+    return this.channels.get(channel) ?? new Set();
+  }
+
+  /**
+   * Serialize and send data to all open clients subscribed to the channel.
+   * Skips clients whose socket is not in OPEN state.
+   */
+  broadcastToChannel(channel: WsChannel, data: unknown): void {
+    const payload = serializeMessage(formatMessage(channel, data));
+    for (const ws of this.getSubscribers(channel)) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(payload);
+      }
+    }
+  }
 }
