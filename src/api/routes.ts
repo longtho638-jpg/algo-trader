@@ -15,6 +15,7 @@ import { handleBacktest } from './backtest-route-handler.js';
 import { handleReferralRoutes } from './referral-routes.js';
 import { handleMarketplaceRoutes } from './marketplace-routes.js';
 import { handleTradingViewRoutes } from './tradingview-webhook-routes.js';
+import { handlePipelineRoutes } from './pipeline-routes.js';
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -169,6 +170,9 @@ export async function handleRequest(
     ) {
       if (!userStore) { sendJson(res, 503, { error: 'User store not configured' }); return; }
       const handled = await handleTradingViewRoutes(req, res, pathname, userStore);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/pipeline/') || pathname === '/api/pipeline/status') {
+      const handled = await handlePipelineRoutes(req, res, pathname, method);
       if (!handled) sendNotFound(res);
     } else {
       sendNotFound(res);

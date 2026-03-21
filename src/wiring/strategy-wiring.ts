@@ -1,155 +1,73 @@
-// Strategy wiring layer — registers strategy instances with StrategyRunner
-// Pure orchestration: instantiates strategies with their dependencies and registers them.
-// No strategy logic lives here.
-import type { StrategyRunner, RunnableStrategy } from '../engine/strategy-runner.js';
-import type { StrategyConfig } from '../core/types.js';
-import type { ClobClient } from '../polymarket/clob-client.js';
+/**
+ * Strategy wiring — registers strategy tick functions with StrategyOrchestrator.
+ * Pure orchestration: creates tick factories and wires them into the orchestrator.
+ */
+import { StrategyOrchestrator } from '../strategies/strategy-orchestrator.js';
+import { createPolymarketArbTick } from '../strategies/polymarket-arb-strategy.js';
+import { createGridDcaTick } from '../strategies/grid-dca-strategy.js';
 import type { MarketScanner } from '../polymarket/market-scanner.js';
+import type { OrderManager } from '../polymarket/order-manager.js';
+import type { OrderExecutor } from '../cex/order-executor.js';
 import type { ExchangeClient } from '../cex/exchange-client.js';
-import { CrossMarketArbStrategy } from '../strategies/polymarket/cross-market-arb.js';
-import { MarketMakerStrategy } from '../strategies/polymarket/market-maker.js';
-import { GridTradingStrategy } from '../strategies/cex-dex/grid-trading.js';
-import { DcaBotStrategy } from '../strategies/cex-dex/dca-bot.js';
-import { FundingRateArbStrategy } from '../strategies/cex-dex/funding-rate-arb.js';
-import type { GridConfig } from '../strategies/cex-dex/grid-trading.js';
-import type { DcaSymbolConfig } from '../strategies/cex-dex/dca-bot.js';
-import type { FundingArbConfig } from '../strategies/cex-dex/funding-rate-arb.js';
+import type { EventBus } from '../events/event-bus.js';
 
-// ---------------------------------------------------------------------------
-// Adapter helpers
-// CEX/DEX strategies predate the RunnableStrategy interface and don't implement
-// getStatus(). These thin wrappers add the missing method without touching the
-// original strategy files.
-// ---------------------------------------------------------------------------
-
-function adaptGrid(s: GridTradingStrategy): RunnableStrategy {
-  return {
-    start: (...args: unknown[]) => s.start(args[0] as number),
-    stop: () => s.stop(),
-    getStatus: () => ({ name: 'grid-trading' }),
-  };
+export interface WireStrategyDeps {
+  eventBus: EventBus;
+  scanner?: MarketScanner;     // required for polymarket-arb
+  orderManager?: OrderManager; // required for polymarket-arb
+  cexExecutor?: OrderExecutor; // required for grid-dca
+  cexClient?: ExchangeClient;  // required for grid-dca
 }
 
-function adaptDca(s: DcaBotStrategy): RunnableStrategy {
-  return {
-    start: () => { s.start(); return Promise.resolve(); },
-    stop: () => { s.stopAll(); return Promise.resolve(); },
-    getStatus: () => ({ name: 'dca-bot' }),
-  };
-}
+// Backward-compat type aliases (wiring/index.ts re-exports these by name)
+/** @deprecated Use WireStrategyDeps */
+export type PolymarketDeps = Pick<WireStrategyDeps, 'eventBus' | 'scanner' | 'orderManager'>;
+/** @deprecated Use WireStrategyDeps */
+export type CexDexDeps = Pick<WireStrategyDeps, 'eventBus' | 'cexExecutor' | 'cexClient'>;
+/** @deprecated Use WireStrategyDeps */
+export type AllStrategyDeps = WireStrategyDeps;
 
-function adaptFunding(s: FundingRateArbStrategy): RunnableStrategy {
-  return {
-    start: () => s.start(),
-    stop: () => s.stop(),
-    getStatus: () => ({ name: 'funding-rate-arb' }),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// Dependency types
-// ---------------------------------------------------------------------------
-
-export interface PolymarketDeps {
-  clobClient: ClobClient;
-  scanner: MarketScanner;
-}
-
-export interface CexDexDeps {
-  exchangeClient: ExchangeClient;
-}
-
-// ---------------------------------------------------------------------------
-// Polymarket strategy wiring
-// ---------------------------------------------------------------------------
+const env = (key: string, fallback: string) => process.env[key] ?? fallback;
 
 /**
- * Register arb + market-maker strategies for Polymarket.
- * Both strategies are wired with shared ClobClient + MarketScanner deps.
+ * Wire all strategy factories into a new StrategyOrchestrator.
+ * Strategies without required deps are silently skipped.
+ * Call orchestrator.startAll() after wiring.
  */
-export function wirePolymarketStrategies(
-  runner: StrategyRunner,
-  configs: StrategyConfig[],
-  deps: PolymarketDeps,
-): void {
-  const arbConfig = configs.find((c) => c.name === 'cross-market-arb');
-  if (arbConfig) {
-    const arb = new CrossMarketArbStrategy(
-      deps.clobClient,
-      deps.scanner,
-      arbConfig,
-      arbConfig.capitalAllocation,
+export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
+  const { eventBus, scanner, orderManager, cexExecutor, cexClient } = deps;
+  const orc = new StrategyOrchestrator(eventBus);
+
+  if (scanner && orderManager) {
+    orc.register(
+      { id: 'polymarket-arb', name: 'Polymarket Arbitrage', type: 'polymarket-arb', enabled: true, params: {}, intervalMs: parseInt(env('POLYMARKET_ARB_INTERVAL_MS', '30000'), 10) },
+      createPolymarketArbTick({ scanner, orderManager, eventBus }),
     );
-    runner.register('cross-market-arb', arb);
   }
 
-  const mmConfig = configs.find((c) => c.name === 'market-maker');
-  if (mmConfig) {
-    const mm = new MarketMakerStrategy(
-      deps.clobClient,
-      mmConfig,
-      mmConfig.capitalAllocation,
+  if (cexExecutor && cexClient) {
+    orc.register(
+      { id: 'grid-dca', name: 'Grid / DCA', type: 'grid', enabled: false, params: {}, intervalMs: parseInt(env('GRID_DCA_INTERVAL_MS', '60000'), 10) },
+      createGridDcaTick({
+        executor: cexExecutor, client: cexClient, eventBus,
+        params: {
+          exchange: 'binance',
+          symbol:      env('GRID_SYMBOL', 'BTC/USDT'),
+          gridSpacing: parseFloat(env('GRID_SPACING', '0.01')),
+          numLevels:   parseInt(env('GRID_LEVELS', '5'), 10),
+          orderSize:   parseFloat(env('GRID_ORDER_SIZE', '0.001')),
+        },
+      }),
     );
-    runner.register('market-maker', mm);
   }
+
+  return orc;
 }
 
-// ---------------------------------------------------------------------------
-// CEX/DEX strategy wiring
-// ---------------------------------------------------------------------------
-
-/**
- * Register grid + DCA + funding-rate-arb strategies backed by a CEX client.
- * Config params are cast to their specific shapes — callers must supply valid params.
- */
-export function wireCexDexStrategies(
-  runner: StrategyRunner,
-  configs: StrategyConfig[],
-  deps: CexDexDeps,
-): void {
-  const gridConfig = configs.find((c) => c.name === 'grid-trading');
-  if (gridConfig) {
-    const grid = new GridTradingStrategy(
-      gridConfig.params as unknown as GridConfig,
-      deps.exchangeClient,
-      gridConfig,
-    );
-    runner.register('grid-trading', adaptGrid(grid));
-  }
-
-  const dcaConfig = configs.find((c) => c.name === 'dca-bot');
-  if (dcaConfig) {
-    const dcaSymbols = (dcaConfig.params['symbols'] ?? []) as DcaSymbolConfig[];
-    const dca = new DcaBotStrategy(dcaSymbols, deps.exchangeClient, dcaConfig);
-    runner.register('dca-bot', adaptDca(dca));
-  }
-
-  const fundingConfig = configs.find((c) => c.name === 'funding-rate-arb');
-  if (fundingConfig) {
-    const funding = new FundingRateArbStrategy(
-      fundingConfig.params as unknown as FundingArbConfig,
-      deps.exchangeClient,
-      fundingConfig,
-    );
-    runner.register('funding-rate-arb', adaptFunding(funding));
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Convenience: wire all strategies
-// ---------------------------------------------------------------------------
-
-export interface AllStrategyDeps extends PolymarketDeps, CexDexDeps {}
-
-/**
- * Wire all Polymarket + CEX/DEX strategies in a single call.
- * Only registers strategies present in the provided configs array.
- */
-export function wireAllStrategies(
-  runner: StrategyRunner,
-  configs: StrategyConfig[],
-  deps: AllStrategyDeps,
-): void {
-  wirePolymarketStrategies(runner, configs, deps);
-  wireCexDexStrategies(runner, configs, deps);
-}
+// Backward-compat function aliases so wiring/index.ts exports remain valid.
+/** @deprecated Use wireStrategies() */
+export function wirePolymarketStrategies(deps: PolymarketDeps): StrategyOrchestrator { return wireStrategies(deps); }
+/** @deprecated Use wireStrategies() */
+export function wireCexDexStrategies(deps: CexDexDeps): StrategyOrchestrator { return wireStrategies(deps); }
+/** @deprecated Use wireStrategies() */
+export function wireAllStrategies(deps: AllStrategyDeps): StrategyOrchestrator { return wireStrategies(deps); }

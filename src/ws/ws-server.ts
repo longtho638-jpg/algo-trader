@@ -13,7 +13,8 @@ interface WsClient {
 
 /** Inbound message from client */
 interface ClientMessage {
-  action: 'subscribe' | 'unsubscribe';
+  action?: 'subscribe' | 'unsubscribe';
+  type?: 'subscribe' | 'unsubscribe'; // backward compat: old clients send 'type' instead of 'action'
   channel: string;
 }
 
@@ -102,18 +103,19 @@ export function createWsServer(port: number): WsServerHandle {
 
   // --- Subscription message handler ---
   function handleClientMessage(socket: WebSocket, msg: ClientMessage): void {
-    if (!msg.action || !msg.channel) return;
+    const action = msg.action ?? msg.type; // backward compat: accept both 'action' and 'type'
+    if (!action || !msg.channel) return;
     if (!validateChannel(msg.channel)) return;
 
     const ch = msg.channel as WsChannel;
 
-    if (msg.action === 'subscribe') {
+    if (action === 'subscribe') {
       channelManager.subscribe(socket, ch);
       const ack = formatMessage('system', { type: 'subscribed', channel: ch });
       if (socket.readyState === WebSocket.OPEN) {
         socket.send(serializeMessage(ack));
       }
-    } else if (msg.action === 'unsubscribe') {
+    } else if (action === 'unsubscribe') {
       channelManager.unsubscribe(socket, ch);
       const ack = formatMessage('system', { type: 'unsubscribed', channel: ch });
       if (socket.readyState === WebSocket.OPEN) {
