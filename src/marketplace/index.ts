@@ -12,3 +12,5 @@ export {
   handlePublishStrategy,
   handlePurchaseStrategy,
 } from './marketplace-api.js';
+
+export { seedDemoStrategies } from './seed-demo-strategies.js';

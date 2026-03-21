@@ -484,6 +484,88 @@
     </div>
   </div>
 
+  <!-- Revenue Dashboard (Sprint 37) -->
+  <div class="panel" id="revenue-panel">
+    <div class="panel-title">
+      <span>Revenue Dashboard — $1M ARR Target</span>
+      <span id="rev-progress" style="font-size:11px;font-weight:400;color:var(--accent)">—</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">
+      <div style="background:var(--surface2);border-radius:6px;padding:12px;text-align:center">
+        <div class="card-label">MRR</div>
+        <div id="rev-mrr" style="font-size:20px;font-weight:700;margin-top:4px;color:var(--accent)">—</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:6px;padding:12px;text-align:center">
+        <div class="card-label">ARR</div>
+        <div id="rev-arr" style="font-size:20px;font-weight:700;margin-top:4px;color:var(--blue)">—</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:6px;padding:12px;text-align:center">
+        <div class="card-label">Total Users</div>
+        <div id="rev-users" style="font-size:20px;font-weight:700;margin-top:4px">—</div>
+      </div>
+      <div style="background:var(--surface2);border-radius:6px;padding:12px;text-align:center">
+        <div class="card-label">Marketplace Rev</div>
+        <div id="rev-mkt" style="font-size:20px;font-weight:700;margin-top:4px;color:var(--purple)">—</div>
+      </div>
+    </div>
+    <!-- ARR progress bar -->
+    <div style="margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+        <span class="card-label">$1M ARR Progress</span>
+        <span style="font-size:12px;color:var(--text)" id="rev-bar-label">—</span>
+      </div>
+      <div style="background:var(--surface2);border-radius:4px;height:8px;overflow:hidden">
+        <div id="rev-bar" style="height:100%;background:linear-gradient(90deg,var(--accent),var(--blue));border-radius:4px;width:0%;transition:width 0.8s"></div>
+      </div>
+    </div>
+    <!-- Tier breakdown -->
+    <div style="display:flex;gap:12px;margin-bottom:16px">
+      <div style="flex:1;background:var(--surface2);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:22px;font-weight:700" id="rev-free">—</div>
+        <div class="card-label">Free</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--accent)" id="rev-pro">—</div>
+        <div class="card-label">Pro ($29)</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border-radius:6px;padding:10px;text-align:center">
+        <div style="font-size:22px;font-weight:700;color:var(--purple)" id="rev-ent">—</div>
+        <div class="card-label">Enterprise ($199)</div>
+      </div>
+    </div>
+    <!-- Revenue timeline chart -->
+    <div class="card-label" style="margin-bottom:8px">30-Day Revenue Trend</div>
+    <svg id="rev-chart-svg" viewBox="0 0 800 120" preserveAspectRatio="none" style="width:100%;height:120px"></svg>
+  </div>
+
+  <!-- Strategy Marketplace (Sprint 38) -->
+  <div class="panel" id="marketplace-panel">
+    <div class="panel-title">
+      <span>Strategy Marketplace</span>
+      <span style="font-size:11px;font-weight:400;color:var(--muted)">Buy &amp; sell trading strategies</span>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button onclick="filterMarketplace('all')" class="mkt-filter active" id="mkt-f-all" style="background:var(--accent);color:#000;border:none;border-radius:6px;padding:4px 12px;font-size:11px;font-weight:600;cursor:pointer">All</button>
+      <button onclick="filterMarketplace('polymarket')" class="mkt-filter" id="mkt-f-polymarket" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer">Polymarket</button>
+      <button onclick="filterMarketplace('crypto')" class="mkt-filter" id="mkt-f-crypto" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer">Crypto</button>
+      <button onclick="filterMarketplace('other')" class="mkt-filter" id="mkt-f-other" style="background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:4px 12px;font-size:11px;cursor:pointer">Other</button>
+    </div>
+    <div id="mkt-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">
+      <div class="empty-state" style="grid-column:span 3;padding:24px">Loading marketplace...</div>
+    </div>
+  </div>
+
+  <!-- Onboarding Wizard (Sprint 39) -->
+  <div class="panel" id="onboarding-panel">
+    <div class="panel-title">
+      <span>Getting Started</span>
+      <span id="onboard-progress" style="font-size:11px;font-weight:400;color:var(--accent)">—</span>
+    </div>
+    <div id="onboard-steps" style="display:flex;flex-direction:column;gap:8px">
+      <div class="empty-state" style="padding:16px">Loading setup guide...</div>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -1023,14 +1105,140 @@ function handleLogout() {
   if (confirm('Log out of CashClaw?')) window.location.href = '/logout';
 }
 
+// ── Revenue Dashboard (Sprint 37) ────────────────────────────────────────────
+async function fetchRevenue() {
+  try {
+    const res = await fetch('/dashboard/api/revenue');
+    const d = await res.json();
+    $('rev-mrr').textContent = '$' + fmt(d.mrr);
+    $('rev-arr').textContent = '$' + fmt(d.arr);
+    $('rev-users').textContent = d.totalUsers;
+    $('rev-mkt').textContent = '$' + fmt(d.marketplaceRevenue / 100);
+    $('rev-progress').textContent = d.arrProgress + '% of $1M';
+    $('rev-bar-label').textContent = '$' + fmt(d.arr) + ' / $1,000,000';
+    $('rev-bar').style.width = Math.min(100, d.arrProgress) + '%';
+    if (d.tiers) {
+      $('rev-free').textContent = d.tiers.free;
+      $('rev-pro').textContent = d.tiers.pro;
+      $('rev-ent').textContent = d.tiers.enterprise;
+    }
+    if (d.timeline && d.timeline.length > 1) drawRevenueChart(d.timeline);
+  } catch (e) { console.warn('Revenue fetch error:', e); }
+}
+
+function drawRevenueChart(timeline) {
+  const svg = $('rev-chart-svg');
+  svg.innerHTML = '';
+  const W = 800, H = 120, pad = { top: 8, right: 8, bottom: 16, left: 8 };
+  const iw = W - pad.left - pad.right, ih = H - pad.top - pad.bottom;
+  const vals = timeline.map(t => t.revenue);
+  const minV = Math.min(...vals), maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+  const toX = i => pad.left + (i / (vals.length - 1)) * iw;
+  const toY = v => pad.top + ih - ((v - minV) / range) * ih;
+  const ns = 'http://www.w3.org/2000/svg';
+  let pathD = `M ${toX(0)} ${toY(vals[0])}`;
+  for (let i = 1; i < vals.length; i++) pathD += ` L ${toX(i)} ${toY(vals[i])}`;
+  const baseY = pad.top + ih;
+  const fillD = pathD + ` L ${toX(vals.length-1)} ${baseY} L ${toX(0)} ${baseY} Z`;
+  const defs = document.createElementNS(ns, 'defs');
+  defs.innerHTML = '<linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#4fc3f7" stop-opacity="0.3"/><stop offset="100%" stop-color="#4fc3f7" stop-opacity="0.0"/></linearGradient>';
+  svg.appendChild(defs);
+  const fill = document.createElementNS(ns, 'path');
+  fill.setAttribute('d', fillD); fill.setAttribute('fill', 'url(#revGrad)');
+  svg.appendChild(fill);
+  const line = document.createElementNS(ns, 'path');
+  line.setAttribute('d', pathD); line.setAttribute('fill', 'none');
+  line.setAttribute('stroke', '#4fc3f7'); line.setAttribute('stroke-width', '2');
+  svg.appendChild(line);
+}
+
+// ── Strategy Marketplace (Sprint 38) ─────────────────────────────────────────
+let mktData = [];
+let mktFilter = 'all';
+
+async function fetchMarketplace() {
+  try {
+    const res = await fetch('/dashboard/api/marketplace');
+    const d = await res.json();
+    mktData = d.items || [];
+    renderMarketplace();
+  } catch (e) { console.warn('Marketplace fetch error:', e); }
+}
+
+function filterMarketplace(cat) {
+  mktFilter = cat;
+  document.querySelectorAll('.mkt-filter').forEach(b => {
+    b.style.background = 'var(--surface2)'; b.style.color = 'var(--text)';
+  });
+  const btn = $('mkt-f-' + cat);
+  if (btn) { btn.style.background = 'var(--accent)'; btn.style.color = '#000'; }
+  renderMarketplace();
+}
+
+function renderMarketplace() {
+  const grid = $('mkt-grid');
+  const items = mktFilter === 'all' ? mktData : mktData.filter(s => s.category === mktFilter);
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty-state" style="grid-column:span 3;padding:24px">No strategies found</div>';
+    return;
+  }
+  grid.innerHTML = items.map(s => `
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:8px">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div style="font-weight:600;font-size:13px">${s.name}</div>
+        <span style="font-size:11px;padding:2px 6px;border-radius:4px;background:var(--border);color:var(--muted)">${s.category}</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);line-height:1.4">${s.description}</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:auto">
+        <div style="display:flex;gap:10px;font-size:11px;color:var(--muted)">
+          <span>by ${s.author}</span>
+          <span>${s.downloads} sales</span>
+          <span>${s.rating}/5</span>
+        </div>
+        <button style="background:${s.priceCents > 0 ? 'var(--accent)' : 'var(--blue)'};color:#000;border:none;border-radius:4px;padding:3px 10px;font-size:11px;font-weight:600;cursor:pointer">
+          ${s.priceCents > 0 ? '$' + (s.priceCents/100).toFixed(0) : 'Free'}
+        </button>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Onboarding Wizard (Sprint 39) ────────────────────────────────────────────
+async function fetchOnboarding() {
+  try {
+    const res = await fetch('/dashboard/api/onboarding');
+    const d = await res.json();
+    const steps = d.steps || [];
+    const done = steps.filter(s => s.done).length;
+    $('onboard-progress').textContent = done + '/' + steps.length + ' complete';
+    const container = $('onboard-steps');
+    container.innerHTML = steps.map(s => `
+      <div style="display:flex;align-items:center;gap:12px;padding:10px 14px;background:var(--surface2);border:1px solid ${s.done ? 'var(--accent)' : 'var(--border)'};border-radius:8px;${s.done ? 'opacity:0.7' : ''}">
+        <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;background:${s.done ? 'var(--accent)' : 'var(--border)'};color:${s.done ? '#000' : 'var(--text)'}">
+          ${s.done ? '&#10003;' : s.step}
+        </div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:12px;${s.done ? 'text-decoration:line-through' : ''}">${s.title}</div>
+          <div style="font-size:11px;color:var(--muted)">${s.description}</div>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) { console.warn('Onboarding fetch error:', e); }
+}
+
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 (function init() {
   fetchAll();
   fetchOpenClaw();
   fetchLeaderboard();
+  fetchRevenue();
+  fetchMarketplace();
+  fetchOnboarding();
   setInterval(fetchAll, 10000);
   setInterval(fetchOpenClaw, 30000);
-  setInterval(fetchLeaderboard, 60000); // Leaderboard refresh every 60s
+  setInterval(fetchLeaderboard, 60000);
+  setInterval(fetchRevenue, 60000);
   connectWs();
 })();
 </script>
