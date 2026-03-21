@@ -17,6 +17,12 @@ const FEATURE_GATES: Array<{ prefix: string; feature: TierFeature }> = [
   { prefix: '/api/webhooks/tradingview/', feature: 'webhook' },
   { prefix: '/api/tv/', feature: 'webhook' },
   { prefix: '/api/pipeline/optimize', feature: 'optimizer' },
+  { prefix: '/api/openclaw/analyze', feature: 'ai-analyze' },
+  { prefix: '/api/openclaw/report', feature: 'ai-analyze' },
+  { prefix: '/api/openclaw/status', feature: 'ai-analyze' },
+  { prefix: '/api/openclaw/tune', feature: 'ai-tune' },
+  { prefix: '/api/openclaw/history', feature: 'ai-tune' },
+  { prefix: '/api/openclaw/auto-tune', feature: 'ai-auto-tune' },
 ];
 
 /**

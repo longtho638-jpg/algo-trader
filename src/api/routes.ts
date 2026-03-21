@@ -21,6 +21,11 @@ import { handleSignalRoutes } from './signal-routes.js';
 import { handleDocsRoutes } from './docs-routes.js';
 import { handleOnboardingRoutes } from './onboarding-routes.js';
 import { handlePolymarketStatsRoutes } from './polymarket-stats-routes.js';
+import { handleOpenClawRequest, type OpenClawDeps } from '../openclaw/api-endpoints.js';
+
+// ─── OpenClaw deps setter (called from app.ts after bootstrap) ───────────────
+let _openClawDeps: OpenClawDeps | null = null;
+export function setOpenClawDeps(deps: OpenClawDeps): void { _openClawDeps = deps; }
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -197,6 +202,11 @@ export async function handleRequest(
     } else if (pathname.startsWith('/api/polymarket/')) {
       const handled = await handlePolymarketStatsRoutes(req, res, pathname, method);
       if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/openclaw/')) {
+      if (!_openClawDeps) { sendJson(res, 503, { error: 'OpenClaw AI not configured' }); return; }
+      // Remap /api/openclaw/* → /openclaw/* for internal handler
+      const subPath = pathname.replace('/api/openclaw/', '/openclaw/');
+      await handleOpenClawRequest(req, res, _openClawDeps, subPath);
     } else {
       sendNotFound(res);
     }

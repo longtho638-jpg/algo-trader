@@ -29,6 +29,8 @@ import type { TradeResult } from './core/types.js';
 import type { WsEventWiring } from './wiring/ws-event-wiring.js';
 import type { ServersBundle } from './wiring/servers-wiring.js';
 import type { NotificationsBundle } from './wiring/notifications-wiring.js';
+import { wireOpenClaw, type OpenClawBundle } from './wiring/openclaw-wiring.js';
+import { setOpenClawDeps } from './api/routes.js';
 
 // ── Ports ──────────────────────────────────────────────────────────────────
 
@@ -53,6 +55,7 @@ let _notifier: NotificationRouter | null = null;
 let _notifications: NotificationsBundle | null = null;
 let _orchestrator: StrategyOrchestrator | null = null;
 let _wsWiring: WsEventWiring | null = null;
+let _openClaw: OpenClawBundle | null = null;
 let _stopping = false;
 
 // ── Banner ─────────────────────────────────────────────────────────────────
@@ -179,26 +182,37 @@ export async function startApp(): Promise<void> {
   setSignalFeed(mlFeed);
   logger.info('ML signal feed wired', 'App');
 
-  // 14. Notifications: Telegram bot + trade alerts
+  // 14. OpenClaw AI subsystem — trade observer + AI router + decision logger
+  _openClaw = wireOpenClaw(eventBus);
+  setOpenClawDeps(_openClaw.deps);
+  logger.info('OpenClaw AI subsystem ready', 'App', {
+    gateway: _openClaw.deps.controller ? 'configured' : 'none',
+  });
+
+  // 15. Notifications: Telegram bot + trade alerts
   _notifications = startNotifications(eventBus, _engine);
   _notifier = _notifications.router;
   logger.info('Notification router initialised', 'App', { channels: _notifier.enabledChannels() });
 
-  // 15. Scheduler + built-in jobs
+  // 16. Scheduler + built-in jobs + OpenClaw auto-tuning
   _scheduler = new JobScheduler();
   startScheduler(_scheduler);
+  if (_openClaw) {
+    _scheduler.schedule('openclawAutoTune', 'every 1h', _openClaw.autoTuningHandler);
+    logger.info('OpenClaw auto-tuning job registered (every 1h)', 'App');
+  }
 
-  // 16. Recovery manager
+  // 17. Recovery manager
   _recovery = new RecoveryManager();
   startRecoveryManager(_recovery, AUTO_SAVE_MS, {
     strategies: config.strategies,
     getOpenPositions: () => db.getOpenPositions(),
   });
 
-  // 17. Process signal handlers (SIGINT/SIGTERM/uncaughtException/unhandledRejection)
+  // 18. Process signal handlers (SIGINT/SIGTERM/uncaughtException/unhandledRejection)
   wireProcessSignals({ eventBus, notifier: _notifier, stopApp });
 
-  // 18. Banner
+  // 19. Banner
   printBanner(config.env, Object.keys(config.exchanges).join(', ') || 'none');
   logger.info('Platform ready', 'App', { version: APP_VERSION });
 }

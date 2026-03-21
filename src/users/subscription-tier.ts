@@ -14,7 +14,7 @@ export interface TierLimits {
   features: TierFeature[];
 }
 
-export type TierFeature = 'backtesting' | 'optimizer' | 'webhook' | 'multi-market';
+export type TierFeature = 'backtesting' | 'optimizer' | 'webhook' | 'multi-market' | 'ai-analyze' | 'ai-tune' | 'ai-auto-tune';
 
 /** Tier configuration map */
 export const TIER_CONFIG: Record<Tier, TierLimits> = {
@@ -28,13 +28,13 @@ export const TIER_CONFIG: Record<Tier, TierLimits> = {
     maxStrategies: 3,
     maxCapital: 50_000,
     apiRateLimit: 60,
-    features: ['backtesting', 'multi-market'],
+    features: ['backtesting', 'multi-market', 'ai-analyze'],
   },
   enterprise: {
     maxStrategies: Infinity,
     maxCapital: Infinity,
     apiRateLimit: 300,
-    features: ['backtesting', 'optimizer', 'webhook', 'multi-market'],
+    features: ['backtesting', 'optimizer', 'webhook', 'multi-market', 'ai-analyze', 'ai-tune', 'ai-auto-tune'],
   },
 };
 

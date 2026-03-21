@@ -5,6 +5,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { AiRouter } from './ai-router.js';
 import { loadOpenClawConfig } from './openclaw-config.js';
+import { isAutoTuningEnabled, setAutoTuningEnabled } from './auto-tuning-job.js';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -175,6 +176,26 @@ export async function handleOpenClawRequest(
   if (pathname === '/openclaw/history') {
     if (method !== 'GET') { sendError(res, 405, 'Method Not Allowed'); return; }
     handleHistory(req, res, deps);
+    return;
+  }
+  if (pathname === '/openclaw/auto-tune') {
+    if (method === 'GET') {
+      sendJson(res, 200, { ok: true, enabled: isAutoTuningEnabled() });
+      return;
+    }
+    if (method === 'POST') {
+      let body: { enabled?: boolean };
+      try { body = await readJsonBody<{ enabled?: boolean }>(req); }
+      catch { sendError(res, 400, 'Invalid JSON body'); return; }
+      if (typeof body.enabled !== 'boolean') {
+        sendError(res, 400, 'Missing required field: enabled (boolean)');
+        return;
+      }
+      setAutoTuningEnabled(body.enabled);
+      sendJson(res, 200, { ok: true, enabled: body.enabled });
+      return;
+    }
+    sendError(res, 405, 'Method Not Allowed');
     return;
   }
 
