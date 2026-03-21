@@ -1,9 +1,14 @@
 // Market data feeds: orderbook, OHLCV candles, funding rates, cross-exchange price comparison
-// Uses polling for compatibility across all CCXT exchanges
+// Uses polling for compatibility across all CCXT exchanges.
+// Rate limiting: CCXT built-in throttle (enableRateLimit=true) handles per-exchange limits.
+// Batch fetches add a small inter-request delay to avoid burst violations.
 
 import { logger } from '../core/logger.js';
-import { sleep } from '../core/utils.js';
+import { sleep, retry } from '../core/utils.js';
 import type { ExchangeClient, Orderbook, SupportedExchange } from './exchange-client.js';
+
+/** Minimum delay between consecutive requests in a batch fetch (ms) */
+const BATCH_REQUEST_DELAY_MS = 100;
 
 export interface OHLCVCandle {
   timestamp: number;
@@ -43,14 +48,14 @@ export interface PriceSpread {
 export class MarketData {
   constructor(private client: ExchangeClient) {}
 
-  /** Fetch orderbook snapshot up to given depth */
+  /** Fetch orderbook snapshot up to given depth — retries once on transient error */
   async getOrderbook(
     exchange: SupportedExchange,
     symbol: string,
     depth: number = 20,
   ): Promise<Orderbook> {
     const ex = this.client.getInstance(exchange);
-    const raw = await ex.fetchOrderBook(symbol, depth);
+    const raw = await retry(() => ex.fetchOrderBook(symbol, depth), 2, 300);
     return {
       symbol,
       bids: raw.bids.slice(0, depth).map(entry => [String(entry[0] ?? 0), String(entry[1] ?? 0)] as [string, string]),
@@ -59,7 +64,10 @@ export class MarketData {
     };
   }
 
-  /** Fetch OHLCV candles — primary use: backtesting data */
+  /**
+   * Fetch OHLCV candles — primary use: backtesting data.
+   * CCXT rate limiting is enforced via enableRateLimit on the exchange instance.
+   */
   async getOHLCV(
     exchange: SupportedExchange,
     symbol: string,
@@ -67,7 +75,7 @@ export class MarketData {
     limit: number = 100,
   ): Promise<OHLCVCandle[]> {
     const ex = this.client.getInstance(exchange);
-    const raw = await ex.fetchOHLCV(symbol, timeframe, undefined, limit);
+    const raw = await retry(() => ex.fetchOHLCV(symbol, timeframe, undefined, limit), 2, 300);
     // OHLCV tuple: [timestamp, open, high, low, close, volume]
     type OHLCVTuple = [number, number, number, number, number, number];
     return (raw as OHLCVTuple[]).map(candle => ({
@@ -112,13 +120,19 @@ export class MarketData {
     }
   }
 
-  /** Compare prices for a symbol across multiple exchanges */
+  /**
+   * Compare prices for a symbol across multiple exchanges.
+   * Adds a small inter-request delay (BATCH_REQUEST_DELAY_MS) between sequential
+   * fetches to avoid burst violations on exchanges with strict per-second limits.
+   */
   async getCrossExchangePrices(
     exchanges: SupportedExchange[],
     symbol: string,
   ): Promise<CrossExchangePrice[]> {
     const results = await Promise.allSettled(
-      exchanges.map(async ex => {
+      exchanges.map(async (ex, idx) => {
+        // Stagger requests slightly to prevent burst
+        if (idx > 0) await sleep(idx * BATCH_REQUEST_DELAY_MS);
         const ticker = await this.client.getTicker(ex, symbol);
         const bidNum = parseFloat(ticker.bid);
         const askNum = parseFloat(ticker.ask);

@@ -1,12 +1,14 @@
 // Polymarket CLOB REST API client with ECDSA signing
-// Base URL: https://clob.polymarket.com
+// Paper mode: simulated responses via clob-paper-simulator
+// Live mode: real API + POLYMARKET_API_KEY / API_SECRET / PASSPHRASE env vars
 import { Wallet } from 'ethers';
-import type { MarketInfo, Order, OrderSide } from '../core/types.js';
+import type { MarketInfo, Order } from '../core/types.js';
 import { logger } from '../core/logger.js';
+import { paperMarkets, paperOrderBook, paperPrice } from './clob-paper-simulator.js';
 
 const CLOB_BASE = 'https://clob.polymarket.com';
 
-// --- Raw API response shapes ---
+// ── Raw API response shapes ──────────────────────────────────────────────────
 
 export interface RawMarket {
   condition_id: string;
@@ -38,6 +40,8 @@ export interface RawPrice {
   ask: string;
 }
 
+export type OrderSide = 'buy' | 'sell';
+
 export interface OrderArgs {
   tokenId: string;
   price: string;
@@ -52,108 +56,144 @@ export interface RawOrderResponse {
   error_msg?: string;
 }
 
-// --- ClobClient ---
+export interface ClobClientConfig {
+  privateKey?: string;
+  chainId?: number;
+  apiKey?: string;
+  apiSecret?: string;
+  passphrase?: string;
+  paperMode?: boolean;
+}
+
+// ── ClobClient ───────────────────────────────────────────────────────────────
 
 export class ClobClient {
   private wallet: Wallet;
   private chainId: number;
+  private apiKey: string;
+  private passphrase: string;
+  private paperMode: boolean;
 
-  constructor(privateKey: string, chainId: number = 137) {
-    this.wallet = new Wallet(privateKey);
-    this.chainId = chainId;
+  constructor(privateKeyOrConfig: string | ClobClientConfig = '', chainId = 137) {
+    if (typeof privateKeyOrConfig === 'string') {
+      const pk = privateKeyOrConfig || '0x' + '1'.repeat(64);
+      this.wallet     = new Wallet(pk);
+      this.chainId    = chainId;
+      this.apiKey     = process.env['POLYMARKET_API_KEY'] ?? '';
+      this.passphrase = process.env['POLYMARKET_PASSPHRASE'] ?? '';
+      this.paperMode  = !privateKeyOrConfig || privateKeyOrConfig === 'paper-key';
+    } else {
+      const cfg = privateKeyOrConfig;
+      this.wallet     = new Wallet(cfg.privateKey || '0x' + '1'.repeat(64));
+      this.chainId    = cfg.chainId ?? 137;
+      this.apiKey     = cfg.apiKey     ?? process.env['POLYMARKET_API_KEY']     ?? '';
+      this.passphrase = cfg.passphrase ?? process.env['POLYMARKET_PASSPHRASE']  ?? '';
+      this.paperMode  = cfg.paperMode ?? false;
+    }
   }
 
-  private async request<T>(path: string, options?: RequestInit): Promise<T> {
-    const url = `${CLOB_BASE}${path}`;
-    const res = await fetch(url, {
-      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+  get isPaperMode(): boolean { return this.paperMode; }
+
+  // ── HTTP layer ────────────────────────────────────────────────────────────
+
+  private async buildAuthHeaders(method: string, path: string, body = ''): Promise<Record<string, string>> {
+    const ts  = Math.floor(Date.now() / 1000).toString();
+    const sig = await this.wallet.signMessage(`${ts}${method}${path}${body}`);
+    return {
+      'POLY-ADDRESS':   this.wallet.address,
+      'POLY-SIGNATURE': sig,
+      'POLY-TIMESTAMP': ts,
+      ...(this.apiKey ? { 'POLY-API-KEY': this.apiKey, 'POLY-PASSPHRASE': this.passphrase } : {}),
+    };
+  }
+
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
+    const method  = (options.method ?? 'GET').toUpperCase();
+    const bodyStr = options.body ? String(options.body) : '';
+    const auth    = await this.buildAuthHeaders(method, path, bodyStr);
+    const res = await fetch(`${CLOB_BASE}${path}`, {
       ...options,
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...auth },
     });
-    if (!res.ok) {
-      const body = await res.text();
-      throw new Error(`CLOB API ${res.status}: ${body}`);
-    }
+    if (!res.ok) throw new Error(`CLOB API ${res.status}: ${await res.text()}`);
     return res.json() as Promise<T>;
   }
 
-  private async signMessage(message: string): Promise<string> {
-    return this.wallet.signMessage(message);
-  }
+  // ── Public API ────────────────────────────────────────────────────────────
 
-  private buildAuthHeader(body: string): string {
-    // Polymarket uses timestamp-based nonce in L1 auth header
-    const ts = Math.floor(Date.now() / 1000).toString();
-    return `${this.wallet.address}:${ts}`;
-  }
-
-  /** GET /markets - list active prediction markets */
+  /** GET /markets — list active prediction markets */
   async getMarkets(): Promise<MarketInfo[]> {
-    const raw = await this.request<RawMarket[]>('/markets');
-    return raw
-      .filter(m => m.active)
-      .map(m => ({
-        id: m.condition_id,
-        symbol: m.description.substring(0, 60),
-        type: 'polymarket' as const,
-        exchange: 'polymarket',
-        baseCurrency: 'YES',
-        quoteCurrency: 'USDC',
-        active: m.active,
+    if (this.paperMode) {
+      return paperMarkets().map(m => ({
+        id: m.condition_id, symbol: m.description.substring(0, 60),
+        type: 'polymarket' as const, exchange: 'polymarket',
+        baseCurrency: 'YES', quoteCurrency: 'USDC', active: m.active,
       }));
+    }
+    const raw = await this.request<{ data: RawMarket[] } | RawMarket[]>('/markets');
+    const list = Array.isArray(raw) ? raw : (raw as { data: RawMarket[] }).data;
+    return list.filter(m => m.active).map(m => ({
+      id: m.condition_id, symbol: m.description.substring(0, 60),
+      type: 'polymarket' as const, exchange: 'polymarket',
+      baseCurrency: 'YES', quoteCurrency: 'USDC', active: m.active,
+    }));
   }
 
-  /** GET /order_book/{token_id} - current orderbook snapshot */
+  /** GET /book?token_id={id} — orderbook snapshot */
   async getOrderBook(tokenId: string): Promise<RawOrderBook> {
-    return this.request<RawOrderBook>(`/order_book/${tokenId}`);
+    if (this.paperMode) return paperOrderBook(tokenId);
+    return this.request<RawOrderBook>(`/book?token_id=${tokenId}`);
   }
 
-  /** GET /prices/{token_id} - mid/bid/ask */
+  /** GET /price?token_id={id} — mid/bid/ask */
   async getPrice(tokenId: string): Promise<RawPrice> {
-    return this.request<RawPrice>(`/prices/${tokenId}`);
+    if (this.paperMode) return paperPrice(tokenId);
+    return this.request<RawPrice>(`/price?token_id=${tokenId}`);
   }
 
-  /** POST /order - submit ECDSA-signed limit order */
+  /** POST /order — ECDSA-signed limit order */
   async postOrder(args: OrderArgs): Promise<Order> {
-    const nonce = Date.now();
+    if (this.paperMode) {
+      logger.debug('Paper: simulated order', 'ClobClient', { tokenId: args.tokenId, side: args.side });
+      return {
+        id: `paper-order-${Date.now()}`,
+        marketId: args.tokenId, side: args.side,
+        price: args.price, size: args.size,
+        status: 'open', type: 'limit', createdAt: Date.now(),
+      };
+    }
+    const nonce   = Date.now();
     const payload = {
-      token_id: args.tokenId,
-      price: args.price,
-      size: args.size,
+      token_id: args.tokenId, price: args.price, size: args.size,
       side: args.side === 'buy' ? 'BUY' : 'SELL',
-      type: args.orderType ?? 'GTC',
-      nonce,
-      chain_id: this.chainId,
+      type: args.orderType ?? 'GTC', nonce, chain_id: this.chainId,
     };
-    const msgHash = JSON.stringify(payload);
-    const signature = await this.signMessage(msgHash);
+    const signature = await this.wallet.signMessage(JSON.stringify(payload));
+    const body      = JSON.stringify({ ...payload, signature });
 
-    const body = { ...payload, signature };
     logger.debug('Submitting order', 'ClobClient', { tokenId: args.tokenId, side: args.side });
-
-    const raw = await this.request<RawOrderResponse>('/order', {
-      method: 'POST',
-      body: JSON.stringify(body),
-    });
-
+    const raw = await this.request<RawOrderResponse>('/order', { method: 'POST', body });
     if (raw.error_msg) throw new Error(`Order rejected: ${raw.error_msg}`);
 
     return {
-      id: raw.order_id,
-      marketId: args.tokenId,
-      side: args.side,
-      price: args.price,
-      size: args.size,
-      status: 'open',
-      type: 'limit',
-      createdAt: Date.now(),
+      id: raw.order_id, marketId: args.tokenId, side: args.side,
+      price: args.price, size: args.size,
+      status: 'open', type: 'limit', createdAt: Date.now(),
     };
   }
 
-  /** DELETE /order/{order_id} - cancel open order */
+  /** Alias: placeLimitOrder → postOrder */
+  async placeLimitOrder(args: OrderArgs): Promise<Order> {
+    return this.postOrder(args);
+  }
+
+  /** DELETE /order/{id} — cancel open order */
   async cancelOrder(orderId: string): Promise<boolean> {
-    const result = await this.request<{ success: boolean }>(`/order/${orderId}`, {
-      method: 'DELETE',
-    });
+    if (this.paperMode) {
+      logger.debug('Paper: simulated cancel', 'ClobClient', { orderId });
+      return true;
+    }
+    const result = await this.request<{ success: boolean }>(`/order/${orderId}`, { method: 'DELETE' });
     logger.info('Order cancelled', 'ClobClient', { orderId });
     return result.success;
   }

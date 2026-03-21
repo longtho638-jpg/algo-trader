@@ -1,11 +1,19 @@
 // Unified CEX client wrapper using CCXT
-// Supports Binance, Bybit, OKX with unified API surface
+// Supports Binance, Bybit, OKX with paper/live mode switching
 
 import * as ccxt from 'ccxt';
 import type { ExchangeCredentials, MarketInfo } from '../core/types.js';
 import { logger } from '../core/logger.js';
 
 export type SupportedExchange = 'binance' | 'bybit' | 'okx';
+
+/** Public config passed by callers — extends credentials with mode flags */
+export interface ExchangeConfig extends ExchangeCredentials {
+  /** Explicitly force paper mode regardless of LIVE_TRADING env var */
+  paperMode?: boolean;
+  /** CCXT sandbox/testnet mode */
+  sandbox?: boolean;
+}
 
 export interface Ticker {
   symbol: string;
@@ -30,7 +38,7 @@ export interface Balance {
   total: string;
 }
 
-/** Config passed to CCXT constructor */
+/** Internal CCXT constructor config */
 interface CcxtConfig {
   apiKey?: string;
   secret?: string;
@@ -39,32 +47,70 @@ interface CcxtConfig {
   [key: string]: unknown;
 }
 
-/** Factory: create CCXT exchange instance from credentials */
-function createExchangeInstance(name: SupportedExchange, creds: ExchangeCredentials): ccxt.Exchange {
-  const config: CcxtConfig = {
-    apiKey: creds.apiKey,
-    secret: creds.apiSecret,
-    enableRateLimit: true,
-    ...(creds.passphrase ? { password: creds.passphrase } : {}),
-  };
-
-  switch (name) {
-    case 'binance': return new ccxt.binance(config);
-    case 'bybit':   return new ccxt.bybit(config);
-    case 'okx':     return new ccxt.okx(config);
-    default:        throw new Error(`Unsupported exchange: ${name}`);
-  }
+/**
+ * Returns true when live trading is explicitly enabled.
+ * Defaults to paper mode for safety.
+ */
+export function isLiveTradingEnabled(): boolean {
+  return process.env['LIVE_TRADING'] === 'true';
 }
 
-/** Multi-exchange manager — holds live CCXT instances */
+/**
+ * Factory: create a configured CCXT exchange instance.
+ * Use this when you need the raw CCXT object (e.g. for direct API calls).
+ */
+export function createExchange(exchangeId: SupportedExchange, config: ExchangeConfig): ccxt.Exchange {
+  const ccxtConfig: CcxtConfig = {
+    apiKey: config.apiKey,
+    secret: config.apiSecret,
+    enableRateLimit: true,
+    ...(config.passphrase ? { password: config.passphrase } : {}),
+  };
+
+  let instance: ccxt.Exchange;
+  switch (exchangeId) {
+    case 'binance': instance = new ccxt.binance(ccxtConfig); break;
+    case 'bybit':   instance = new ccxt.bybit(ccxtConfig);   break;
+    case 'okx':     instance = new ccxt.okx(ccxtConfig);     break;
+    default:        throw new Error(`Unsupported exchange: ${exchangeId}`);
+  }
+
+  if (config.sandbox) {
+    instance.setSandboxMode(true);
+    logger.info('Exchange sandbox mode enabled', 'createExchange', { exchangeId });
+  }
+
+  return instance;
+}
+
+/** Multi-exchange manager — holds CCXT instances, enforces paper/live mode */
 export class ExchangeClient {
   private exchanges: Map<SupportedExchange, ccxt.Exchange> = new Map();
+  /** Track which exchanges are in paper mode */
+  private paperMode: Map<SupportedExchange, boolean> = new Map();
 
-  /** Register an exchange from credentials config */
-  connect(name: SupportedExchange, creds: ExchangeCredentials): void {
-    const instance = createExchangeInstance(name, creds);
+  /**
+   * Register an exchange from config.
+   * Paper mode is enabled when:
+   *   - config.paperMode === true, OR
+   *   - LIVE_TRADING env var is not 'true'
+   */
+  connect(name: SupportedExchange, config: ExchangeConfig): void {
+    const paper = config.paperMode === true || !isLiveTradingEnabled();
+    const instance = createExchange(name, config);
+
     this.exchanges.set(name, instance);
-    logger.info('Exchange connected', 'ExchangeClient', { exchange: name });
+    this.paperMode.set(name, paper);
+
+    logger.info('Exchange connected', 'ExchangeClient', {
+      exchange: name,
+      mode: paper ? 'paper' : 'live',
+    });
+  }
+
+  /** Check if exchange is running in paper trading mode */
+  isPaperMode(name: SupportedExchange): boolean {
+    return this.paperMode.get(name) ?? true;  // default to paper if unknown
   }
 
   /** Get raw CCXT instance (for advanced usage) */
@@ -149,5 +195,6 @@ export class ExchangeClient {
       }
     }
     this.exchanges.clear();
+    this.paperMode.clear();
   }
 }

@@ -1,69 +1,83 @@
-// Order execution via CCXT with retry logic and audit logging
-// Supports limit/market orders, cancellation, spot and futures
+// Order execution via CCXT with paper/live mode, retry logic, and order tracking.
+// Pure helpers (types, mapStatus, mapOrder, simulatePaperFill) live in order-executor-helpers.ts.
+// Paper mode: simulated fills with realistic slippage (0.05%).
+// Live mode: gated by LIVE_TRADING=true env var (set on ExchangeClient.connect).
 
-import type * as ccxt from 'ccxt';
-import type { Order, OrderSide, TradeResult, StrategyName } from '../core/types.js';
+import type { TradeResult } from '../core/types.js';
 import { retry, generateId } from '../core/utils.js';
 import { logger } from '../core/logger.js';
 import type { ExchangeClient, SupportedExchange } from './exchange-client.js';
+import {
+  mapStatus,
+  mapOrder,
+  simulatePaperFill,
+  type OrderType,
+  type PlaceOrderParams,
+  type TrackedOrder,
+} from './order-executor-helpers.js';
 
-export interface PlaceOrderParams {
-  exchange: SupportedExchange;
-  symbol: string;
-  side: OrderSide;
-  amount: number;
-  price?: number;      // undefined = market order
-  strategy: StrategyName;
-  /** 'swap' for perpetual futures, 'spot' default */
-  marketType?: 'spot' | 'swap';
-}
-
-/** Map CCXT order status string to core OrderStatus */
-function mapStatus(ccxtStatus: string): Order['status'] {
-  switch (ccxtStatus) {
-    case 'open':        return 'open';
-    case 'closed':      return 'filled';
-    case 'canceled':
-    case 'cancelled':   return 'cancelled';
-    case 'rejected':    return 'rejected';
-    case 'expired':     return 'cancelled';
-    default:            return 'pending';
-  }
-}
-
-/** Map a raw CCXT Order object to core Order type */
-function mapOrder(raw: ccxt.Order, fallback: { side: OrderSide; price: number; amount: number }): Order {
-  return {
-    id: raw.id ?? generateId('ord'),
-    marketId: raw.symbol,
-    side: fallback.side,
-    price: String(raw.price ?? fallback.price),
-    size: String(raw.amount ?? fallback.amount),
-    status: mapStatus(raw.status ?? 'open'),
-    type: (raw.type === 'market' ? 'market' : 'limit') as Order['type'],
-    createdAt: raw.timestamp ?? Date.now(),
-    ...(raw.lastTradeTimestamp ? { filledAt: raw.lastTradeTimestamp } : {}),
-  };
-}
+export type { OrderType, PlaceOrderParams, TrackedOrder } from './order-executor-helpers.js';
 
 export class OrderExecutor {
+  /** In-memory order ledger for tracking — keyed by orderId */
+  private orders: Map<string, TrackedOrder> = new Map();
+
   constructor(private client: ExchangeClient) {}
 
-  /** Place a limit order; retries up to 3x on transient failures */
-  async placeLimitOrder(params: PlaceOrderParams & { price: number }): Promise<Order> {
+  /**
+   * Unified entry point: routes to paper simulation or live CCXT execution
+   * based on the exchange's mode (set at connect time).
+   */
+  async placeOrder(params: PlaceOrderParams): Promise<TrackedOrder> {
+    const orderType = params.type ?? (params.price !== undefined ? 'limit' : 'market');
+
+    if (this.client.isPaperMode(params.exchange)) {
+      return this.paperFill(params, orderType);
+    }
+
+    switch (orderType) {
+      case 'limit':     return this.placeLimitOrder(params as PlaceOrderParams & { price: number });
+      case 'stop-loss': return this.placeStopLossOrder(params as PlaceOrderParams & { stopPrice: number });
+      default:          return this.placeMarketOrder(params);
+    }
+  }
+
+  /** Paper: simulate fill using reference price + slippage */
+  private async paperFill(params: PlaceOrderParams, orderType: OrderType): Promise<TrackedOrder> {
+    let referencePrice = params.price ?? params.stopPrice ?? 0;
+
+    if (referencePrice === 0) {
+      try {
+        const ticker = await this.client.getTicker(params.exchange, params.symbol);
+        referencePrice = parseFloat(ticker.last);
+      } catch {
+        logger.warn('Paper fill: could not fetch ticker, using price=1', 'OrderExecutor', {
+          symbol: params.symbol,
+        });
+        referencePrice = 1;
+      }
+    }
+
+    const order = simulatePaperFill({ ...params, type: orderType }, referencePrice);
+    this.orders.set(order.id, order);
+
+    logger.info('Paper order filled', 'OrderExecutor', {
+      id: order.id, symbol: params.symbol, side: params.side,
+      type: orderType, price: order.price, slippage: order.slippage,
+    });
+    return order;
+  }
+
+  /** Live: limit order with 3x retry. Public — strategies may call directly. */
+  async placeLimitOrder(params: PlaceOrderParams & { price: number }): Promise<TrackedOrder> {
     const { exchange, symbol, side, amount, price, strategy, marketType } = params;
     const ex = this.client.getInstance(exchange);
+    const extra: Record<string, unknown> = {};
+    if (marketType === 'swap') extra['type'] = 'swap';
 
-    const extraParams: Record<string, unknown> = {};
-    if (marketType === 'swap') extraParams['type'] = 'swap';
-
-    const raw = await retry(
-      () => ex.createLimitOrder(symbol, side, amount, price, extraParams),
-      3,
-      500,
-    );
-
-    const order = mapOrder(raw, { side, price, amount });
+    const raw = await retry(() => ex.createLimitOrder(symbol, side, amount, price, extra), 3, 500);
+    const order = mapOrder(raw, { side, price, amount, exchange, strategy });
+    this.orders.set(order.id, order);
 
     logger.info('Limit order placed', 'OrderExecutor', {
       exchange, symbol, side, price: order.price, size: order.size, strategy,
@@ -71,23 +85,18 @@ export class OrderExecutor {
     return order;
   }
 
-  /** Place a market order; retries up to 3x */
-  async placeMarketOrder(params: PlaceOrderParams): Promise<Order> {
+  /** Live: market order with 3x retry. Public — strategies may call directly. */
+  async placeMarketOrder(params: PlaceOrderParams): Promise<TrackedOrder> {
     const { exchange, symbol, side, amount, strategy, marketType } = params;
     const ex = this.client.getInstance(exchange);
+    const extra: Record<string, unknown> = {};
+    if (marketType === 'swap') extra['type'] = 'swap';
 
-    const extraParams: Record<string, unknown> = {};
-    if (marketType === 'swap') extraParams['type'] = 'swap';
-
-    const raw = await retry(
-      () => ex.createMarketOrder(symbol, side, amount, undefined, extraParams),
-      3,
-      500,
-    );
-
-    // Market orders fill immediately — use average fill price
+    const raw = await retry(() => ex.createMarketOrder(symbol, side, amount, undefined, extra), 3, 500);
     const fillPrice = raw.average ?? raw.price ?? 0;
-    const order: Order = {
+    const now = Date.now();
+
+    const order: TrackedOrder = {
       id: raw.id ?? generateId('ord'),
       marketId: raw.symbol,
       side,
@@ -95,37 +104,77 @@ export class OrderExecutor {
       size: String(raw.filled ?? amount),
       status: mapStatus(raw.status ?? 'closed'),
       type: 'market',
-      createdAt: raw.timestamp ?? Date.now(),
-      filledAt: raw.lastTradeTimestamp ?? Date.now(),
+      createdAt: raw.timestamp ?? now,
+      filledAt: raw.lastTradeTimestamp ?? now,
+      exchange,
+      strategy,
+      paperFill: false,
     };
 
+    this.orders.set(order.id, order);
     logger.info('Market order placed', 'OrderExecutor', {
       exchange, symbol, side, size: order.size, strategy,
     });
     return order;
   }
 
-  /** Cancel an open order by ID */
-  async cancelOrder(
-    exchange: SupportedExchange,
-    orderId: string,
-    symbol: string,
-  ): Promise<boolean> {
+  /** Live: stop-loss order — uses exchange native stop order type */
+  private async placeStopLossOrder(params: PlaceOrderParams & { stopPrice: number }): Promise<TrackedOrder> {
+    const { exchange, symbol, side, amount, stopPrice, strategy } = params;
+    const ex = this.client.getInstance(exchange);
+    const limitPrice = params.price ?? stopPrice;
+
+    const raw = await retry(
+      () => ex.createOrder(symbol, 'stop', side, amount, limitPrice, {
+        stopPrice,
+        triggerPrice: stopPrice,
+      }),
+      3,
+      500,
+    );
+
+    const order = mapOrder(raw, { side, price: limitPrice, amount, exchange, strategy });
+    this.orders.set(order.id, order);
+
+    logger.info('Stop-loss order placed', 'OrderExecutor', {
+      exchange, symbol, side, stopPrice, limitPrice, strategy,
+    });
+    return order;
+  }
+
+  /** Cancel an open order. Paper orders (already filled) are a no-op. */
+  async cancelOrder(exchange: SupportedExchange, orderId: string, symbol: string): Promise<boolean> {
+    const tracked = this.orders.get(orderId);
+    if (tracked?.paperFill) {
+      logger.warn('Cancel ignored: paper order already filled', 'OrderExecutor', { orderId });
+      return false;
+    }
+
     const ex = this.client.getInstance(exchange);
     try {
       await ex.cancelOrder(orderId, symbol);
+      if (tracked) { tracked.status = 'cancelled'; this.orders.set(orderId, tracked); }
       logger.info('Order cancelled', 'OrderExecutor', { exchange, orderId, symbol });
       return true;
     } catch (err) {
-      logger.error('Cancel order failed', 'OrderExecutor', {
-        exchange, orderId, error: String(err),
-      });
+      logger.error('Cancel order failed', 'OrderExecutor', { exchange, orderId, error: String(err) });
       return false;
     }
   }
 
-  /** Build a TradeResult from a filled Order (for PnL tracking) */
-  toTradeResult(order: Order, fees: string, strategy: StrategyName): TradeResult {
+  /** Retrieve a tracked order by ID */
+  getOrder(orderId: string): TrackedOrder | undefined {
+    return this.orders.get(orderId);
+  }
+
+  /** List tracked orders, optionally filtered by exchange */
+  listOrders(exchange?: SupportedExchange): TrackedOrder[] {
+    const all = Array.from(this.orders.values());
+    return exchange ? all.filter(o => o.exchange === exchange) : all;
+  }
+
+  /** Convert a filled TrackedOrder to TradeResult for PnL tracking */
+  toTradeResult(order: TrackedOrder, fees: string): TradeResult {
     return {
       orderId: order.id,
       marketId: order.marketId,
@@ -134,7 +183,7 @@ export class OrderExecutor {
       fillSize: order.size,
       fees,
       timestamp: order.filledAt ?? order.createdAt,
-      strategy,
+      strategy: order.strategy,
     };
   }
 }

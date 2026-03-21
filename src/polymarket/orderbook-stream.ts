@@ -1,20 +1,24 @@
 // WebSocket streaming client for Polymarket CLOB orderbook
-// Endpoint: wss://ws-subscriptions-clob.polymarket.com/ws/market
+// Uses `ws` npm package (Node.js compatible, not browser WebSocket)
+// Message parsing delegated to orderbook-message-handler
+import WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import { logger } from '../core/logger.js';
 import { sleep } from '../core/utils.js';
-import type { OrderBookLevel } from './clob-client.js';
+import {
+  applySnapshot,
+  applyDelta,
+  calcSpread,
+  parseMessage,
+} from './orderbook-message-handler.js';
+import type { OrderBookState, WsSnapshot, WsDelta } from './orderbook-message-handler.js';
+
+export type { OrderBookState } from './orderbook-message-handler.js';
 
 const WS_URL = 'wss://ws-subscriptions-clob.polymarket.com/ws/market';
-const MAX_RECONNECT_DELAY_MS = 30_000;
+const MAX_RECONNECT_DELAY_MS  = 30_000;
 const BASE_RECONNECT_DELAY_MS = 1_000;
-
-export interface OrderBookState {
-  tokenId: string;
-  bids: OrderBookLevel[];
-  asks: OrderBookLevel[];
-  updatedAt: number;
-}
+const HEARTBEAT_INTERVAL_MS   = 20_000;
 
 export interface OrderBookUpdate {
   tokenId: string;
@@ -24,71 +28,52 @@ export interface OrderBookUpdate {
   newSpread: number;
 }
 
-// --- Raw WS message shapes ---
-
-interface WsSnapshot {
-  event_type: 'book';
-  asset_id: string;
-  bids: OrderBookLevel[];
-  asks: OrderBookLevel[];
-}
-
-interface WsDelta {
-  event_type: 'price_change';
-  asset_id: string;
-  changes: Array<{ side: 'BUY' | 'SELL'; price: string; size: string }>;
-}
-
-type WsMessage = WsSnapshot | WsDelta;
-
-// --- OrderBookStream ---
+// ── OrderBookStream ──────────────────────────────────────────────────────────
 
 export class OrderBookStream extends EventEmitter {
   private ws: WebSocket | null = null;
   private subscriptions = new Set<string>();
-  private books = new Map<string, OrderBookState>();
+  private books         = new Map<string, OrderBookState>();
   private reconnectAttempt = 0;
-  private stopped = false;
+  private stopped          = false;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
 
-  /** Subscribe to orderbook updates for a token */
   subscribe(tokenId: string): void {
     this.subscriptions.add(tokenId);
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.sendSubscribe([tokenId]);
-    }
+    if (this.ws?.readyState === WebSocket.OPEN) this.sendSubscribe([tokenId]);
   }
 
-  /** Unsubscribe from a token's updates */
   unsubscribe(tokenId: string): void {
     this.subscriptions.delete(tokenId);
     this.books.delete(tokenId);
   }
 
-  /** Get current local orderbook state */
   getBook(tokenId: string): OrderBookState | undefined {
     return this.books.get(tokenId);
   }
 
-  /** Open WebSocket connection */
   connect(): void {
     this.stopped = false;
+    this.reconnectAttempt = 0;
     this.openSocket();
   }
 
-  /** Close connection permanently */
   disconnect(): void {
     this.stopped = true;
-    this.ws?.close();
-    this.ws = null;
+    this.stopHeartbeat();
+    if (this.ws) { this.ws.removeAllListeners(); this.ws.terminate(); this.ws = null; }
   }
+
+  // ── Socket lifecycle ──────────────────────────────────────────────────────
 
   private openSocket(): void {
     try {
-      this.ws = new WebSocket(WS_URL);
-      this.ws.onopen = () => this.onOpen();
-      this.ws.onmessage = (e) => this.onMessage(e.data as string);
-      this.ws.onerror = (e) => logger.warn('WS error', 'OrderBookStream', { error: String(e) });
-      this.ws.onclose = () => this.onClose();
+      this.ws = new WebSocket(WS_URL, { handshakeTimeout: 10_000 });
+      this.ws.on('open',    ()  => this.onOpen());
+      this.ws.on('message', (d) => this.onMessage(d.toString()));
+      this.ws.on('error',   (e) => logger.warn('WS error', 'OrderBookStream', { error: e.message }));
+      this.ws.on('close',   ()  => this.onClose());
+      this.ws.on('pong',    ()  => logger.debug('Pong received', 'OrderBookStream'));
     } catch (err) {
       logger.error('Failed to open WebSocket', 'OrderBookStream', { err: String(err) });
       this.scheduleReconnect();
@@ -98,81 +83,52 @@ export class OrderBookStream extends EventEmitter {
   private onOpen(): void {
     logger.info('WebSocket connected', 'OrderBookStream');
     this.reconnectAttempt = 0;
-    if (this.subscriptions.size > 0) {
-      this.sendSubscribe(Array.from(this.subscriptions));
-    }
+    if (this.subscriptions.size > 0) this.sendSubscribe(Array.from(this.subscriptions));
+    this.startHeartbeat();
     this.emit('connected');
   }
 
   private onClose(): void {
     logger.warn('WebSocket disconnected', 'OrderBookStream');
+    this.stopHeartbeat();
     this.emit('disconnected');
     if (!this.stopped) this.scheduleReconnect();
   }
 
-  private sendSubscribe(tokenIds: string[]): void {
-    this.ws?.send(JSON.stringify({ type: 'subscribe', channel: 'market', assets_ids: tokenIds }));
-  }
-
   private onMessage(raw: string): void {
-    let msg: WsMessage;
-    try {
-      msg = JSON.parse(raw) as WsMessage;
-    } catch {
-      return;
-    }
-
+    const msg = parseMessage(raw);
+    if (!msg) return;
     if (msg.event_type === 'book') {
-      this.applySnapshot(msg as WsSnapshot);
+      const snap = msg as WsSnapshot;
+      const prev = this.books.get(snap.asset_id);
+      const prevSpread = prev ? calcSpread(prev) : 0;
+      const state = applySnapshot(snap, prev);
+      this.books.set(snap.asset_id, state);
+      this.emitUpdate(snap.asset_id, state, prevSpread, calcSpread(state));
     } else if (msg.event_type === 'price_change') {
-      this.applyDelta(msg as WsDelta);
+      const delta = msg as WsDelta;
+      const book  = this.books.get(delta.asset_id);
+      if (!book) return;
+      const prevSpread = calcSpread(book);
+      applyDelta(delta, book);
+      this.emitUpdate(delta.asset_id, book, prevSpread, calcSpread(book));
     }
   }
 
-  private applySnapshot(snap: WsSnapshot): void {
-    const prev = this.books.get(snap.asset_id);
-    const prevSpread = prev ? this.calcSpread(prev) : 0;
-    const state: OrderBookState = {
-      tokenId: snap.asset_id,
-      bids: [...snap.bids].sort((a, b) => parseFloat(b.price) - parseFloat(a.price)),
-      asks: [...snap.asks].sort((a, b) => parseFloat(a.price) - parseFloat(b.price)),
-      updatedAt: Date.now(),
-    };
-    this.books.set(snap.asset_id, state);
-    const newSpread = this.calcSpread(state);
-    this.emitUpdate(snap.asset_id, state, prevSpread, newSpread);
+  private sendSubscribe(tokenIds: string[]): void {
+    if (this.ws?.readyState !== WebSocket.OPEN) return;
+    this.ws.send(JSON.stringify({ type: 'subscribe', channel: 'market', assets_ids: tokenIds }));
   }
 
-  private applyDelta(delta: WsDelta): void {
-    const book = this.books.get(delta.asset_id);
-    if (!book) return;
-    const prevSpread = this.calcSpread(book);
-
-    for (const change of delta.changes) {
-      const side = change.side === 'BUY' ? book.bids : book.asks;
-      const idx = side.findIndex(l => l.price === change.price);
-      if (parseFloat(change.size) === 0) {
-        if (idx !== -1) side.splice(idx, 1);
-      } else if (idx !== -1) {
-        side[idx].size = change.size;
-      } else {
-        side.push({ price: change.price, size: change.size });
-      }
-    }
-    // Re-sort after delta
-    book.bids.sort((a, b) => parseFloat(b.price) - parseFloat(a.price));
-    book.asks.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
-    book.updatedAt = Date.now();
-
-    const newSpread = this.calcSpread(book);
-    this.emitUpdate(delta.asset_id, book, prevSpread, newSpread);
+  private startHeartbeat(): void {
+    this.stopHeartbeat();
+    this.heartbeatTimer = setInterval(() => {
+      if (this.ws?.readyState === WebSocket.OPEN) this.ws.ping();
+    }, HEARTBEAT_INTERVAL_MS);
   }
 
-  private calcSpread(book: OrderBookState): number {
-    const bestBid = book.bids[0] ? parseFloat(book.bids[0].price) : 0;
-    const bestAsk = book.asks[0] ? parseFloat(book.asks[0].price) : 0;
-    if (bestBid === 0 || bestAsk === 0) return 0;
-    return bestAsk - bestBid;
+  private stopHeartbeat(): void {
+    if (this.heartbeatTimer) { clearInterval(this.heartbeatTimer); this.heartbeatTimer = null; }
   }
 
   private emitUpdate(tokenId: string, state: OrderBookState, prevSpread: number, newSpread: number): void {
@@ -183,10 +139,7 @@ export class OrderBookStream extends EventEmitter {
   }
 
   private scheduleReconnect(): void {
-    const delay = Math.min(
-      BASE_RECONNECT_DELAY_MS * Math.pow(2, this.reconnectAttempt),
-      MAX_RECONNECT_DELAY_MS,
-    );
+    const delay = Math.min(BASE_RECONNECT_DELAY_MS * Math.pow(2, this.reconnectAttempt), MAX_RECONNECT_DELAY_MS);
     this.reconnectAttempt++;
     logger.info('Reconnecting WebSocket', 'OrderBookStream', { attempt: this.reconnectAttempt, delayMs: delay });
     sleep(delay).then(() => { if (!this.stopped) this.openSocket(); });
