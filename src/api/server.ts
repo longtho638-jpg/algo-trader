@@ -1,38 +1,114 @@
 // HTTP server for algo-trade RaaS (Remote as a Service) REST API
-// Pure Node.js http module - no Express or external framework
+// Middleware chain: CORS → Auth → RateLimit → Routes
 import { createServer as createHttpServer } from 'node:http';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import { parse } from 'node:url';
 import { TradingEngine } from '../engine/engine.js';
-import { validateApiKey } from './auth-middleware.js';
+import { createAuthMiddleware, type AuthenticatedRequest } from './auth-middleware.js';
+import { createRateLimitMiddleware } from './api-rate-limiter-middleware.js';
 import { handleRequest } from './routes.js';
+import { UserStore } from '../users/user-store.js';
 
-/** CORS headers applied to every response */
-const CORS_HEADERS: Record<string, string> = {
-  'Access-Control-Allow-Origin': process.env['CORS_ORIGIN'] ?? '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-API-Key',
-  'Access-Control-Max-Age': '86400',
-};
+// ─── CORS ─────────────────────────────────────────────────────────────────────
 
-/** Apply CORS headers to response */
-function applyCors(res: ServerResponse): void {
-  for (const [key, value] of Object.entries(CORS_HEADERS)) {
-    res.setHeader(key, value);
+/**
+ * Allowed origins: defaults to cashclaw.cc + localhost dev.
+ * Override with CORS_ORIGIN env var (comma-separated list).
+ */
+const DEFAULT_ALLOWED_ORIGINS = new Set([
+  'https://cashclaw.cc',
+  'https://www.cashclaw.cc',
+  'http://localhost:3000',
+  'http://localhost:5173',
+]);
+
+function resolveAllowedOrigins(): Set<string> {
+  const env = process.env['CORS_ORIGIN'];
+  if (!env) return DEFAULT_ALLOWED_ORIGINS;
+  const origins = env.split(',').map((o) => o.trim()).filter(Boolean);
+  return new Set(origins);
+}
+
+const ALLOWED_ORIGINS = resolveAllowedOrigins();
+
+/** Apply CORS headers; restricts to known origins, returns false on rejection */
+function applyCors(req: IncomingMessage, res: ServerResponse): void {
+  const origin = req.headers['origin'];
+
+  // Reflect origin if in allowlist; deny unknown origins
+  if (origin && ALLOWED_ORIGINS.has(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  } else if (!origin) {
+    // Non-browser requests (curl, server-to-server) — allow
+    res.setHeader('Access-Control-Allow-Origin', '*');
   }
+  // Unknown browser origins get no ACAO header → browser blocks the request
+
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key');
+  res.setHeader('Access-Control-Max-Age', '86400');
+}
+
+// ─── Error helper ─────────────────────────────────────────────────────────────
+
+function sendInternalError(res: ServerResponse, message: string): void {
+  if (res.headersSent) return;
+  const body = JSON.stringify({ error: 'Internal Server Error', message });
+  res.writeHead(500, {
+    'Content-Type': 'application/json',
+    'Content-Length': Buffer.byteLength(body),
+  });
+  res.end(body);
+}
+
+// ─── Server factory ───────────────────────────────────────────────────────────
+
+export interface ServerOptions {
+  port: number;
+  engine: TradingEngine;
+  userStore: UserStore;
+  /** JWT signing secret; defaults to JWT_SECRET env var */
+  jwtSecret?: string;
 }
 
 /**
- * Create and start the REST API HTTP server.
- * @param port - TCP port to listen on (default: 3000)
- * @param engine - TradingEngine instance to expose via API
+ * Create and start the REST API HTTP server with full middleware chain.
  * @returns running http.Server instance
  */
-export function createServer(port: number, engine: TradingEngine): Server {
-  const server = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
-    applyCors(res);
+export function createServer(options: ServerOptions): Server;
+/** Legacy overload: createServer(port, engine) — uses env-based UserStore */
+export function createServer(port: number, engine: TradingEngine): Server;
+export function createServer(
+  portOrOptions: number | ServerOptions,
+  legacyEngine?: TradingEngine,
+): Server {
+  let port: number;
+  let engine: TradingEngine;
+  let userStore: UserStore;
+  let jwtSecret: string;
 
-    // Handle CORS preflight
+  if (typeof portOrOptions === 'number') {
+    port = portOrOptions;
+    engine = legacyEngine!;
+    const dbPath = process.env['USER_DB_PATH'] ?? ':memory:';
+    userStore = new UserStore(dbPath);
+    jwtSecret = process.env['JWT_SECRET'] ?? 'dev-secret-change-me';
+  } else {
+    port = portOrOptions.port;
+    engine = portOrOptions.engine;
+    userStore = portOrOptions.userStore;
+    jwtSecret = portOrOptions.jwtSecret ?? process.env['JWT_SECRET'] ?? 'dev-secret-change-me';
+  }
+
+  const authMiddleware = createAuthMiddleware(userStore, jwtSecret);
+  const rateLimitMiddleware = createRateLimitMiddleware();
+
+  const server = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
+    // 1. CORS headers on every response
+    applyCors(req, res);
+
+    // 2. Handle CORS preflight immediately
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
@@ -42,24 +118,22 @@ export function createServer(port: number, engine: TradingEngine): Server {
     const parsed = parse(req.url ?? '/');
     const pathname = parsed.pathname ?? '/';
 
-    // Authenticate all non-public requests
-    if (!validateApiKey(req, res)) {
-      return; // 401 already sent by middleware
-    }
+    // 3. Auth middleware — attaches req.user or sends 401
+    let authPassed = false;
+    authMiddleware(req as AuthenticatedRequest, res, () => { authPassed = true; });
+    if (!authPassed) return;
 
+    // 4. Rate limit middleware — checks per-user/per-IP sliding window
+    let ratePassed = false;
+    rateLimitMiddleware(req as AuthenticatedRequest, res, () => { ratePassed = true; });
+    if (!ratePassed) return;
+
+    // 5. Route to handler
     try {
-      await handleRequest(req, res, engine, pathname);
+      await handleRequest(req, res, engine, pathname, userStore);
     } catch (err) {
-      // Unhandled error fallback - avoid leaking stack traces
       const message = err instanceof Error ? err.message : 'Internal server error';
-      if (!res.headersSent) {
-        const body = JSON.stringify({ error: 'Internal Server Error', message });
-        res.writeHead(500, {
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(body),
-        });
-        res.end(body);
-      }
+      sendInternalError(res, message);
     }
   });
 

@@ -3,6 +3,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { TradingEngine } from '../engine/engine.js';
 import type { StrategyName } from '../core/types.js';
+import type { UserStore } from '../users/user-store.js';
+import { handleCheckout, handlePolarWebhookRoute } from './polar-billing-routes.js';
 
 const VALID_STRATEGIES = new Set<string>([
   'cross-market-arb',
@@ -171,6 +173,7 @@ export async function handleRequest(
   res: ServerResponse,
   engine: TradingEngine,
   pathname: string,
+  userStore?: UserStore,
 ): Promise<void> {
   const method = req.method ?? 'GET';
 
@@ -207,6 +210,20 @@ export async function handleRequest(
   if (pathname === '/api/strategy/stop') {
     if (method !== 'POST') { sendMethodNotAllowed(res); return; }
     await handleStrategyStop(req, res, engine);
+    return;
+  }
+
+  if (pathname === '/api/checkout') {
+    if (method !== 'POST') { sendMethodNotAllowed(res); return; }
+    if (!userStore) { sendJson(res, 503, { error: 'Billing not configured' }); return; }
+    await handleCheckout(req, res, userStore);
+    return;
+  }
+
+  if (pathname === '/api/webhooks/polar') {
+    if (method !== 'POST') { sendMethodNotAllowed(res); return; }
+    if (!userStore) { sendJson(res, 503, { error: 'Billing not configured' }); return; }
+    await handlePolarWebhookRoute(req, res, userStore);
     return;
   }
 

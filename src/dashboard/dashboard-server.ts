@@ -77,6 +77,27 @@ export function createDashboardServer(port: number, dataProvider: DashboardDataP
         return;
       }
 
+      if (url.startsWith('/dashboard/api/portfolio')) {
+        sendJson(res, 200, dataProvider.getPortfolioSummary());
+        return;
+      }
+
+      if (url.startsWith('/dashboard/api/trades')) {
+        const limit = parseInt(new URL(url, 'http://x').searchParams.get('limit') ?? '50', 10);
+        sendJson(res, 200, dataProvider.getTradeHistory(undefined, limit));
+        return;
+      }
+
+      if (url.startsWith('/dashboard/api/positions')) {
+        sendJson(res, 200, dataProvider.getActivePositions());
+        return;
+      }
+
+      if (url.startsWith('/dashboard/api/strategy-status')) {
+        sendJson(res, 200, dataProvider.getStrategyStatus());
+        return;
+      }
+
       // Static file serving — map / to index.html
       const staticPath = url === '/' ? '/index.html' : url;
       // Prevent directory traversal

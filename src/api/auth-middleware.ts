@@ -1,50 +1,101 @@
-// API key authentication middleware for REST API
-// Validates X-API-Key header against API_SECRET env var
+// Auth middleware: JWT token creation/validation + API key lookup via user-store
+// Uses Node.js built-in crypto only (no external jwt library)
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { createHmac, timingSafeEqual as cryptoTimingSafeEqual, randomBytes } from 'node:crypto';
 import { parse } from 'node:url';
+import type { UserStore, User } from '../users/user-store.js';
+import type { Tier } from '../users/subscription-tier.js';
 
-/** Public endpoints that skip authentication */
-const PUBLIC_PATHS = new Set(['/api/health']);
-
-/**
- * Validate API key from X-API-Key header.
- * Returns true if request is authorized, false otherwise.
- * Sends 401 response automatically when unauthorized.
- */
-export function validateApiKey(req: IncomingMessage, res: ServerResponse): boolean {
-  const parsed = parse(req.url ?? '/');
-  const pathname = parsed.pathname ?? '/';
-
-  // Allow public endpoints without auth
-  if (PUBLIC_PATHS.has(pathname)) {
-    return true;
-  }
-
-  const secret = process.env['API_SECRET'];
-
-  // If no API_SECRET configured, reject all non-public requests
-  if (!secret) {
-    sendUnauthorized(res, 'API_SECRET not configured on server');
-    return false;
-  }
-
-  const provided = req.headers['x-api-key'];
-
-  if (!provided) {
-    sendUnauthorized(res, 'Missing X-API-Key header');
-    return false;
-  }
-
-  // Constant-time comparison to avoid timing attacks
-  if (!timingSafeEqual(String(provided), secret)) {
-    sendUnauthorized(res, 'Invalid API key');
-    return false;
-  }
-
-  return true;
+/** Augment IncomingMessage with resolved user */
+export interface AuthenticatedRequest extends IncomingMessage {
+  user?: { id: string; email: string; tier: Tier };
 }
 
-/** Send 401 Unauthorized JSON response */
+/** Public endpoints that skip authentication */
+const PUBLIC_PATHS = new Set(['/api/health', '/api/webhooks/polar']);
+
+// ─── JWT helpers (HS256, Node.js crypto) ─────────────────────────────────────
+
+function base64url(input: Buffer | string): string {
+  const buf = Buffer.isBuffer(input) ? input : Buffer.from(input);
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+}
+
+function base64urlDecode(input: string): string {
+  const padded = input.replace(/-/g, '+').replace(/_/g, '/').padEnd(
+    input.length + ((4 - (input.length % 4)) % 4),
+    '=',
+  );
+  return Buffer.from(padded, 'base64').toString('utf8');
+}
+
+interface JwtPayload {
+  sub: string;   // user id
+  email: string;
+  tier: Tier;
+  iat: number;
+  exp: number;
+}
+
+/** Create a signed JWT (HS256). Expires in `expiresInSeconds` (default 1h). */
+export function createJwt(
+  user: Pick<User, 'id' | 'email' | 'tier'>,
+  secret: string,
+  expiresInSeconds = 3600,
+): string {
+  const header = base64url(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const now = Math.floor(Date.now() / 1000);
+  const payload = base64url(
+    JSON.stringify({ sub: user.id, email: user.email, tier: user.tier, iat: now, exp: now + expiresInSeconds } satisfies JwtPayload),
+  );
+  const unsigned = `${header}.${payload}`;
+  const sig = base64url(
+    createHmac('sha256', secret).update(unsigned).digest(),
+  );
+  return `${unsigned}.${sig}`;
+}
+
+/**
+ * Validate a JWT and return its payload.
+ * Returns null if signature invalid, malformed, or expired.
+ */
+export function verifyJwt(token: string, secret: string): JwtPayload | null {
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
+  const [headerB64, payloadB64, sigB64] = parts;
+  const unsigned = `${headerB64}.${payloadB64}`;
+  const expectedSig = base64url(
+    createHmac('sha256', secret).update(unsigned).digest(),
+  );
+
+  // Constant-time comparison
+  const sigBuf = Buffer.from(sigB64);
+  const expectedBuf = Buffer.from(expectedSig);
+  if (sigBuf.length !== expectedBuf.length) return null;
+  if (!cryptoTimingSafeEqual(sigBuf, expectedBuf)) return null;
+
+  let payload: JwtPayload;
+  try {
+    payload = JSON.parse(base64urlDecode(payloadB64)) as JwtPayload;
+  } catch {
+    return null;
+  }
+
+  const now = Math.floor(Date.now() / 1000);
+  if (payload.exp < now) return null;
+
+  return payload;
+}
+
+/** Generate a cryptographically random API key token (hex, 32 bytes) */
+export function generateApiKeyToken(): string {
+  return randomBytes(32).toString('hex');
+}
+
+// ─── Express-compatible middleware ────────────────────────────────────────────
+
+/** Send 401 Unauthorized JSON */
 function sendUnauthorized(res: ServerResponse, message: string): void {
   const body = JSON.stringify({ error: 'Unauthorized', message });
   res.writeHead(401, {
@@ -54,12 +105,71 @@ function sendUnauthorized(res: ServerResponse, message: string): void {
   res.end(body);
 }
 
-/** Simple constant-time string comparison to prevent timing attacks */
-function timingSafeEqual(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let mismatch = 0;
-  for (let i = 0; i < a.length; i++) {
-    mismatch |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  }
-  return mismatch === 0;
+/**
+ * Create auth middleware that resolves user from:
+ *   1. Bearer <jwt> in Authorization header
+ *   2. API key in Authorization header: "ApiKey <key>"
+ *   3. Legacy X-API-Key header (API key)
+ *
+ * Attaches `req.user` on success. Sends 401 and returns false on failure.
+ * Public paths bypass auth entirely.
+ */
+export function createAuthMiddleware(userStore: UserStore, jwtSecret: string) {
+  return function authMiddleware(
+    req: AuthenticatedRequest,
+    res: ServerResponse,
+    next: () => void,
+  ): void {
+    const parsed = parse(req.url ?? '/');
+    const pathname = parsed.pathname ?? '/';
+
+    if (PUBLIC_PATHS.has(pathname)) {
+      next();
+      return;
+    }
+
+    const authHeader = req.headers['authorization'];
+    const legacyKey = req.headers['x-api-key'];
+
+    // 1. Bearer JWT
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7);
+      const payload = verifyJwt(token, jwtSecret);
+      if (!payload) {
+        sendUnauthorized(res, 'Invalid or expired JWT token');
+        return;
+      }
+      req.user = { id: payload.sub, email: payload.email, tier: payload.tier };
+      next();
+      return;
+    }
+
+    // 2. ApiKey <key> in Authorization header
+    if (authHeader?.startsWith('ApiKey ')) {
+      const key = authHeader.slice(7);
+      const user = userStore.getUserByApiKey(key);
+      if (!user) {
+        sendUnauthorized(res, 'Invalid API key');
+        return;
+      }
+      req.user = { id: user.id, email: user.email, tier: user.tier };
+      next();
+      return;
+    }
+
+    // 3. Legacy X-API-Key header
+    if (legacyKey) {
+      const key = Array.isArray(legacyKey) ? legacyKey[0] : legacyKey;
+      const user = userStore.getUserByApiKey(key);
+      if (!user) {
+        sendUnauthorized(res, 'Invalid API key');
+        return;
+      }
+      req.user = { id: user.id, email: user.email, tier: user.tier };
+      next();
+      return;
+    }
+
+    sendUnauthorized(res, 'Missing Authorization header or X-API-Key');
+  };
 }
