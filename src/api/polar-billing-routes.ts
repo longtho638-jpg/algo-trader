@@ -170,12 +170,20 @@ export async function handlePolarWebhookRoute(
         : productIdToTier(data.product_id);
 
     // Find user by polar customer ID
-    const user = userStore.getUserByPolarCustomerId(customerId);
+    let user = userStore.getUserByPolarCustomerId(customerId);
+
+    // Fallback: first webhook fires before polar_customer_id is linked.
+    // Match by customer_email field from Polar event data → our user DB.
+    if (!user) {
+      const email = (event.data as Record<string, unknown>)['customer_email'];
+      if (typeof email === 'string' && email) {
+        user = userStore.getUserByEmail(email) ?? null;
+      }
+    }
+
     if (user) {
       userStore.updatePolarSubscription(user.id, targetTier, customerId, subscriptionId);
     }
-    // If user not found yet (e.g., first webhook before checkout callback),
-    // we acknowledge and let the next event reconcile.
   }
 
   sendJson(res, 200, { acknowledged: true });

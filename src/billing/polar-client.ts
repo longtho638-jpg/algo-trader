@@ -132,6 +132,18 @@ export class PolarClient {
   }
 
   /**
+   * Get a customer by ID.
+   * GET /v1/customers/{id}
+   */
+  async getCustomerById(customerId: string): Promise<PolarCustomer | null> {
+    try {
+      return await this.request<PolarCustomer>('GET', `/customers/${customerId}`);
+    } catch {
+      return null;
+    }
+  }
+
+  /**
    * Find a customer by email address.
    * GET /v1/customers?email=
    * Returns null when no customer found.

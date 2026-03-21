@@ -22,6 +22,7 @@ import { handleDocsRoutes } from './docs-routes.js';
 import { handleOnboardingRoutes } from './onboarding-routes.js';
 import { handlePolymarketStatsRoutes } from './polymarket-stats-routes.js';
 import { handleOpenClawRequest, type OpenClawDeps } from '../openclaw/api-endpoints.js';
+import { checkApiRateLimit } from './api-rate-limiter.js';
 
 // ─── OpenClaw deps setter (called from app.ts after bootstrap) ───────────────
 let _openClawDeps: OpenClawDeps | null = null;
@@ -117,6 +118,9 @@ export async function handleRequest(
     handleDocsRoutes(req, res, pathname);
     return;
   }
+
+  // Per-user rate limiting (skips health/metrics/docs above)
+  if (!checkApiRateLimit(req as any, res)) return;
 
   // All other routes tracked via request metrics middleware
   await withRequestMetrics(req, res, pathname, async () => {

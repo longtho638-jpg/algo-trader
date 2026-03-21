@@ -367,11 +367,51 @@
     <div class="empty-state" id="trades-empty" style="padding:24px">No trade history yet</div>
   </div>
 
-  <!-- Strategy Status -->
-  <div class="panel">
-    <div class="panel-title"><span>Strategies</span></div>
-    <div class="strategy-list" id="strategy-list">
-      <div class="empty-state">No strategies configured</div>
+  <!-- OpenClaw AI Panel + Strategies -->
+  <div class="two-col">
+    <!-- OpenClaw AI Panel -->
+    <div class="panel">
+      <div class="panel-title">
+        <span>OpenClaw AI</span>
+        <span id="oc-status" style="font-size:11px;font-weight:400;color:var(--accent)">—</span>
+      </div>
+
+      <!-- AI Usage Meter -->
+      <div style="margin-bottom:16px">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span class="card-label">AI Calls This Month</span>
+          <span style="font-size:12px;color:var(--text)" id="oc-usage-text">—</span>
+        </div>
+        <div style="background:var(--surface2);border-radius:4px;height:6px;overflow:hidden">
+          <div id="oc-usage-bar" style="height:100%;background:var(--accent);border-radius:4px;width:0%;transition:width 0.5s"></div>
+        </div>
+      </div>
+
+      <!-- Auto-Tune Toggle -->
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:12px">
+        <div>
+          <div style="font-weight:600;font-size:12px">Auto-Tune</div>
+          <div style="font-size:11px;color:var(--muted)">AI tunes strategies hourly</div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="oc-autotune-toggle" onchange="toggleAutoTune(this.checked)">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <!-- Recent AI Decisions -->
+      <div class="card-label" style="margin-bottom:8px">Recent Decisions</div>
+      <div id="oc-decisions" class="positions-list">
+        <div class="empty-state">No AI decisions yet</div>
+      </div>
+    </div>
+
+    <!-- Strategy Status -->
+    <div class="panel">
+      <div class="panel-title"><span>Strategies</span></div>
+      <div class="strategy-list" id="strategy-list">
+        <div class="empty-state">No strategies configured</div>
+      </div>
     </div>
   </div>
 
@@ -589,6 +629,98 @@ function applyStrategies(strategies) {
   }
 }
 
+// ── OpenClaw AI panel ────────────────────────────────────────────────────────
+async function fetchOpenClaw() {
+  const token = localStorage.getItem('jwt');
+  const apiKey = localStorage.getItem('apiKey');
+  const headers = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  else if (apiKey) headers['Authorization'] = `ApiKey ${apiKey}`;
+
+  try {
+    const [statusRes, historyRes, autoTuneRes, usageRes] = await Promise.allSettled([
+      fetch('/api/openclaw/status', { headers }).then(r => r.json()),
+      fetch('/api/openclaw/history', { headers }).then(r => r.json()),
+      fetch('/api/openclaw/auto-tune', { headers }).then(r => r.json()),
+      fetch('/api/openclaw/usage', { headers }).then(r => r.json()),
+    ]);
+
+    // Status
+    if (statusRes.status === 'fulfilled' && statusRes.value.ok) {
+      const s = statusRes.value;
+      $('oc-status').textContent = s.observer?.active ? 'Active' : 'Inactive';
+      $('oc-status').style.color = s.observer?.active ? 'var(--accent)' : 'var(--muted)';
+    }
+
+    // Auto-tune
+    if (autoTuneRes.status === 'fulfilled' && autoTuneRes.value.ok) {
+      $('oc-autotune-toggle').checked = autoTuneRes.value.enabled;
+    }
+
+    // Usage
+    if (usageRes.status === 'fulfilled' && usageRes.value.ok) {
+      const u = usageRes.value;
+      const usage = u.usage || {};
+      const quota = u.quota || {};
+      const calls = usage.callCount || 0;
+      const limit = quota.limit === Infinity ? '∞' : (quota.limit || 0);
+      const pct = limit === '∞' ? 5 : Math.min(100, (calls / limit) * 100);
+      $('oc-usage-text').textContent = `${calls} / ${limit}`;
+      $('oc-usage-bar').style.width = pct + '%';
+      if (pct > 80) $('oc-usage-bar').style.background = 'var(--warning)';
+      if (pct > 95) $('oc-usage-bar').style.background = 'var(--loss)';
+    }
+
+    // History (decisions)
+    if (historyRes.status === 'fulfilled' && historyRes.value.ok) {
+      const decisions = (historyRes.value.decisions || []).slice(0, 5);
+      const container = $('oc-decisions');
+      container.innerHTML = '';
+      if (decisions.length === 0) {
+        container.innerHTML = '<div class="empty-state">No AI decisions yet</div>';
+        return;
+      }
+      for (const d of decisions) {
+        const div = document.createElement('div');
+        div.className = 'position-row';
+        const timeStr = fmtTime(d.timestamp);
+        const preview = (d.suggestion || '').slice(0, 80);
+        div.innerHTML = `
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:8px">
+              <span class="pos-market">${d.strategy}</span>
+              <span style="font-size:10px;padding:2px 6px;border-radius:4px;background:rgba(167,139,250,0.15);color:var(--purple)">${d.mode}</span>
+            </div>
+            <div class="pos-prices" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${preview}…</div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);white-space:nowrap;margin-left:8px">${timeStr}</div>`;
+        container.appendChild(div);
+      }
+    }
+  } catch (err) {
+    console.warn('[OpenClaw] fetch error:', err);
+  }
+}
+
+async function toggleAutoTune(enabled) {
+  const token = localStorage.getItem('jwt');
+  const apiKey = localStorage.getItem('apiKey');
+  const headers = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  else if (apiKey) headers['Authorization'] = `ApiKey ${apiKey}`;
+
+  try {
+    await fetch('/api/openclaw/auto-tune', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ enabled }),
+    });
+  } catch (err) {
+    alert('Failed to toggle auto-tune: ' + err.message);
+    $('oc-autotune-toggle').checked = !enabled;
+  }
+}
+
 // ── Fetch helpers ─────────────────────────────────────────────────────────────
 async function fetchAll() {
   try {
@@ -722,7 +854,9 @@ function handleLogout() {
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 (function init() {
   fetchAll();
+  fetchOpenClaw();
   setInterval(fetchAll, 10000); // Polling fallback every 10s
+  setInterval(fetchOpenClaw, 30000); // OpenClaw refresh every 30s
   connectWs();
 })();
 </script>
