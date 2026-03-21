@@ -77,15 +77,30 @@ function handleAdminUsers(
   sendJson(res, 200, { users: safeUsers, count: safeUsers.length });
 }
 
-/** GET /api/admin/revenue — mrr, 30-day timeline, top traders */
+/** GET /api/admin/revenue — mrr, arr, $1M target progress, 30-day timeline, top traders */
 function handleAdminRevenue(
   res: ServerResponse,
   analytics: AdminAnalytics,
 ): void {
   const mrr = analytics.getMRR();
+  const arr = mrr * 12;
+  const arrTarget = 1_000_000;
+  const arrProgress = Math.round((arr / arrTarget) * 10000) / 100; // 2 decimal %
   const timeline = analytics.getRevenueTimeline(30);
   const topTraders = analytics.getTopTraders(10);
-  sendJson(res, 200, { mrr, timeline, topTraders });
+  sendJson(res, 200, {
+    mrr,
+    arr,
+    arrTarget,
+    arrProgress: `${arrProgress}%`,
+    usersNeededForTarget: {
+      allPro: Math.ceil(arrTarget / (29 * 12)),
+      allEnterprise: Math.ceil(arrTarget / (199 * 12)),
+      mixed: Math.ceil(arrTarget / (80 * 12)), // ~$80 ARPU estimate
+    },
+    timeline,
+    topTraders,
+  });
 }
 
 /** POST /api/admin/users/:id/tier — body: { tier } — manual tier override */

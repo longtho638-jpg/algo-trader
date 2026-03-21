@@ -11,6 +11,7 @@ import { UserStore } from '../users/user-store.js';
 import { handleAdminRoutes } from './admin-routes.js';
 import { applySecurityHeaders } from './security-headers-middleware.js';
 import { createBodyLimitMiddleware } from './request-body-limit-middleware.js';
+import { checkTierGate } from './tier-gate-middleware.js';
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 
@@ -135,7 +136,10 @@ export function createServer(
     rateLimitMiddleware(req as AuthenticatedRequest, res, () => { ratePassed = true; });
     if (!ratePassed) return;
 
-    // 6. Body size limit for POST requests
+    // 6. Tier-based feature gating — block endpoints user's plan doesn't include
+    if (!checkTierGate(req as AuthenticatedRequest, res, pathname)) return;
+
+    // 7. Body size limit for POST requests
     if (req.method === 'POST') {
       let bodyPassed = false;
       await new Promise<void>((resolve) => {
@@ -145,7 +149,7 @@ export function createServer(
       if (!bodyPassed) return;
     }
 
-    // 7. Route to handler
+    // 8. Route to handler
     try {
       // Admin routes: /api/admin/* — requires resolved user from auth middleware
       if (pathname.startsWith('/api/admin/') || pathname === '/api/admin') {
