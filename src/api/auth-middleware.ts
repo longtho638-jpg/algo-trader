@@ -19,6 +19,14 @@ const PUBLIC_PATHS = new Set([
   '/api/auth/login',
 ]);
 
+/**
+ * Prefix-based public paths (dynamic segments like :userId).
+ * Auth middleware skips these when pathname starts with any listed prefix.
+ */
+const PUBLIC_PATH_PREFIXES = [
+  '/api/webhooks/tradingview/',
+];
+
 // ─── JWT helpers (HS256, Node.js crypto) ─────────────────────────────────────
 
 function base64url(input: Buffer | string): string {
@@ -128,7 +136,8 @@ export function createAuthMiddleware(userStore: UserStore, jwtSecret: string) {
     const parsed = parse(req.url ?? '/');
     const pathname = parsed.pathname ?? '/';
 
-    if (PUBLIC_PATHS.has(pathname)) {
+    if (PUBLIC_PATHS.has(pathname) ||
+        PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
       next();
       return;
     }

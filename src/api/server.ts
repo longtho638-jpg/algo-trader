@@ -8,6 +8,7 @@ import { createAuthMiddleware, type AuthenticatedRequest } from './auth-middlewa
 import { createRateLimitMiddleware } from './api-rate-limiter-middleware.js';
 import { handleRequest } from './routes.js';
 import { UserStore } from '../users/user-store.js';
+import { handleAdminRoutes } from './admin-routes.js';
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
 
@@ -130,6 +131,24 @@ export function createServer(
 
     // 5. Route to handler
     try {
+      // Admin routes: /api/admin/* — requires resolved user from auth middleware
+      if (pathname.startsWith('/api/admin/') || pathname === '/api/admin') {
+        const authedReq = req as AuthenticatedRequest;
+        if (!authedReq.user) {
+          sendInternalError(res, 'Auth middleware did not resolve user');
+          return;
+        }
+        await handleAdminRoutes(
+          req,
+          res,
+          authedReq.user.id,
+          authedReq.user.tier,
+          userStore,
+          pathname,
+        );
+        return;
+      }
+
       await handleRequest(req, res, engine, pathname, userStore);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Internal server error';

@@ -12,6 +12,9 @@ import { handleRegister, handleLogin, handleMe, handleRotateApiKey } from './aut
 import type { AuthenticatedRequest } from './auth-middleware.js';
 import { handleCopyTradingRoute, type CopyTradingHandlers } from './copy-trading-routes.js';
 import { handleBacktest } from './backtest-route-handler.js';
+import { handleReferralRoutes } from './referral-routes.js';
+import { handleMarketplaceRoutes } from './marketplace-routes.js';
+import { handleTradingViewRoutes } from './tradingview-webhook-routes.js';
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -142,6 +145,15 @@ export async function handleRequest(
     } else if (pathname === '/api/backtest') {
       if (method !== 'POST') { sendMethodNotAllowed(res); return; }
       await handleBacktest(req, res);
+    } else if (pathname.startsWith('/api/marketplace/')) {
+      const authReq = req as AuthenticatedRequest;
+      const user = authReq.user;
+      if (!user) { sendJson(res, 401, { error: 'Unauthorized' }); return; }
+      const handled = await handleMarketplaceRoutes(req, res, user.id, user.tier);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/referral/')) {
+      const handled = await handleReferralRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
     } else if (copyTradingHandlers && (
       pathname === '/api/leaders' ||
       pathname.startsWith('/api/leaders/') ||
@@ -149,6 +161,14 @@ export async function handleRequest(
       pathname.startsWith('/api/copy/')
     )) {
       const handled = await handleCopyTradingRoute(req, res, pathname, method, copyTradingHandlers);
+      if (!handled) sendNotFound(res);
+    } else if (
+      pathname.startsWith('/api/webhooks/tradingview/') ||
+      pathname === '/api/tv/generate-secret' ||
+      pathname === '/api/tv/my-webhook'
+    ) {
+      if (!userStore) { sendJson(res, 503, { error: 'User store not configured' }); return; }
+      const handled = await handleTradingViewRoutes(req, res, pathname, userStore);
       if (!handled) sendNotFound(res);
     } else {
       sendNotFound(res);

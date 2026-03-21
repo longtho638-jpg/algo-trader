@@ -61,6 +61,7 @@ const MIGRATION_SQL = `
 ALTER TABLE users ADD COLUMN polar_customer_id     TEXT;
 ALTER TABLE users ADD COLUMN polar_subscription_id TEXT;
 ALTER TABLE users ADD COLUMN password_hash         TEXT;
+ALTER TABLE users ADD COLUMN tv_webhook_secret     TEXT;
 CREATE INDEX IF NOT EXISTS idx_users_polar_customer_id ON users(polar_customer_id);
 `;
 
@@ -258,6 +259,22 @@ export class UserStore {
       .prepare(`SELECT * FROM users WHERE active = 1 ORDER BY created_at DESC`)
       .all() as UserRow[];
     return rows.map(rowToUser);
+  }
+
+  /** Store a TradingView webhook secret for a user */
+  updateTvWebhookSecret(userId: string, secret: string): boolean {
+    const result = this.db
+      .prepare(`UPDATE users SET tv_webhook_secret = ? WHERE id = ? AND active = 1`)
+      .run(secret, userId);
+    return result.changes > 0;
+  }
+
+  /** Retrieve the TradingView webhook secret for a user, or null if not set */
+  getTvWebhookSecret(userId: string): string | null {
+    const row = this.db
+      .prepare(`SELECT tv_webhook_secret FROM users WHERE id = ? AND active = 1`)
+      .get(userId) as { tv_webhook_secret: string | null } | undefined;
+    return row?.tv_webhook_secret ?? null;
   }
 
   close(): void {

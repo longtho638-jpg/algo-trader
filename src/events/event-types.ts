@@ -47,6 +47,18 @@ export interface SystemEventMap {
     originalTradeId: string;
     scaleFactor: number;
   };
+
+  /** Fired when a TradingView webhook alert is received and validated */
+  'tradingview.signal': {
+    userId: string;
+    ticker: string;
+    action: 'buy' | 'sell' | 'close';
+    price: number;
+    message: string;
+    time: string;
+    /** Platform market ID mapped from ticker, if found */
+    marketId: string | null;
+  };
 }
 
 /** Union of all valid system event names */
