@@ -20,7 +20,12 @@ import { startNotifications, stopNotifications } from './wiring/notifications-wi
 import { wireStrategies } from './wiring/strategy-wiring.js';
 import { wireWsEvents } from './wiring/ws-event-wiring.js';
 import { setOrchestrator } from './api/pipeline-routes.js';
+import { setPortfolioTracker } from './api/portfolio-routes.js';
+import { setSignalFeed } from './api/signal-routes.js';
+import { PortfolioTracker } from './portfolio/portfolio-tracker.js';
+import { MlSignalFeed } from './ml/ml-signal-feed.js';
 import type { StrategyOrchestrator } from './strategies/strategy-orchestrator.js';
+import type { TradeResult } from './core/types.js';
 import type { WsEventWiring } from './wiring/ws-event-wiring.js';
 import type { ServersBundle } from './wiring/servers-wiring.js';
 import type { NotificationsBundle } from './wiring/notifications-wiring.js';
@@ -161,26 +166,39 @@ export async function startApp(): Promise<void> {
   _wsWiring = wireWsEvents(eventBus, _supplementary.wsHandle);
   logger.info('WS event bridge active', 'App');
 
-  // 12. Notifications: Telegram bot + trade alerts
+  // 12. Portfolio tracker — aggregate P&L across all strategies
+  const portfolioTracker = new PortfolioTracker();
+  setPortfolioTracker(portfolioTracker);
+  eventBus.on('trade.executed', (payload: { trade: TradeResult }) => {
+    portfolioTracker.addTrade(payload.trade);
+  });
+  logger.info('Portfolio tracker wired', 'App');
+
+  // 13. ML signal feed — weighted scoring model for trading signals
+  const mlFeed = new MlSignalFeed();
+  setSignalFeed(mlFeed);
+  logger.info('ML signal feed wired', 'App');
+
+  // 14. Notifications: Telegram bot + trade alerts
   _notifications = startNotifications(eventBus, _engine);
   _notifier = _notifications.router;
   logger.info('Notification router initialised', 'App', { channels: _notifier.enabledChannels() });
 
-  // 13. Scheduler + built-in jobs
+  // 15. Scheduler + built-in jobs
   _scheduler = new JobScheduler();
   startScheduler(_scheduler);
 
-  // 14. Recovery manager
+  // 16. Recovery manager
   _recovery = new RecoveryManager();
   startRecoveryManager(_recovery, AUTO_SAVE_MS, {
     strategies: config.strategies,
     getOpenPositions: () => db.getOpenPositions(),
   });
 
-  // 15. Process signal handlers (SIGINT/SIGTERM/uncaughtException/unhandledRejection)
+  // 17. Process signal handlers (SIGINT/SIGTERM/uncaughtException/unhandledRejection)
   wireProcessSignals({ eventBus, notifier: _notifier, stopApp });
 
-  // 16. Banner
+  // 18. Banner
   printBanner(config.env, Object.keys(config.exchanges).join(', ') || 'none');
   logger.info('Platform ready', 'App', { version: APP_VERSION });
 }
