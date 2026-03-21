@@ -20,6 +20,7 @@ import { handlePortfolioRoutes } from './portfolio-routes.js';
 import { handleSignalRoutes } from './signal-routes.js';
 import { handleDocsRoutes } from './docs-routes.js';
 import { handleOnboardingRoutes } from './onboarding-routes.js';
+import { handlePolymarketStatsRoutes } from './polymarket-stats-routes.js';
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -192,6 +193,9 @@ export async function handleRequest(
       if (!handled) sendNotFound(res);
     } else if (pathname.startsWith('/api/onboarding/')) {
       const handled = await handleOnboardingRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/polymarket/')) {
+      const handled = await handlePolymarketStatsRoutes(req, res, pathname, method);
       if (!handled) sendNotFound(res);
     } else {
       sendNotFound(res);

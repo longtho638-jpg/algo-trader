@@ -7,6 +7,7 @@ import type { MarketScanner } from '../polymarket/market-scanner.js';
 import type { OrderManager } from '../polymarket/order-manager.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { StrategyName } from '../core/types.js';
+import type { KellyPositionSizer } from '../polymarket/kelly-position-sizer.js';
 import { logger } from '../core/logger.js';
 
 const STRATEGY_NAME: StrategyName = 'polymarket-arb';
@@ -23,6 +24,8 @@ export interface PolymarketArbDeps {
   scoreThreshold?: number;
   /** Max USDC per order (default: 50) */
   maxPositionSize?: number;
+  /** Optional Kelly sizer — overrides maxPositionSize when available */
+  kellySizer?: KellyPositionSizer;
 }
 
 /**
@@ -36,6 +39,7 @@ export function createPolymarketArbTick(deps: PolymarketArbDeps): () => Promise<
     eventBus,
     scoreThreshold = DEFAULT_SCORE_THRESHOLD,
     maxPositionSize = DEFAULT_MAX_POSITION_SIZE,
+    kellySizer,
   } = deps;
 
   return async function polymarketArbTick(): Promise<void> {
@@ -58,11 +62,16 @@ export function createPolymarketArbTick(deps: PolymarketArbDeps): () => Promise<
           const tokenId = isUnderpriced ? opp.yesTokenId : opp.noTokenId;
           const price   = isUnderpriced ? opp.yesMidPrice : opp.noMidPrice;
 
+          // Use Kelly-sized position if sizer available, otherwise fallback
+          const posSize = kellySizer
+            ? kellySizer.getSize(STRATEGY_NAME).size
+            : maxPositionSize;
+
           const order = await orderManager.placeOrder({
             tokenId,
             side: 'buy',
             price: String(price.toFixed(4)),
-            size: String(maxPositionSize),
+            size: String(posSize),
             orderType: 'GTC',
           });
 
@@ -70,7 +79,7 @@ export function createPolymarketArbTick(deps: PolymarketArbDeps): () => Promise<
             conditionId: opp.conditionId,
             side: isUnderpriced ? 'YES' : 'NO',
             price,
-            size: maxPositionSize,
+            size: posSize,
             score: opp.score,
             orderId: order.id,
           });
@@ -81,7 +90,7 @@ export function createPolymarketArbTick(deps: PolymarketArbDeps): () => Promise<
               marketId: opp.conditionId,
               side: 'buy',
               fillPrice: String(price),
-              fillSize: String(maxPositionSize),
+              fillSize: String(posSize),
               fees: '0',
               timestamp: Date.now(),
               strategy: STRATEGY_NAME,

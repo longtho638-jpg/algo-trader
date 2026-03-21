@@ -27,7 +27,15 @@ function readBody(req: IncomingMessage): Promise<string> {
 }
 
 function resolveJwtSecret(): string {
-  return process.env['JWT_SECRET'] ?? 'dev-secret-change-me';
+  if (!process.env['JWT_SECRET']) {
+    // Auto-generate a persistent secret on first run
+    const crypto = require('node:crypto') as typeof import('node:crypto');
+    const secret = crypto.randomBytes(32).toString('hex');
+    process.env['JWT_SECRET'] = secret;
+    // Log warning so operator knows to set it explicitly
+    console.warn('[AUTH] JWT_SECRET not set — auto-generated ephemeral secret. Set JWT_SECRET env var for persistence across restarts.');
+  }
+  return process.env['JWT_SECRET']!;
 }
 
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
