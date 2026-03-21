@@ -452,6 +452,282 @@ const apiPaths = {
     },
   },
 
+  // ─── Sprint 7: Pipeline control ──────────────────────────────────────────────
+
+  '/api/pipeline/start': {
+    post: {
+      tags: ['Pipeline'],
+      summary: 'Start all enabled strategies',
+      description: 'Starts all strategies that are enabled in config. Requires authentication.',
+      responses: {
+        200: { description: 'Pipeline started', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' }, started: { type: 'array', items: { type: 'string' } } }, required: ['ok', 'started'] } } } },
+        401: { description: 'Missing or invalid authentication' },
+        500: { description: 'Engine error', content: { 'application/json': { schema: ErrorSchema } } },
+      },
+    },
+  },
+
+  '/api/pipeline/stop': {
+    post: {
+      tags: ['Pipeline'],
+      summary: 'Stop all running strategies',
+      description: 'Stops all currently running strategies. Requires authentication.',
+      responses: {
+        200: { description: 'Pipeline stopped', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' }, stopped: { type: 'array', items: { type: 'string' } } }, required: ['ok', 'stopped'] } } } },
+        401: { description: 'Missing or invalid authentication' },
+        500: { description: 'Engine error', content: { 'application/json': { schema: ErrorSchema } } },
+      },
+    },
+  },
+
+  '/api/pipeline/status': {
+    get: {
+      tags: ['Pipeline'],
+      summary: 'Get pipeline and strategy statuses',
+      description: 'Returns running state of the pipeline and each strategy. Requires authentication.',
+      responses: {
+        200: {
+          description: 'Pipeline status',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  running: { type: 'boolean', example: true },
+                  strategies: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string' },
+                        status: { type: 'string', enum: ['running', 'stopped', 'error'] },
+                      },
+                      required: ['name', 'status'],
+                    },
+                  },
+                },
+                required: ['running', 'strategies'],
+              },
+            },
+          },
+        },
+        401: { description: 'Missing or invalid authentication' },
+      },
+    },
+  },
+
+  '/api/pipeline/strategy/{id}/start': {
+    post: {
+      tags: ['Pipeline'],
+      summary: 'Start specific strategy',
+      description: 'Starts a single strategy by ID. Requires authentication.',
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Strategy ID or name' }],
+      responses: {
+        200: { description: 'Strategy started', content: { 'application/json': { schema: StrategyActionResponse } } },
+        400: { description: 'Invalid strategy ID', content: { 'application/json': { schema: ErrorSchema } } },
+        401: { description: 'Missing or invalid authentication' },
+        500: { description: 'Engine error', content: { 'application/json': { schema: ErrorSchema } } },
+      },
+    },
+  },
+
+  '/api/pipeline/strategy/{id}/stop': {
+    post: {
+      tags: ['Pipeline'],
+      summary: 'Stop specific strategy',
+      description: 'Stops a single running strategy by ID. Requires authentication.',
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' }, description: 'Strategy ID or name' }],
+      responses: {
+        200: { description: 'Strategy stopped', content: { 'application/json': { schema: StrategyActionResponse } } },
+        400: { description: 'Invalid strategy ID', content: { 'application/json': { schema: ErrorSchema } } },
+        401: { description: 'Missing or invalid authentication' },
+        500: { description: 'Engine error', content: { 'application/json': { schema: ErrorSchema } } },
+      },
+    },
+  },
+
+  // ─── Sprint 8: Portfolio analytics ───────────────────────────────────────────
+
+  '/api/portfolio/summary': {
+    get: {
+      tags: ['Portfolio'],
+      summary: 'Get portfolio summary',
+      description: 'Returns aggregated portfolio metrics: total value, P&L, win rate. Requires authentication.',
+      responses: {
+        200: {
+          description: 'Portfolio summary',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  totalValue: { type: 'string', example: '10500.00' },
+                  totalPnl: { type: 'string', example: '500.00' },
+                  totalPnlPct: { type: 'number', example: 5.0 },
+                  winRate: { type: 'number', example: 0.62 },
+                  tradeCount: { type: 'integer', example: 150 },
+                },
+                required: ['totalValue', 'totalPnl', 'totalPnlPct', 'winRate', 'tradeCount'],
+              },
+            },
+          },
+        },
+        401: { description: 'Missing or invalid authentication' },
+      },
+    },
+  },
+
+  '/api/portfolio/equity-curve': {
+    get: {
+      tags: ['Portfolio'],
+      summary: 'Get equity curve data points',
+      description: 'Returns time-series equity curve for charting. Requires authentication.',
+      parameters: [
+        { name: 'from', in: 'query', description: 'Start timestamp (ms)', schema: { type: 'integer', format: 'int64' } },
+        { name: 'to', in: 'query', description: 'End timestamp (ms)', schema: { type: 'integer', format: 'int64' } },
+      ],
+      responses: {
+        200: {
+          description: 'Equity curve data',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  points: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        ts: { type: 'integer', format: 'int64', example: 1700000000000 },
+                        equity: { type: 'string', example: '10500.00' },
+                      },
+                      required: ['ts', 'equity'],
+                    },
+                  },
+                },
+                required: ['points'],
+              },
+            },
+          },
+        },
+        401: { description: 'Missing or invalid authentication' },
+      },
+    },
+  },
+
+  '/api/portfolio/strategies': {
+    get: {
+      tags: ['Portfolio'],
+      summary: 'Get per-strategy breakdown',
+      description: 'Returns P&L and trade stats broken down by strategy. Requires authentication.',
+      responses: {
+        200: {
+          description: 'Per-strategy portfolio breakdown',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  strategies: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string', example: 'grid-trading' },
+                        pnl: { type: 'string', example: '250.00' },
+                        tradeCount: { type: 'integer', example: 75 },
+                        winRate: { type: 'number', example: 0.64 },
+                      },
+                      required: ['name', 'pnl', 'tradeCount', 'winRate'],
+                    },
+                  },
+                },
+                required: ['strategies'],
+              },
+            },
+          },
+        },
+        401: { description: 'Missing or invalid authentication' },
+      },
+    },
+  },
+
+  // ─── Sprint 8: ML signal feed ─────────────────────────────────────────────────
+
+  '/api/signals/analyze': {
+    post: {
+      tags: ['Signals'],
+      summary: 'Analyze trading signal for symbol',
+      description: 'Runs ML inference on the requested symbol and returns a directional signal. Requires authentication.',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                symbol: { type: 'string', example: 'BTC/USD' },
+                timeframe: { type: 'string', example: '1h', enum: ['1m', '5m', '15m', '1h', '4h', '1d'] },
+              },
+              required: ['symbol'],
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: 'Signal analysis result',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  symbol: { type: 'string', example: 'BTC/USD' },
+                  signal: { type: 'string', enum: ['long', 'short', 'neutral'], example: 'long' },
+                  confidence: { type: 'number', example: 0.78 },
+                  ts: { type: 'integer', format: 'int64', example: 1700000000000 },
+                },
+                required: ['symbol', 'signal', 'confidence', 'ts'],
+              },
+            },
+          },
+        },
+        400: { description: 'Invalid request body', content: { 'application/json': { schema: ErrorSchema } } },
+        401: { description: 'Missing or invalid authentication' },
+        503: { description: 'ML feed unavailable', content: { 'application/json': { schema: ErrorSchema } } },
+      },
+    },
+  },
+
+  '/api/signals/health': {
+    get: {
+      tags: ['Signals'],
+      summary: 'Check ML signal feed health',
+      description: 'Returns liveness and last-updated timestamp of the ML signal feed. Requires authentication.',
+      responses: {
+        200: {
+          description: 'Signal feed health',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  ok: { type: 'boolean', example: true },
+                  lastUpdated: { type: 'integer', format: 'int64', example: 1700000000000 },
+                  feedLatencyMs: { type: 'integer', example: 42 },
+                },
+                required: ['ok', 'lastUpdated'],
+              },
+            },
+          },
+        },
+        401: { description: 'Missing or invalid authentication' },
+        503: { description: 'ML feed down', content: { 'application/json': { schema: ErrorSchema } } },
+      },
+    },
+  },
+
   '/admin/users': {
     get: {
       tags: ['Admin'],

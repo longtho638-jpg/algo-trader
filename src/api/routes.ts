@@ -16,6 +16,9 @@ import { handleReferralRoutes } from './referral-routes.js';
 import { handleMarketplaceRoutes } from './marketplace-routes.js';
 import { handleTradingViewRoutes } from './tradingview-webhook-routes.js';
 import { handlePipelineRoutes } from './pipeline-routes.js';
+import { handlePortfolioRoutes } from './portfolio-routes.js';
+import { handleSignalRoutes } from './signal-routes.js';
+import { handleDocsRoutes } from './docs-routes.js';
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -102,6 +105,12 @@ export async function handleRequest(
     return;
   }
 
+  // API docs bypass metrics (informational, no auth required)
+  if (pathname === '/api/docs' || pathname === '/api/docs/openapi.json') {
+    handleDocsRoutes(req, res, pathname);
+    return;
+  }
+
   // All other routes tracked via request metrics middleware
   await withRequestMetrics(req, res, pathname, async () => {
     if (pathname === '/api/status') {
@@ -173,6 +182,12 @@ export async function handleRequest(
       if (!handled) sendNotFound(res);
     } else if (pathname.startsWith('/api/pipeline/') || pathname === '/api/pipeline/status') {
       const handled = await handlePipelineRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/portfolio/')) {
+      const handled = await handlePortfolioRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/signals/')) {
+      const handled = await handleSignalRoutes(req, res, pathname, method);
       if (!handled) sendNotFound(res);
     } else {
       sendNotFound(res);
