@@ -1,103 +1,48 @@
-// Backtest performance analytics: Sharpe ratio, drawdown, win rate, P&L metrics
+// Backtest performance analytics and report generation
+// Accepts BacktestResult from simulator and produces human-readable text reports
 
 import type { TradeResult } from '../core/types.js';
+import type { BacktestResult } from './simulator.js';
+import { equityToReturns, calculateSharpeRatio, calculateMaxDrawdown } from './backtest-math-helpers.js';
 
-/** Complete performance report for a backtest run */
+/** Complete performance report for a backtest run (legacy: computed from raw trades+curve) */
 export interface BacktestReport {
-  /** Total return as decimal (0.15 = 15%) */
   totalReturn: number;
-  /** Annualized Sharpe ratio */
   sharpeRatio: number;
-  /** Maximum drawdown as decimal (0.20 = 20%) */
   maxDrawdown: number;
-  /** Win rate as decimal (0.55 = 55% of trades profitable) */
   winRate: number;
   tradeCount: number;
-  /** Average profit on winning trades (absolute) */
   avgWin: number;
-  /** Average loss on losing trades (absolute, positive number) */
   avgLoss: number;
-  /** Profit factor: gross profit / gross loss */
   profitFactor: number;
   initialCapital: number;
   finalEquity: number;
   totalFees: number;
 }
 
-/**
- * Calculate annualized Sharpe ratio from a series of period returns.
- * Assumes daily returns; annualizes by sqrt(252).
- */
-export function calculateSharpeRatio(returns: number[], riskFreeRate: number = 0.02): number {
-  if (returns.length < 2) return 0;
+// Re-export math helpers for consumers that previously imported from this module
+export { calculateSharpeRatio, calculateMaxDrawdown } from './backtest-math-helpers.js';
 
-  const mean = returns.reduce((s, r) => s + r, 0) / returns.length;
-  const variance = returns.reduce((s, r) => s + Math.pow(r - mean, 2), 0) / (returns.length - 1);
-  const stdDev = Math.sqrt(variance);
+// ─── Legacy generateReport path ───────────────────────────────────────────────
 
-  if (stdDev === 0) return 0;
-
-  // Annualize: daily risk-free rate
-  const dailyRiskFree = riskFreeRate / 252;
-  const annualizationFactor = Math.sqrt(252);
-
-  return ((mean - dailyRiskFree) / stdDev) * annualizationFactor;
-}
-
-/**
- * Calculate maximum drawdown from an equity curve.
- * Returns value as decimal (0.20 = 20% drawdown).
- */
-export function calculateMaxDrawdown(equityCurve: number[]): number {
-  if (equityCurve.length < 2) return 0;
-
-  let peak = equityCurve[0];
-  let maxDD = 0;
-
-  for (const equity of equityCurve) {
-    if (equity > peak) peak = equity;
-    const drawdown = peak > 0 ? (peak - equity) / peak : 0;
-    if (drawdown > maxDD) maxDD = drawdown;
-  }
-
-  return maxDD;
-}
-
-/** Compute per-trade P&L from fill prices and sides */
+/** FIFO P&L matching for buy/sell pairs */
 function computeTradePnl(trades: TradeResult[]): number[] {
   const pnls: number[] = [];
-  // Match buys to sells in order (simplified FIFO)
   const buyStack: { price: number; size: number }[] = [];
-
   for (const trade of trades) {
     const price = parseFloat(trade.fillPrice);
     const size = parseFloat(trade.fillSize);
-
     if (trade.side === 'buy') {
       buyStack.push({ price, size });
     } else if (trade.side === 'sell' && buyStack.length > 0) {
       const entry = buyStack.shift()!;
-      const matchSize = Math.min(entry.size, size);
-      pnls.push((price - entry.price) * matchSize);
+      pnls.push((price - entry.price) * Math.min(entry.size, size));
     }
   }
-
   return pnls;
 }
 
-/** Derive daily returns from equity curve for Sharpe calculation */
-function equityToDailyReturns(equityCurve: number[]): number[] {
-  const returns: number[] = [];
-  for (let i = 1; i < equityCurve.length; i++) {
-    const prev = equityCurve[i - 1];
-    if (prev > 0) returns.push((equityCurve[i] - prev) / prev);
-  }
-  return returns;
-}
-
-/**
- * Generate a full performance report from trade results and equity curve.
- */
+/** Build BacktestReport from raw trades + equity curve (legacy path) */
 export function generateReport(
   trades: TradeResult[],
   equityCurve: number[],
@@ -114,36 +59,94 @@ export function generateReport(
   const winRate = pnls.length > 0 ? wins.length / pnls.length : 0;
   const avgWin = wins.length > 0 ? wins.reduce((s, p) => s + p, 0) / wins.length : 0;
   const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, p) => s + p, 0) / losses.length) : 0;
-
   const grossProfit = wins.reduce((s, p) => s + p, 0);
   const grossLoss = Math.abs(losses.reduce((s, p) => s + p, 0));
   const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0;
 
-  const dailyReturns = equityToDailyReturns(equityCurve);
-  const sharpeRatio = calculateSharpeRatio(dailyReturns);
-  const maxDrawdown = calculateMaxDrawdown(equityCurve);
-
   return {
     totalReturn,
-    sharpeRatio,
-    maxDrawdown,
-    winRate,
-    tradeCount: trades.length,
-    avgWin,
-    avgLoss,
-    profitFactor,
-    initialCapital,
-    finalEquity,
-    totalFees,
+    sharpeRatio: calculateSharpeRatio(equityToReturns(equityCurve)),
+    maxDrawdown: calculateMaxDrawdown(equityCurve),
+    winRate, tradeCount: trades.length,
+    avgWin, avgLoss, profitFactor,
+    initialCapital, finalEquity, totalFees,
   };
 }
 
-/** Format a BacktestReport into a human-readable string */
-export function formatReport(report: BacktestReport): string {
-  const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
-  const usd = (v: number) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  const num = (v: number, d = 4) => isFinite(v) ? v.toFixed(d) : v > 0 ? '+Inf' : '-Inf';
+// ─── Text report from BacktestResult ─────────────────────────────────────────
 
+const pct = (v: number) => `${(v * 100).toFixed(2)}%`;
+const usd = (v: number) => `$${v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const num = (v: number, d = 2) => isFinite(v) ? v.toFixed(d) : v > 0 ? '+Inf' : '-Inf';
+
+/** Equity curve sample: evenly spaced data points for display */
+function sampleEquityCurve(curve: number[], maxPoints = 10): { index: number; equity: number }[] {
+  if (curve.length === 0) return [];
+  const step = Math.max(1, Math.floor(curve.length / maxPoints));
+  const points: { index: number; equity: number }[] = [];
+  for (let i = 0; i < curve.length; i += step) {
+    points.push({ index: i, equity: parseFloat(curve[i].toFixed(2)) });
+  }
+  // Always include final point
+  const last = curve.length - 1;
+  if (points[points.length - 1].index !== last) {
+    points.push({ index: last, equity: parseFloat(curve[last].toFixed(2)) });
+  }
+  return points;
+}
+
+/** Format trade log entries (capped at 20 for readability) */
+function formatTradeLog(trades: TradeResult[]): string[] {
+  const displayed = trades.slice(0, 20);
+  const lines = displayed.map((t, i) => {
+    const ts = new Date(t.timestamp).toISOString().slice(0, 10);
+    return `  ${String(i + 1).padStart(3)}. [${ts}] ${t.side.toUpperCase().padEnd(4)} @ ${t.fillPrice}  size=${t.fillSize}  fee=${t.fees}`;
+  });
+  if (trades.length > 20) {
+    lines.push(`  ... and ${trades.length - 20} more trades`);
+  }
+  return lines;
+}
+
+/**
+ * Generate a complete text report from a BacktestResult.
+ * Includes summary stats, trade log, and equity curve data points.
+ */
+export function formatBacktestResult(result: BacktestResult): string {
+  const curveSamples = sampleEquityCurve(result.equityCurve);
+  const curveLines = curveSamples.map(
+    p => `    [${String(p.index).padStart(4)}] ${usd(p.equity)}`,
+  );
+
+  const sections = [
+    '═══════════════════════════════════════════',
+    '         BACKTEST PERFORMANCE REPORT       ',
+    '═══════════════════════════════════════════',
+    `  Initial Capital  : ${usd(result.initialCapital)}`,
+    `  Final Equity     : ${usd(result.finalEquity)}`,
+    `  Total Return     : ${pct(result.totalReturn)}`,
+    `  Total Fees       : ${usd(result.totalFees)}`,
+    '───────────────────────────────────────────',
+    `  Trade Count      : ${result.tradeCount}`,
+    `  Win Rate         : ${pct(result.winRate)}`,
+    `  Profit Factor    : ${num(result.profitFactor)}`,
+    '───────────────────────────────────────────',
+    `  Sharpe Ratio     : ${num(result.sharpeRatio)}`,
+    `  Max Drawdown     : ${pct(result.maxDrawdown)}`,
+    '───────────────────────────────────────────',
+    '  EQUITY CURVE (sampled):',
+    ...curveLines,
+    '───────────────────────────────────────────',
+    `  TRADE LOG (${result.trades.length} total):`,
+    ...formatTradeLog(result.trades),
+    '═══════════════════════════════════════════',
+  ];
+
+  return sections.join('\n');
+}
+
+/** Legacy formatter kept for backward compatibility */
+export function formatReport(report: BacktestReport): string {
   return [
     '═══════════════════════════════════════',
     '         BACKTEST PERFORMANCE REPORT    ',
@@ -157,9 +160,9 @@ export function formatReport(report: BacktestReport): string {
     `  Win Rate         : ${pct(report.winRate)}`,
     `  Avg Win          : ${usd(report.avgWin)}`,
     `  Avg Loss         : ${usd(report.avgLoss)}`,
-    `  Profit Factor    : ${num(report.profitFactor, 2)}`,
+    `  Profit Factor    : ${num(report.profitFactor)}`,
     '───────────────────────────────────────',
-    `  Sharpe Ratio     : ${num(report.sharpeRatio, 2)}`,
+    `  Sharpe Ratio     : ${num(report.sharpeRatio)}`,
     `  Max Drawdown     : ${pct(report.maxDrawdown)}`,
     '═══════════════════════════════════════',
   ].join('\n');

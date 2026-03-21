@@ -2,7 +2,7 @@
 // Handles API key generation, hashing, and soft-delete lifecycle
 
 import Database from 'better-sqlite3';
-import { randomUUID, createHash, randomBytes } from 'node:crypto';
+import { randomUUID, createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto';
 import type { Tier } from './subscription-tier.js';
 
 export interface User {
@@ -12,6 +12,8 @@ export interface User {
   apiKey: string;
   /** SHA-256 hash of the API secret */
   apiSecretHash: string;
+  /** scrypt hash of password: "salt:hash" (null for API-key-only users) */
+  passwordHash: string | null;
   tier: Tier;
   createdAt: number;
   active: boolean;
@@ -27,6 +29,7 @@ interface UserRow {
   email: string;
   api_key: string;
   api_secret_hash: string;
+  password_hash: string | null;
   tier: string;
   created_at: number;
   active: number; // 0 | 1
@@ -41,6 +44,7 @@ CREATE TABLE IF NOT EXISTS users (
   email                 TEXT NOT NULL UNIQUE,
   api_key               TEXT NOT NULL UNIQUE,
   api_secret_hash       TEXT NOT NULL,
+  password_hash         TEXT,
   tier                  TEXT NOT NULL DEFAULT 'free',
   created_at            INTEGER NOT NULL,
   active                INTEGER NOT NULL DEFAULT 1,
@@ -52,10 +56,11 @@ CREATE INDEX IF NOT EXISTS idx_users_email             ON users(email);
 CREATE INDEX IF NOT EXISTS idx_users_polar_customer_id ON users(polar_customer_id);
 `;
 
-/** Migrate existing DB: add Polar columns if they don't exist */
+/** Migrate existing DB: add columns if they don't exist */
 const MIGRATION_SQL = `
 ALTER TABLE users ADD COLUMN polar_customer_id     TEXT;
 ALTER TABLE users ADD COLUMN polar_subscription_id TEXT;
+ALTER TABLE users ADD COLUMN password_hash         TEXT;
 CREATE INDEX IF NOT EXISTS idx_users_polar_customer_id ON users(polar_customer_id);
 `;
 
@@ -65,12 +70,41 @@ function rowToUser(row: UserRow): User {
     email: row.email,
     apiKey: row.api_key,
     apiSecretHash: row.api_secret_hash,
+    passwordHash: row.password_hash ?? null,
     tier: row.tier as Tier,
     createdAt: row.created_at,
     active: row.active === 1,
     polarCustomerId: row.polar_customer_id ?? null,
     polarSubscriptionId: row.polar_subscription_id ?? null,
   };
+}
+
+/** Hash a plaintext password with scrypt + random salt; returns "salt:hash" */
+export async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  return new Promise((resolve, reject) => {
+    scrypt(password, salt, 64, (err, derivedKey) => {
+      if (err) reject(err);
+      else resolve(`${salt}:${derivedKey.toString('hex')}`);
+    });
+  });
+}
+
+/** Verify a plaintext password against a stored "salt:hash" string */
+export async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const [salt, hash] = stored.split(':');
+  if (!salt || !hash) return false;
+  return new Promise((resolve, reject) => {
+    scrypt(password, salt, 64, (err, derivedKey) => {
+      if (err) reject(err);
+      else {
+        const hashBuf = Buffer.from(hash, 'hex');
+        const derivedBuf = derivedKey;
+        if (hashBuf.length !== derivedBuf.length) { resolve(false); return; }
+        resolve(timingSafeEqual(hashBuf, derivedBuf));
+      }
+    });
+  });
 }
 
 function hashSecret(secret: string): string {
@@ -89,6 +123,33 @@ export class UserStore {
     }
   }
 
+  /** Lookup user by email */
+  getUserByEmail(email: string): User | null {
+    const row = this.db
+      .prepare(`SELECT * FROM users WHERE email = ? AND active = 1`)
+      .get(email) as UserRow | undefined;
+    return row ? rowToUser(row) : null;
+  }
+
+  /**
+   * Create a new user with password hash for web registration.
+   * Returns User with plaintext apiKey.
+   */
+  createUserWithPassword(email: string, passwordHash: string, tier: Tier = 'free'): User {
+    const id = randomUUID();
+    const apiKey = `ak_${randomBytes(32).toString('hex')}`;
+    const apiSecret = randomUUID();
+    const apiSecretHash = hashSecret(apiSecret);
+    const createdAt = Date.now();
+
+    this.db.prepare(
+      `INSERT INTO users (id, email, api_key, api_secret_hash, password_hash, tier, created_at, active)
+       VALUES (@id, @email, @api_key, @api_secret_hash, @password_hash, @tier, @created_at, 1)`
+    ).run({ id, email, api_key: apiKey, api_secret_hash: apiSecretHash, password_hash: passwordHash, tier, created_at: createdAt });
+
+    return { id, email, apiKey, apiSecretHash, passwordHash, tier, createdAt, active: true, polarCustomerId: null, polarSubscriptionId: null };
+  }
+
   /**
    * Create a new user; generates a unique API key + hashed secret.
    * Returns the full User including plaintext apiKey (store it safely — shown once).
@@ -105,7 +166,7 @@ export class UserStore {
        VALUES (@id, @email, @api_key, @api_secret_hash, @tier, @created_at, 1)`
     ).run({ id, email, api_key: apiKey, api_secret_hash: apiSecretHash, tier, created_at: createdAt });
 
-    return { id, email, apiKey, apiSecretHash, tier, createdAt, active: true, polarCustomerId: null, polarSubscriptionId: null };
+    return { id, email, apiKey, apiSecretHash, passwordHash: null, tier, createdAt, active: true, polarCustomerId: null, polarSubscriptionId: null };
   }
 
   /** Lookup user by API key (used for request auth) */

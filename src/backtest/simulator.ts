@@ -4,94 +4,108 @@
 import type { TradeResult, OrderSide, StrategyName } from '../core/types.js';
 import type { TradeRequest } from '../engine/trade-executor.js';
 import type { HistoricalCandle } from './data-loader.js';
+import { RiskManager } from '../core/risk-manager.js';
 import { generateId } from '../core/utils.js';
+import { equityToReturns, calculateSharpeRatio, calculateMaxDrawdown } from './backtest-math-helpers.js';
 
-/** Configuration for a backtest run */
+// ─── Public interfaces ────────────────────────────────────────────────────────
+
 export interface BacktestConfig {
   initialCapital: number;
-  /** Slippage as decimal (0.001 = 0.1%) */
-  slippage: number;
-  /** Fee per trade as decimal (0.001 = 0.1%) */
-  feeRate: number;
+  slippage: number;    // decimal, e.g. 0.001 = 0.1%
+  feeRate: number;     // decimal per trade
   strategy: StrategyName;
+  maxPositionSize?: number;
+  maxDrawdown?: number;
 }
 
-/** Minimal strategy interface for backtest runner */
 export interface BacktestStrategy {
-  /** Called on each new candle; return trade request or null */
   onCandle(candle: HistoricalCandle, state: SimulatorState): TradeRequest | null;
 }
 
-/** Snapshot of simulator state visible to strategy */
 export interface SimulatorState {
   balance: number;
-  position: number; // net position size (positive = long, negative = short)
+  position: number;        // positive = long, negative = short
   positionAvgPrice: number;
   currentCandle: HistoricalCandle;
   equity: number;
 }
 
-/** Internal filled trade record */
-interface FilledTrade {
-  result: TradeResult;
-  pnl: number;
+export interface BacktestResult {
+  totalReturn: number;     // decimal e.g. 0.15 = 15%
+  winRate: number;
+  sharpeRatio: number;     // annualized
+  maxDrawdown: number;
+  profitFactor: number;
+  tradeCount: number;
+  initialCapital: number;
+  finalEquity: number;
+  totalFees: number;
+  trades: TradeResult[];
+  equityCurve: number[];
 }
 
-/**
- * SimulatedExchange: mock order book that fills orders against candle data.
- * Tracks balance, positions, and P&L throughout a backtest run.
- */
+interface FilledTrade { result: TradeResult; pnl: number; }
+
+// ─── SimulatedExchange ────────────────────────────────────────────────────────
+
 export class SimulatedExchange {
   private balance: number;
-  private position: number = 0;
-  private positionAvgPrice: number = 0;
+  private position = 0;
+  private positionAvgPrice = 0;
   private trades: FilledTrade[] = [];
   private equityCurve: number[] = [];
-  private config: BacktestConfig;
   private currentCandle: HistoricalCandle | null = null;
+  private riskMgr: RiskManager;
 
-  constructor(config: BacktestConfig) {
-    this.config = config;
+  constructor(private config: BacktestConfig) {
     this.balance = config.initialCapital;
+    this.riskMgr = new RiskManager({
+      maxPositionSize: String(config.maxPositionSize ?? config.initialCapital * 0.2),
+      maxDrawdown: config.maxDrawdown ?? 0.25,
+      maxOpenPositions: 10,
+      stopLossPercent: 0.10,
+      maxLeverage: 1,
+    });
   }
 
-  /** Simulate a trade fill at current candle close +/- slippage */
-  simulateTrade(request: TradeRequest): TradeResult {
+  setCandle(candle: HistoricalCandle): void {
+    this.currentCandle = candle;
+    this.equityCurve.push(this.getEquity());
+  }
+
+  simulateTrade(request: TradeRequest): TradeResult | null {
     if (!this.currentCandle) throw new Error('No active candle — call setCandle() first');
 
-    const closePrice = this.currentCandle.close;
-    const slipMult = request.side === 'buy'
-      ? 1 + this.config.slippage
-      : 1 - this.config.slippage;
-    const fillPrice = closePrice * slipMult;
+    if (this.position === 0) {
+      const { allowed } = this.riskMgr.canOpenPosition(String(this.balance), [], request.size);
+      if (!allowed) return null;
+    }
+
+    const slipMult = request.side === 'buy' ? 1 + this.config.slippage : 1 - this.config.slippage;
+    const fillPrice = this.currentCandle.close * slipMult;
     const size = parseFloat(request.size);
     const cost = fillPrice * size;
     const fee = cost * this.config.feeRate;
-
     let pnl = 0;
 
     if (request.side === 'buy') {
-      // Update position (weighted average entry)
       if (this.position >= 0) {
         const totalCost = this.positionAvgPrice * this.position + fillPrice * size;
         this.position += size;
         this.positionAvgPrice = this.position > 0 ? totalCost / this.position : 0;
       } else {
-        // Covering short
         pnl = (this.positionAvgPrice - fillPrice) * Math.min(size, Math.abs(this.position));
         this.position += size;
         if (this.position > 0) this.positionAvgPrice = fillPrice;
       }
       this.balance -= cost + fee;
     } else {
-      // Sell/short
       if (this.position > 0) {
-        // Closing long
         pnl = (fillPrice - this.positionAvgPrice) * Math.min(size, this.position);
         this.position -= size;
         if (this.position < 0) this.positionAvgPrice = fillPrice;
       } else {
-        // Opening short
         const totalCost = Math.abs(this.positionAvgPrice * this.position) + fillPrice * size;
         this.position -= size;
         this.positionAvgPrice = this.position < 0 ? totalCost / Math.abs(this.position) : 0;
@@ -102,28 +116,20 @@ export class SimulatedExchange {
     const result: TradeResult = {
       orderId: generateId('bt'),
       marketId: request.symbol,
-      side: request.side,
+      side: request.side as OrderSide,
       fillPrice: fillPrice.toFixed(6),
       fillSize: request.size,
       fees: fee.toFixed(6),
       timestamp: this.currentCandle.timestamp,
       strategy: this.config.strategy,
     };
-
     this.trades.push({ result, pnl });
     return result;
   }
 
-  /** Update the active candle (called by runBacktest each step) */
-  setCandle(candle: HistoricalCandle): void {
-    this.currentCandle = candle;
-    this.equityCurve.push(this.getEquity());
-  }
-
   getEquity(): number {
     if (!this.currentCandle || this.position === 0) return this.balance;
-    const unrealized = (this.currentCandle.close - this.positionAvgPrice) * this.position;
-    return this.balance + unrealized;
+    return this.balance + (this.currentCandle.close - this.positionAvgPrice) * this.position;
   }
 
   getState(): SimulatorState {
@@ -137,35 +143,48 @@ export class SimulatedExchange {
     };
   }
 
-  getFilledTrades(): FilledTrade[] { return [...this.trades]; }
-  getEquityCurve(): number[] { return [...this.equityCurve]; }
-  getTradeResults(): TradeResult[] { return this.trades.map(t => t.result); }
+  getTradeResults(): TradeResult[]  { return this.trades.map(t => t.result); }
+  getTradePnls(): number[]          { return this.trades.map(t => t.pnl); }
+  getEquityCurve(): number[]        { return [...this.equityCurve]; }
 }
 
-/**
- * Run a strategy against historical candles.
- * Returns trade results and equity curve for report generation.
- */
+// ─── runBacktest ──────────────────────────────────────────────────────────────
+
 export async function runBacktest(
   strategy: BacktestStrategy,
   candles: HistoricalCandle[],
   config: BacktestConfig,
-): Promise<{ trades: TradeResult[]; equityCurve: number[]; finalEquity: number }> {
+): Promise<BacktestResult> {
   const exchange = new SimulatedExchange(config);
 
   for (const candle of candles) {
     exchange.setCandle(candle);
-    const state = exchange.getState();
-    const request = strategy.onCandle(candle, state);
-
-    if (request) {
-      exchange.simulateTrade({ ...request, dryRun: true });
-    }
+    const request = strategy.onCandle(candle, exchange.getState());
+    if (request) exchange.simulateTrade(request);
   }
 
+  const trades      = exchange.getTradeResults();
+  const equityCurve = exchange.getEquityCurve();
+  const pnls        = exchange.getTradePnls();
+  const finalEquity = exchange.getEquity();
+
+  const wins       = pnls.filter(p => p > 0);
+  const losses     = pnls.filter(p => p <= 0);
+  const grossProfit = wins.reduce((s, p) => s + p, 0);
+  const grossLoss   = Math.abs(losses.reduce((s, p) => s + p, 0));
+  const totalFees   = trades.reduce((s, t) => s + parseFloat(t.fees), 0);
+
   return {
-    trades: exchange.getTradeResults(),
-    equityCurve: exchange.getEquityCurve(),
-    finalEquity: exchange.getEquity(),
+    totalReturn:  config.initialCapital > 0 ? (finalEquity - config.initialCapital) / config.initialCapital : 0,
+    winRate:      pnls.length > 0 ? wins.length / pnls.length : 0,
+    sharpeRatio:  calculateSharpeRatio(equityToReturns(equityCurve)),
+    maxDrawdown:  calculateMaxDrawdown(equityCurve),
+    profitFactor: grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? Infinity : 0,
+    tradeCount:   trades.length,
+    initialCapital: config.initialCapital,
+    finalEquity,
+    totalFees,
+    trades,
+    equityCurve,
   };
 }

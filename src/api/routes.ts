@@ -8,6 +8,10 @@ import { handleHealthEnriched } from './health-route.js';
 import { handleMetrics } from './metrics-route.js';
 import { withRequestMetrics } from './request-metrics-middleware.js';
 import { handleStrategyStart, handleStrategyStop } from './strategy-route-handlers.js';
+import { handleRegister, handleLogin, handleMe, handleRotateApiKey } from './auth-routes.js';
+import type { AuthenticatedRequest } from './auth-middleware.js';
+import { handleCopyTradingRoute, type CopyTradingHandlers } from './copy-trading-routes.js';
+import { handleBacktest } from './backtest-route-handler.js';
 
 // ─── Response helpers ─────────────────────────────────────────────────────────
 
@@ -77,6 +81,7 @@ export async function handleRequest(
   engine: TradingEngine,
   pathname: string,
   userStore?: UserStore,
+  copyTradingHandlers?: CopyTradingHandlers,
 ): Promise<void> {
   const method = req.method ?? 'GET';
 
@@ -118,6 +123,33 @@ export async function handleRequest(
       if (method !== 'POST') { sendMethodNotAllowed(res); return; }
       if (!userStore) { sendJson(res, 503, { error: 'Billing not configured' }); return; }
       await handlePolarWebhookRoute(req, res, userStore);
+    } else if (pathname === '/api/auth/register') {
+      if (method !== 'POST') { sendMethodNotAllowed(res); return; }
+      if (!userStore) { sendJson(res, 503, { error: 'User store not configured' }); return; }
+      await handleRegister(req, res, userStore);
+    } else if (pathname === '/api/auth/login') {
+      if (method !== 'POST') { sendMethodNotAllowed(res); return; }
+      if (!userStore) { sendJson(res, 503, { error: 'User store not configured' }); return; }
+      await handleLogin(req, res, userStore);
+    } else if (pathname === '/api/auth/me') {
+      if (method !== 'GET') { sendMethodNotAllowed(res); return; }
+      if (!userStore) { sendJson(res, 503, { error: 'User store not configured' }); return; }
+      handleMe(req as AuthenticatedRequest, res, userStore);
+    } else if (pathname === '/api/auth/api-key') {
+      if (method !== 'POST') { sendMethodNotAllowed(res); return; }
+      if (!userStore) { sendJson(res, 503, { error: 'User store not configured' }); return; }
+      handleRotateApiKey(req as AuthenticatedRequest, res, userStore);
+    } else if (pathname === '/api/backtest') {
+      if (method !== 'POST') { sendMethodNotAllowed(res); return; }
+      await handleBacktest(req, res);
+    } else if (copyTradingHandlers && (
+      pathname === '/api/leaders' ||
+      pathname.startsWith('/api/leaders/') ||
+      pathname === '/api/copy/my' ||
+      pathname.startsWith('/api/copy/')
+    )) {
+      const handled = await handleCopyTradingRoute(req, res, pathname, method, copyTradingHandlers);
+      if (!handled) sendNotFound(res);
     } else {
       sendNotFound(res);
     }

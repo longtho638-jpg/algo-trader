@@ -77,7 +77,7 @@ const StrategyListingSchema = {
 const apiPaths = {
   '/api/health': {
     get: {
-      tags: ['Public'],
+      tags: ['System'],
       summary: 'Health check',
       description: 'Returns server liveness and uptime. No auth required.',
       security: [],
@@ -89,29 +89,70 @@ const apiPaths = {
               schema: {
                 type: 'object',
                 properties: {
-                  status: { type: 'string', example: 'ok' },
-                  timestamp: { type: 'integer', format: 'int64', example: 1700000000000 },
+                  status: { type: 'string', enum: ['ok', 'degraded', 'down'], example: 'ok' },
                   uptime: { type: 'integer', description: 'Uptime in ms', example: 3600000 },
+                  db: { type: 'string', enum: ['ok', 'error'], example: 'ok' },
+                  pipeline: { type: 'string', enum: ['running', 'stopped'], example: 'running' },
+                  wsClients: { type: 'integer', description: 'Active WebSocket connections', example: 42 },
+                  version: { type: 'string', example: '0.1.0' },
                 },
+                required: ['status', 'uptime', 'db', 'pipeline', 'wsClients', 'version'],
               },
             },
           },
         },
+        503: { description: 'Server unhealthy' },
       },
     },
+  },
+
+  '/api/metrics': {
+    get: {
+      tags: ['System'],
+      summary: 'Prometheus metrics',
+      description: 'Returns metrics in Prometheus text exposition format (v0.0.4). No auth required.',
+      security: [],
+      responses: {
+        200: {
+          description: 'Prometheus format metrics',
+          content: {
+            'text/plain; version=0.0.4; charset=utf-8': {
+              schema: {
+                type: 'string',
+                example: '# HELP algo_trades_total Total trades executed\n# TYPE algo_trades_total counter\nalgo_trades_total{strategy="grid-trading"} 42'
+              }
+            }
+          }
+        }
+      }
+    }
   },
 
   '/api/status': {
     get: {
       tags: ['Engine'],
       summary: 'Engine status',
-      description: 'Returns running strategies, trade counts, and server uptime.',
+      description: 'Returns running strategies, trade counts, and server uptime. Requires authentication.',
       responses: {
         200: {
           description: 'Engine status object',
-          content: { 'application/json': { schema: { type: 'object' } } },
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  running: { type: 'boolean', example: true },
+                  strategies: { type: 'array', items: { type: 'string' }, example: ['grid-trading', 'dca-bot'] },
+                  tradeCount: { type: 'integer', example: 123 },
+                  config: { type: 'object', additionalProperties: true },
+                  uptime: { type: 'integer', description: 'Uptime in ms', example: 7200000 }
+                },
+                required: ['running', 'strategies', 'tradeCount', 'uptime']
+              }
+            }
+          }
         },
-        401: { description: 'Missing or invalid X-API-Key' },
+        401: { description: 'Missing or invalid authentication' },
       },
     },
   },
@@ -120,7 +161,7 @@ const apiPaths = {
     get: {
       tags: ['Engine'],
       summary: 'Recent trades',
-      description: 'Returns last 100 executed trades from the trade log.',
+      description: 'Returns last 100 executed trades from the trade log. Requires authentication.',
       responses: {
         200: {
           description: 'Trade list',
@@ -129,13 +170,31 @@ const apiPaths = {
               schema: {
                 type: 'object',
                 properties: {
-                  trades: { type: 'array', items: TradeSchema },
-                  count: { type: 'integer' },
+                  trades: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        orderId: { type: 'string', example: 'order-001' },
+                        marketId: { type: 'string', example: 'BTC/USD' },
+                        side: { type: 'string', enum: ['buy', 'sell'], example: 'buy' },
+                        fillPrice: { type: 'string', example: '42500.50' },
+                        fillSize: { type: 'string', example: '0.1' },
+                        fees: { type: 'string', example: '0.00425' },
+                        timestamp: { type: 'integer', format: 'int64', example: 1700000000000 },
+                        strategy: { ...StrategyNameEnum }
+                      },
+                      required: ['orderId', 'marketId', 'side', 'fillPrice', 'fillSize', 'fees', 'timestamp', 'strategy']
+                    }
+                  },
+                  count: { type: 'integer', example: 42 }
                 },
-              },
-            },
-          },
+                required: ['trades', 'count']
+              }
+            }
+          }
         },
+        401: { description: 'Missing or invalid authentication' }
       },
     },
   },
@@ -144,7 +203,7 @@ const apiPaths = {
     get: {
       tags: ['Engine'],
       summary: 'P&L summary',
-      description: 'Aggregates total fees paid and trade counts broken down by strategy.',
+      description: 'Aggregates total fees paid and trade counts broken down by strategy. Requires authentication.',
       responses: {
         200: {
           description: 'PnL summary',
@@ -161,10 +220,12 @@ const apiPaths = {
                     example: { 'grid-trading': 20, 'dca-bot': 22 },
                   },
                 },
+                required: ['totalFees', 'tradeCount', 'tradesByStrategy']
               },
             },
           },
         },
+        401: { description: 'Missing or invalid authentication' }
       },
     },
   },
@@ -173,6 +234,7 @@ const apiPaths = {
     post: {
       tags: ['Strategy'],
       summary: 'Start a strategy',
+      description: 'Start a named strategy. Requires authentication.',
       requestBody: {
         required: true,
         content: {
@@ -188,6 +250,7 @@ const apiPaths = {
       responses: {
         200: { description: 'Strategy started', content: { 'application/json': { schema: StrategyActionResponse } } },
         400: { description: 'Invalid strategy name', content: { 'application/json': { schema: ErrorSchema } } },
+        401: { description: 'Missing or invalid authentication' },
         500: { description: 'Engine error', content: { 'application/json': { schema: ErrorSchema } } },
       },
     },
@@ -197,6 +260,7 @@ const apiPaths = {
     post: {
       tags: ['Strategy'],
       summary: 'Stop a strategy',
+      description: 'Stop a running strategy. Requires authentication.',
       requestBody: {
         required: true,
         content: {
@@ -212,9 +276,97 @@ const apiPaths = {
       responses: {
         200: { description: 'Strategy stopped', content: { 'application/json': { schema: StrategyActionResponse } } },
         400: { description: 'Invalid strategy name', content: { 'application/json': { schema: ErrorSchema } } },
+        401: { description: 'Missing or invalid authentication' },
         500: { description: 'Engine error', content: { 'application/json': { schema: ErrorSchema } } },
       },
     },
+  },
+
+  '/api/checkout': {
+    post: {
+      tags: ['Billing'],
+      summary: 'Create checkout session',
+      description: 'Create a Polar hosted checkout session for tier upgrades. Requires authentication.',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                tier: { type: 'string', enum: ['pro', 'enterprise'], example: 'pro' },
+                userId: { type: 'string', example: 'user-abc-123' },
+                successUrl: { type: 'string', format: 'uri', example: 'https://example.com/success' },
+                cancelUrl: { type: 'string', format: 'uri', example: 'https://example.com/cancel' }
+              },
+              required: ['tier', 'userId', 'successUrl']
+            }
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'Checkout session created',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: {
+                  checkoutUrl: { type: 'string', format: 'uri', example: 'https://checkout.polar.sh/xyz123' },
+                  checkoutId: { type: 'string', example: 'checkout-abc-123' }
+                },
+                required: ['checkoutUrl', 'checkoutId']
+              }
+            }
+          }
+        },
+        400: { description: 'Missing or invalid fields', content: { 'application/json': { schema: ErrorSchema } } },
+        401: { description: 'Missing or invalid authentication' },
+        404: { description: 'User not found', content: { 'application/json': { schema: ErrorSchema } } },
+        502: { description: 'Billing provider error', content: { 'application/json': { schema: ErrorSchema } } },
+        503: { description: 'Billing not configured', content: { 'application/json': { schema: ErrorSchema } } }
+      }
+    }
+  },
+
+  '/api/webhooks/polar': {
+    post: {
+      tags: ['Billing'],
+      summary: 'Polar webhook receiver',
+      description: 'Receive Polar subscription events. HMAC-signed. No auth required.',
+      security: [],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', enum: ['subscription.created', 'subscription.updated', 'subscription.canceled'] },
+                data: { type: 'object', additionalProperties: true }
+              },
+              required: ['type', 'data']
+            }
+          }
+        }
+      },
+      responses: {
+        200: {
+          description: 'Webhook acknowledged',
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                properties: { acknowledged: { type: 'boolean', example: true } },
+                required: ['acknowledged']
+              }
+            }
+          }
+        },
+        400: { description: 'Invalid webhook payload or missing headers', content: { 'application/json': { schema: ErrorSchema } } },
+        401: { description: 'Webhook signature verification failed', content: { 'application/json': { schema: ErrorSchema } } }
+      }
+    }
   },
 
   '/api/marketplace': {

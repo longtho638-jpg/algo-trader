@@ -16,7 +16,9 @@ import { JobScheduler } from './scheduler/job-scheduler.js';
 import { RecoveryManager } from './resilience/recovery-manager.js';
 import { startAllServers, stopAllServers } from './wiring/servers-wiring.js';
 import { startRecoveryManager, startScheduler, wireProcessSignals } from './wiring/process-wiring.js';
+import { startNotifications, stopNotifications } from './wiring/notifications-wiring.js';
 import type { ServersBundle } from './wiring/servers-wiring.js';
+import type { NotificationsBundle } from './wiring/notifications-wiring.js';
 
 // ── Ports ──────────────────────────────────────────────────────────────────
 
@@ -38,6 +40,7 @@ let _supplementary: ServersBundle | null = null;
 let _scheduler: JobScheduler | null = null;
 let _recovery: RecoveryManager | null = null;
 let _notifier: NotificationRouter | null = null;
+let _notifications: NotificationsBundle | null = null;
 let _stopping = false;
 
 // ── Banner ─────────────────────────────────────────────────────────────────
@@ -76,6 +79,7 @@ export async function stopApp(reason = 'manual'): Promise<void> {
     ]);
     _apiServer = _dashServer = _webhookServer = _supplementary = null;
 
+    if (_notifications) { stopNotifications(_notifications); _notifications = null; }
     if (_scheduler) { _scheduler.stop(); _scheduler = null; }
     if (_recovery)  { _recovery.stopAutoSave(); _recovery.clearState(); _recovery = null; }
 
@@ -139,8 +143,9 @@ export async function startApp(): Promise<void> {
     pipeline: _supplementary.pipeline.getStatus(),
   });
 
-  // 10. Notification router
-  _notifier = new NotificationRouter();
+  // 10. Notifications: Telegram bot + trade alerts
+  _notifications = startNotifications(eventBus, _engine);
+  _notifier = _notifications.router;
   logger.info('Notification router initialised', 'App', { channels: _notifier.enabledChannels() });
 
   // 11. Scheduler + built-in jobs

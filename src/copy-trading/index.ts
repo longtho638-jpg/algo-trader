@@ -7,3 +7,6 @@ export type { FollowRelation } from './follower-manager.js';
 
 export { CopyEngine } from './copy-engine.js';
 export type { FollowerContext, CopyTradeResult } from './copy-engine.js';
+
+export { CopyTradingService } from './copy-trading-service.js';
+export type { FollowerCapitalResolver, CopyTradeDispatcher } from './copy-trading-service.js';

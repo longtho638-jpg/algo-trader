@@ -12,7 +12,12 @@ export interface AuthenticatedRequest extends IncomingMessage {
 }
 
 /** Public endpoints that skip authentication */
-const PUBLIC_PATHS = new Set(['/api/health', '/api/webhooks/polar']);
+const PUBLIC_PATHS = new Set([
+  '/api/health',
+  '/api/webhooks/polar',
+  '/api/auth/register',
+  '/api/auth/login',
+]);
 
 // ─── JWT helpers (HS256, Node.js crypto) ─────────────────────────────────────
 

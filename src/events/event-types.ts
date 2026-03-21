@@ -39,6 +39,14 @@ export interface SystemEventMap {
 
   /** Fired periodically with portfolio PnL metrics */
   'pnl.snapshot': { snapshot: PnlSnapshot };
+
+  /** Fired when a leader trade has been replicated to a follower */
+  'copy.trade.replicated': {
+    leaderId: string;
+    followerId: string;
+    originalTradeId: string;
+    scaleFactor: number;
+  };
 }
 
 /** Union of all valid system event names */

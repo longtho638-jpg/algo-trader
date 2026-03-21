@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Create Account — algo-trade</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a1a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+
+    .card {
+      background: #0f0f2a;
+      border: 1px solid #1e1e40;
+      border-radius: 12px;
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .logo {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    .logo h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #00d4aa;
+      letter-spacing: -0.5px;
+    }
+    .logo p {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-top: 0.25rem;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+    label {
+      display: block;
+      font-size: 0.85rem;
+      color: #94a3b8;
+      margin-bottom: 0.4rem;
+      font-weight: 500;
+    }
+    input {
+      width: 100%;
+      background: #0a0a1a;
+      border: 1px solid #1e1e40;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input:focus { border-color: #00d4aa; }
+    input::placeholder { color: #334155; }
+
+    .btn {
+      width: 100%;
+      background: #00d4aa;
+      color: #0a0a1a;
+      border: none;
+      border-radius: 8px;
+      padding: 0.85rem;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.2s, opacity 0.2s;
+    }
+    .btn:hover { background: #00b894; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .error-msg {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #f87171;
+      border-radius: 8px;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      margin-bottom: 1rem;
+      display: none;
+    }
+    .error-msg.visible { display: block; }
+
+    .footer-link {
+      text-align: center;
+      margin-top: 1.5rem;
+      font-size: 0.875rem;
+      color: #64748b;
+    }
+    .footer-link a {
+      color: #00d4aa;
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .footer-link a:hover { text-decoration: underline; }
+
+    .api-key-box {
+      background: #0a0a1a;
+      border: 1px solid #00d4aa;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+      display: none;
+    }
+    .api-key-box.visible { display: block; }
+    .api-key-box p { font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem; }
+    .api-key-box code {
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      color: #00d4aa;
+      word-break: break-all;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">
+      <h1>algo-trade</h1>
+      <p>Algorithmic Trading as a Service</p>
+    </div>
+
+    <div class="error-msg" id="errorMsg"></div>
+
+    <form id="registerForm">
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
+      </div>
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" />
+      </div>
+      <div class="form-group">
+        <label for="confirmPassword">Confirm Password</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repeat your password" required autocomplete="new-password" />
+      </div>
+      <button type="submit" class="btn" id="submitBtn">Create Account</button>
+    </form>
+
+    <div class="api-key-box" id="apiKeyBox">
+      <p>Your API key (save it — shown once):</p>
+      <code id="apiKeyValue"></code>
+    </div>
+
+    <div class="footer-link">
+      Already have an account? <a href="/login.html">Sign in</a>
+    </div>
+  </div>
+
+  <script>
+    const form = document.getElementById('registerForm');
+    const errorMsg = document.getElementById('errorMsg');
+    const submitBtn = document.getElementById('submitBtn');
+    const apiKeyBox = document.getElementById('apiKeyBox');
+    const apiKeyValue = document.getElementById('apiKeyValue');
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorMsg.classList.add('visible');
+    }
+    function hideError() {
+      errorMsg.classList.remove('visible');
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      hideError();
+
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+
+      if (password !== confirmPassword) {
+        showError('Passwords do not match');
+        return;
+      }
+      if (password.length < 8) {
+        showError('Password must be at least 8 characters');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating account...';
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, confirmPassword }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          showError(data.error || 'Registration failed');
+          return;
+        }
+
+        // Store JWT for subsequent requests
+        localStorage.setItem('algo_token', data.token);
+
+        // Show API key before redirect
+        if (data.user?.apiKey) {
+          apiKeyValue.textContent = data.user.apiKey;
+          apiKeyBox.classList.add('visible');
+          submitBtn.textContent = 'Redirecting to dashboard...';
+          setTimeout(() => { window.location.href = '/dashboard'; }, 3000);
+        } else {
+          window.location.href = '/dashboard';
+        }
+      } catch {
+        showError('Network error — please try again');
+      } finally {
+        submitBtn.disabled = false;
+        if (submitBtn.textContent === 'Creating account...') {
+          submitBtn.textContent = 'Create Account';
+        }
+      }
+    });
+  </script>
+</body>
+</html>
