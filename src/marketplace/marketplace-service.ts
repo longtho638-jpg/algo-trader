@@ -21,6 +21,15 @@ export interface MarketplaceListing {
   active: boolean;
 }
 
+export interface MarketplaceReview {
+  id: string;
+  strategyId: string;
+  userId: string;
+  rating: number;
+  comment: string;
+  createdAt: number;
+}
+
 export interface MarketplacePurchase {
   id: string;
   buyerId: string;
@@ -59,10 +68,21 @@ CREATE TABLE IF NOT EXISTS marketplace_purchases (
   purchased_at   INTEGER NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS marketplace_reviews (
+  id           TEXT PRIMARY KEY,
+  strategy_id  TEXT NOT NULL,
+  user_id      TEXT NOT NULL,
+  rating       INTEGER NOT NULL CHECK(rating BETWEEN 1 AND 5),
+  comment      TEXT NOT NULL DEFAULT '',
+  created_at   INTEGER NOT NULL,
+  UNIQUE(strategy_id, user_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_ml_author   ON marketplace_listings(author_id);
 CREATE INDEX IF NOT EXISTS idx_ml_category ON marketplace_listings(category);
 CREATE INDEX IF NOT EXISTS idx_mp_buyer    ON marketplace_purchases(buyer_id);
 CREATE INDEX IF NOT EXISTS idx_mp_strategy ON marketplace_purchases(strategy_id);
+CREATE INDEX IF NOT EXISTS idx_mr_strategy ON marketplace_reviews(strategy_id);
 `;
 
 export class MarketplaceService {
@@ -189,6 +209,40 @@ export class MarketplaceService {
     this.db.prepare(`UPDATE marketplace_listings SET rating=? WHERE id=?`).run(
       Math.max(0, Math.min(100, rating)), id,
     );
+  }
+
+  /** Submit a review for a strategy (1-5 stars + optional comment) */
+  submitReview(userId: string, strategyId: string, rating: number, comment = ''): MarketplaceReview {
+    const listing = this.getStrategy(strategyId);
+    if (!listing || !listing.active) throw new Error('Strategy not found');
+    if (rating < 1 || rating > 5) throw new Error('Rating must be 1-5');
+    const id = randomUUID();
+    const now = Date.now();
+    this.db.prepare(`
+      INSERT OR REPLACE INTO marketplace_reviews (id, strategy_id, user_id, rating, comment, created_at)
+      VALUES (@id, @strategy_id, @user_id, @rating, @comment, @created_at)
+    `).run({ id, strategy_id: strategyId, user_id: userId, rating: Math.round(rating), comment, created_at: now });
+    // Recalculate average rating for the listing
+    const avg = (this.db.prepare(
+      `SELECT AVG(rating) as avg FROM marketplace_reviews WHERE strategy_id=?`
+    ).get(strategyId) as { avg: number }).avg;
+    this.db.prepare(`UPDATE marketplace_listings SET rating=? WHERE id=?`).run(
+      Math.round(avg * 20), strategyId, // Convert 1-5 scale to 0-100
+    );
+    return { id, strategyId, userId, rating: Math.round(rating), comment, createdAt: now };
+  }
+
+  /** Get reviews for a strategy */
+  getReviews(strategyId: string, limit = 50): MarketplaceReview[] {
+    const rows = this.db.prepare(
+      `SELECT id, strategy_id, user_id, rating, comment, created_at
+       FROM marketplace_reviews WHERE strategy_id=? ORDER BY created_at DESC LIMIT ?`
+    ).all(strategyId, limit) as Record<string, unknown>[];
+    return rows.map(r => ({
+      id: r['id'] as string, strategyId: r['strategy_id'] as string,
+      userId: r['user_id'] as string, rating: r['rating'] as number,
+      comment: r['comment'] as string, createdAt: r['created_at'] as number,
+    }));
   }
 
   close(): void { this.db.close(); }

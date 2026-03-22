@@ -88,6 +88,25 @@ export class UserWebhookRegistry {
     });
   }
 
+  /** Get a specific registration by ID (owned by user) */
+  getById(id: string, userId: string): WebhookRegistration | undefined {
+    return this.registrations.find(r => r.id === id && r.userId === userId && r.active);
+  }
+
+  /** Send a test payload to a specific webhook */
+  sendTest(id: string, userId: string): boolean {
+    const reg = this.getById(id, userId);
+    if (!reg) return false;
+    const body = JSON.stringify({
+      event: 'test',
+      data: { message: 'Test webhook delivery from CashClaw', webhookId: id },
+      timestamp: Date.now(),
+    });
+    this.retryQueue.enqueue(`${id}-test-${Date.now()}`, reg.url, body);
+    logger.info(`Test webhook sent: ${id} → ${reg.url}`, 'UserWebhookRegistry');
+    return true;
+  }
+
   /** Get delivery stats */
   getStats() {
     return {

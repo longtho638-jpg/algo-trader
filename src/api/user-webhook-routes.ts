@@ -1,6 +1,6 @@
 // API routes for user webhook registration management
 // POST /api/webhooks/register, GET /api/webhooks/my, DELETE /api/webhooks/:id
-// GET /api/webhooks/stats, GET /api/webhooks/history
+// POST /api/webhooks/:id/test, GET /api/webhooks/stats, GET /api/webhooks/history
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { sendJson, readJsonBody } from './http-response-helpers.js';
@@ -59,6 +59,19 @@ export function handleUserWebhookRoutes(
       return true;
     }
     sendJson(res, 200, { ok: true, id });
+    return true;
+  }
+
+  // POST /api/webhooks/:id/test — send test payload
+  const testMatch = pathname.match(/^\/api\/webhooks\/([0-9a-f-]+)\/test$/);
+  if (testMatch && method === 'POST') {
+    const id = testMatch[1]!;
+    const sent = _registry.sendTest(id, userId);
+    if (!sent) {
+      sendJson(res, 404, { error: 'Webhook not found or not owned by you' });
+      return true;
+    }
+    sendJson(res, 200, { ok: true, message: 'Test payload queued for delivery' });
     return true;
   }
 

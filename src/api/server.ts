@@ -126,10 +126,13 @@ export function createServer(
     // 1. CORS headers on every response
     applyCors(req, res);
 
-    // 2. Security hardening headers
+    // 2. API version header
+    res.setHeader('X-API-Version', '1.0');
+
+    // 3. Security hardening headers
     applySecurityHeaders(req, res);
 
-    // 3. Handle CORS preflight immediately
+    // 4. Handle CORS preflight immediately
     if (req.method === 'OPTIONS') {
       res.writeHead(204);
       res.end();
@@ -139,20 +142,20 @@ export function createServer(
     const parsed = parse(req.url ?? '/');
     const pathname = parsed.pathname ?? '/';
 
-    // 4. Auth middleware — attaches req.user or sends 401
+    // 5. Auth middleware — attaches req.user or sends 401
     let authPassed = false;
     authMiddleware(req as AuthenticatedRequest, res, () => { authPassed = true; });
     if (!authPassed) return;
 
-    // 5. Rate limit middleware — checks per-user/per-IP sliding window
+    // 6. Rate limit middleware — checks per-user/per-IP sliding window
     let ratePassed = false;
     rateLimitMiddleware(req as AuthenticatedRequest, res, () => { ratePassed = true; });
     if (!ratePassed) return;
 
-    // 6. Tier-based feature gating — block endpoints user's plan doesn't include
+    // 7. Tier-based feature gating — block endpoints user's plan doesn't include
     if (!checkTierGate(req as AuthenticatedRequest, res, pathname)) return;
 
-    // 7. Body size limit for POST requests
+    // 8. Body size limit for POST requests
     if (req.method === 'POST') {
       let bodyPassed = false;
       await new Promise<void>((resolve) => {
@@ -162,7 +165,7 @@ export function createServer(
       if (!bodyPassed) return;
     }
 
-    // 8. Route to handler
+    // 9. Route to handler
     try {
       // Admin routes: /api/admin/* — requires resolved user from auth middleware
       if (pathname.startsWith('/api/admin/') || pathname === '/api/admin') {

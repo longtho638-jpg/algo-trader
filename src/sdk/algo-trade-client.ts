@@ -97,6 +97,46 @@ export class AlgoTradeClient {
   /** POST /api/kalshi/cross-scan — cross-platform arb scan (Kalshi vs Polymarket) */
   async crossScanKalshi(prices: Array<{ conditionId: string; title: string; midPrice: number }>): Promise<KalshiCrossScanResponse> { return this.post('/api/kalshi/cross-scan', { prices }); }
 
+  // ─── Paper Trading endpoints ─────────────────────────────────────────────────
+
+  /** POST /api/paper/start — start paper trading session */
+  async paperStart(initialCapital = 10000): Promise<unknown> { return this.post('/api/paper/start', { initialCapital }); }
+
+  /** POST /api/paper/stop — stop session and get summary */
+  async paperStop(): Promise<unknown> { return this.post('/api/paper/stop', {}); }
+
+  /** GET /api/paper/status — current session status */
+  async paperStatus(): Promise<unknown> { return this.get('/api/paper/status'); }
+
+  /** POST /api/paper/trade — execute a paper trade */
+  async paperTrade(params: { symbol: string; side: string; size: string; strategy?: string }): Promise<unknown> { return this.post('/api/paper/trade', params); }
+
+  // ─── Optimizer endpoints ────────────────────────────────────────────────────
+
+  /** POST /api/optimizer/run — start optimization job */
+  async optimizerRun(strategyName: string, params?: { initialCapital?: number }): Promise<unknown> { return this.post('/api/optimizer/run', { strategyName, ...params }); }
+
+  /** GET /api/optimizer/results — get latest results */
+  async optimizerResults(): Promise<unknown> { return this.get('/api/optimizer/results'); }
+
+  // ─── Exchange endpoints ─────────────────────────────────────────────────────
+
+  /** GET /api/exchanges — list connected exchanges */
+  async getExchanges(): Promise<unknown> { return this.get('/api/exchanges'); }
+
+  // ─── Marketplace review endpoints ───────────────────────────────────────────
+
+  /** POST /api/marketplace/strategy/:id/review — submit review */
+  async submitReview(strategyId: string, rating: number, comment = ''): Promise<unknown> { return this.post(`/api/marketplace/strategy/${strategyId}/review`, { rating, comment }); }
+
+  /** GET /api/marketplace/strategy/:id/reviews — list reviews */
+  async getReviews(strategyId: string): Promise<unknown> { return this.get(`/api/marketplace/strategy/${strategyId}/reviews`); }
+
+  // ─── Webhook management endpoints ───────────────────────────────────────────
+
+  /** POST /api/webhooks/:id/test — send test payload */
+  async testWebhook(webhookId: string): Promise<unknown> { return this.post(`/api/webhooks/${webhookId}/test`, {}); }
+
   // ─── Private fetch wrapper ──────────────────────────────────────────────────
 
   private get<T>(path: string): Promise<T> { return this.request<T>('GET', path); }

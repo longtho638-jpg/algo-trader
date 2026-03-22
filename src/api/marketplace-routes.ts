@@ -183,6 +183,36 @@ export async function handleMarketplaceRoutes(
     return true;
   }
 
+  // POST /api/marketplace/strategy/:id/review — submit a review
+  const reviewPostMatch = pathname.match(/^\/api\/marketplace\/strategy\/([^/]+)\/review$/);
+  if (reviewPostMatch && method === 'POST') {
+    const strategyId = reviewPostMatch[1]!;
+    let body: Record<string, unknown>;
+    try { body = await readJsonBody(req); } catch {
+      sendJson(res, 400, { error: 'Invalid JSON body' }); return true;
+    }
+    const rating = body['rating'];
+    if (typeof rating !== 'number' || rating < 1 || rating > 5) {
+      sendJson(res, 400, { error: 'rating must be 1-5' }); return true;
+    }
+    try {
+      const review = svc.submitReview(userId, strategyId, rating, String(body['comment'] ?? ''));
+      sendJson(res, 201, { review });
+    } catch (err) {
+      sendJson(res, 400, { error: err instanceof Error ? err.message : 'Unknown error' });
+    }
+    return true;
+  }
+
+  // GET /api/marketplace/strategy/:id/reviews — list reviews
+  const reviewsGetMatch = pathname.match(/^\/api\/marketplace\/strategy\/([^/]+)\/reviews$/);
+  if (reviewsGetMatch && method === 'GET') {
+    const strategyId = reviewsGetMatch[1]!;
+    const reviews = svc.getReviews(strategyId);
+    sendJson(res, 200, { reviews, count: reviews.length });
+    return true;
+  }
+
   // POST /api/marketplace/import — import strategy config and publish as new listing
   if (pathname === '/api/marketplace/import' && method === 'POST') {
     if (!PUBLISH_TIERS.has(userTier)) {
