@@ -70,6 +70,21 @@ export interface StrategyActionResponse {
   action: 'started' | 'stopped';
 }
 
+// ─── DEX response types ───────────────────────────────────────────────────────
+
+export interface DexChainsResponse { chains: string[]; count: number; }
+export interface DexQuoteResponse { amountIn: string; slippageBps: number; minOutput: string; }
+export interface DexSwapResponse { chain: string; txHash: string; amountIn: string; amountOutMin: string; success: boolean; }
+
+// ─── Kalshi response types ────────────────────────────────────────────────────
+
+export interface KalshiMarketsResponse { markets: unknown[]; count: number; }
+export interface KalshiBalanceResponse { balance: unknown; }
+export interface KalshiPositionsResponse { positions: unknown[]; count: number; }
+export interface KalshiOrderResponse { order: unknown; }
+export interface KalshiScanResponse { opportunities: unknown[]; count: number; }
+export interface KalshiCrossScanResponse { opportunities: unknown[]; count: number; }
+
 // ─── Marketplace / backtest stubs (future endpoints) ─────────────────────────
 
 /** Stub: future marketplace listing response */

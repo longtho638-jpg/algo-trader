@@ -995,6 +995,63 @@ const apiPaths: Record<string, unknown> = {
     },
   },
 
+  '/admin/users/{userId}': {
+    get: {
+      tags: ['Admin'],
+      summary: 'Get user details by ID',
+      security: [{ AdminKey: [] }],
+      parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
+      responses: {
+        200: { description: 'User detail object' },
+        401: { description: 'Invalid X-Admin-Key' },
+        404: { description: 'User not found' },
+      },
+    },
+  },
+
+  '/admin/users/{userId}/ban': {
+    post: {
+      tags: ['Admin'],
+      summary: 'Ban a user',
+      security: [{ AdminKey: [] }],
+      parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
+      responses: {
+        200: { description: 'User banned', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' }, userId: { type: 'string' } } } } } },
+        401: { description: 'Invalid X-Admin-Key' },
+      },
+    },
+  },
+
+  '/admin/users/{userId}/upgrade': {
+    post: {
+      tags: ['Admin'],
+      summary: 'Upgrade user tier',
+      security: [{ AdminKey: [] }],
+      parameters: [{ name: 'userId', in: 'path', required: true, schema: { type: 'string' } }],
+      requestBody: {
+        content: { 'application/json': { schema: { type: 'object', properties: { tier: { type: 'string', enum: ['free', 'pro', 'enterprise'] } }, required: ['tier'] } } },
+      },
+      responses: {
+        200: { description: 'Tier updated' },
+        401: { description: 'Invalid X-Admin-Key' },
+      },
+    },
+  },
+
+  '/admin/strategy/{strategyName}/stop': {
+    post: {
+      tags: ['Admin'],
+      summary: 'Force-stop a running strategy',
+      security: [{ AdminKey: [] }],
+      parameters: [{ name: 'strategyName', in: 'path', required: true, schema: { type: 'string' } }],
+      responses: {
+        200: { description: 'Strategy stopped', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' }, strategy: { type: 'string' }, action: { type: 'string' } } } } } },
+        401: { description: 'Invalid X-Admin-Key' },
+        500: { description: 'Failed to stop strategy' },
+      },
+    },
+  },
+
   '/admin/system': {
     get: {
       tags: ['Admin'],

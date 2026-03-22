@@ -9,6 +9,15 @@ import type {
   TradeListResponse,
   PnlResponse,
   StrategyActionResponse,
+  DexChainsResponse,
+  DexQuoteResponse,
+  DexSwapResponse,
+  KalshiMarketsResponse,
+  KalshiBalanceResponse,
+  KalshiPositionsResponse,
+  KalshiOrderResponse,
+  KalshiScanResponse,
+  KalshiCrossScanResponse,
 } from './sdk-types.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -57,7 +66,41 @@ export class AlgoTradeClient {
     return this.request<StrategyActionResponse>('POST', '/api/strategy/stop', { name });
   }
 
+  // ─── DEX endpoints ───────────────────────────────────────────────────────────
+
+  /** GET /api/dex/chains — list supported chains */
+  async getDexChains(): Promise<DexChainsResponse> { return this.get('/api/dex/chains'); }
+
+  /** POST /api/dex/quote — get a swap quote */
+  async getDexQuote(amountIn: string, slippageBps?: number): Promise<DexQuoteResponse> { return this.post('/api/dex/quote', { amountIn, slippageBps }); }
+
+  /** POST /api/dex/swap — execute a token swap */
+  async dexSwap(params: { chain: string; tokenIn: string; tokenOut: string; amountIn: string; slippageBps?: number }): Promise<DexSwapResponse> { return this.post('/api/dex/swap', params); }
+
+  // ─── Kalshi endpoints ─────────────────────────────────────────────────────────
+
+  /** GET /api/kalshi/markets — list active Kalshi markets */
+  async getKalshiMarkets(): Promise<KalshiMarketsResponse> { return this.get('/api/kalshi/markets'); }
+
+  /** GET /api/kalshi/balance — get Kalshi account balance */
+  async getKalshiBalance(): Promise<KalshiBalanceResponse> { return this.get('/api/kalshi/balance'); }
+
+  /** GET /api/kalshi/positions — get open Kalshi positions */
+  async getKalshiPositions(): Promise<KalshiPositionsResponse> { return this.get('/api/kalshi/positions'); }
+
+  /** POST /api/kalshi/order — place a Kalshi order */
+  async placeKalshiOrder(params: { ticker: string; side: string; type?: string; price: number; count: number }): Promise<KalshiOrderResponse> { return this.post('/api/kalshi/order', params); }
+
+  /** GET /api/kalshi/scan — scan for Kalshi arbitrage opportunities */
+  async scanKalshi(): Promise<KalshiScanResponse> { return this.get('/api/kalshi/scan'); }
+
+  /** POST /api/kalshi/cross-scan — cross-platform arb scan (Kalshi vs Polymarket) */
+  async crossScanKalshi(prices: Array<{ conditionId: string; title: string; midPrice: number }>): Promise<KalshiCrossScanResponse> { return this.post('/api/kalshi/cross-scan', { prices }); }
+
   // ─── Private fetch wrapper ──────────────────────────────────────────────────
+
+  private get<T>(path: string): Promise<T> { return this.request<T>('GET', path); }
+  private post<T>(path: string, body: unknown): Promise<T> { return this.request<T>('POST', path, body); }
 
   /**
    * Generic typed fetch wrapper.

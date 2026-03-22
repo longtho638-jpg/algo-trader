@@ -10,7 +10,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { sendJson, readJsonBody } from './http-response-helpers.js';
 import type { AuthenticatedRequest } from './auth-middleware.js';
 import type { KalshiClient } from '../kalshi/kalshi-client.js';
-import type { KalshiMarketScanner } from '../kalshi/kalshi-market-scanner.js';
+import type { KalshiMarketScanner, PolymarketPriceMap } from '../kalshi/kalshi-market-scanner.js';
 import type { KalshiOrderManager } from '../kalshi/kalshi-order-manager.js';
 
 export interface KalshiDeps {
@@ -115,6 +115,29 @@ export function handleKalshiRoutes(
     void (async () => {
       try {
         const opportunities = await _deps!.scanner.scanOpportunities();
+        sendJson(res, 200, { opportunities, count: opportunities.length });
+      } catch (err) {
+        sendJson(res, 500, { error: String(err) });
+      }
+    })();
+    return true;
+  }
+
+  // POST /api/kalshi/cross-scan
+  if (pathname === '/api/kalshi/cross-scan' && method === 'POST') {
+    void (async () => {
+      try {
+        const body = await readJsonBody<{
+          prices: Array<{ conditionId: string; title: string; midPrice: number }>;
+        }>(req);
+        if (!body.prices || body.prices.length === 0) {
+          sendJson(res, 400, { error: 'Required: non-empty prices array' });
+          return;
+        }
+        const priceMap: PolymarketPriceMap = new Map(
+          body.prices.map((p) => [p.conditionId, p]),
+        );
+        const opportunities = await _deps!.scanner.findArbOpportunities(priceMap);
         sendJson(res, 200, { opportunities, count: opportunities.length });
       } catch (err) {
         sendJson(res, 500, { error: String(err) });
