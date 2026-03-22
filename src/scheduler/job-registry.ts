@@ -1,6 +1,7 @@
 // Pre-built job definitions for the algo-trade platform
 import { logger } from '../core/logger.js';
 import type { JobScheduler, JobFn } from './job-scheduler.js';
+import { setHedgeResults } from '../dashboard/dashboard-server.js';
 
 export interface JobDefinition {
   name: string;
@@ -57,6 +58,37 @@ const marketScanHandler: JobFn = async () => {
   logger.debug('Market scan complete', 'marketScan');
 };
 
+/** PolyClaw hedge scan: discover hedge opportunities and push to dashboard */
+const hedgeScanHandler: JobFn = async () => {
+  logger.info('Running PolyClaw hedge scan', 'hedgeScan');
+  try {
+    // Dynamic import to avoid circular deps and allow optional AI gateway
+    const { HedgeScanner } = await import('../polymarket/hedge-scanner.js');
+    const { AiRouter } = await import('../openclaw/ai-router.js');
+    const ai = new AiRouter();
+    const scanner = new HedgeScanner(ai, { maxTier: 2 });
+    const results = await scanner.scanTopMarkets(10);
+
+    // Flatten portfolios for dashboard
+    const flat = results.flatMap(r =>
+      r.portfolios.map(p => ({
+        tier: p.tier,
+        coverage: p.coverage,
+        profitPct: p.profitPct,
+        targetQuestion: r.targetMarket.question,
+        coverQuestion: p.coverMarket.question,
+        targetId: r.targetMarket.id,
+        coverId: p.coverMarket.id,
+      }))
+    );
+    setHedgeResults(flat);
+    logger.info('PolyClaw hedge scan complete', 'hedgeScan', { portfolios: flat.length });
+  } catch (err) {
+    logger.warn('Hedge scan job failed (AI gateway may be offline)', 'hedgeScan', { err: String(err) });
+    // Non-fatal: dashboard shows stale data
+  }
+};
+
 // ── Registry ───────────────────────────────────────────────────────────────
 
 export const BUILT_IN_JOBS: JobDefinition[] = [
@@ -93,6 +125,13 @@ export const BUILT_IN_JOBS: JobDefinition[] = [
     description: 'Scan markets for trading opportunities every minute',
     interval: 'every 1m',
     handler: marketScanHandler,
+    enabled: true,
+  },
+  {
+    name: 'hedgeScan',
+    description: 'PolyClaw AI hedge discovery — scan trending markets every 15 minutes',
+    interval: 'every 15m',
+    handler: hedgeScanHandler,
     enabled: true,
   },
 ];

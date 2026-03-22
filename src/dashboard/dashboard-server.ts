@@ -6,6 +6,7 @@ import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { DashboardDataProvider } from './dashboard-data.js';
+import { logger } from '../core/logger.js';
 import type { UserStore } from '../users/user-store.js';
 import { AdminAnalytics } from '../admin/admin-analytics.js';
 import type { AiSignalGenerator } from '../openclaw/ai-signal-generator.js';
@@ -124,6 +125,30 @@ function getAiInsights(deps: DashboardDeps) {
       totalSignals: signalStats.totalSignals,
       markets: signalStats.markets,
     },
+  };
+}
+
+// ── Hedge portfolios (Sprint 239: PolyClaw dashboard integration) ─────────────
+
+/** In-memory store for last hedge scan results (populated by scheduler job) */
+let _lastHedgeResults: Array<{
+  tier: number; coverage: number; profitPct: number;
+  targetQuestion: string; coverQuestion: string;
+  targetId: string; coverId: string;
+}> = [];
+let _lastHedgeScanAt = 0;
+
+/** Called by scheduler hedge job to push results to dashboard */
+export function setHedgeResults(results: typeof _lastHedgeResults): void {
+  _lastHedgeResults = results;
+  _lastHedgeScanAt = Date.now();
+}
+
+function getHedgePortfolios() {
+  return {
+    portfolios: _lastHedgeResults,
+    lastScanAt: _lastHedgeScanAt,
+    count: _lastHedgeResults.length,
   };
 }
 
@@ -324,6 +349,12 @@ export function createDashboardServer(port: number, dataProvider: DashboardDataP
         return;
       }
 
+      // GET /dashboard/api/hedge-portfolios — PolyClaw hedge scan results (cached)
+      if (url === '/dashboard/api/hedge-portfolios') {
+        sendJson(res, 200, getHedgePortfolios());
+        return;
+      }
+
       // GET /dashboard/api/usage — API usage metering summary (admin view)
       if (url === '/dashboard/api/usage') {
         if (analytics) {
@@ -353,7 +384,7 @@ export function createDashboardServer(port: number, dataProvider: DashboardDataP
   });
 
   server.listen(port, () => {
-    console.log(`[Dashboard] Server listening on http://localhost:${port}`);
+    logger.info(`Server listening on http://localhost:${port}`, 'Dashboard');
   });
 
   return server;
