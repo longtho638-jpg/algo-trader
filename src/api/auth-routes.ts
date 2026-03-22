@@ -5,6 +5,7 @@ import type { UserStore } from '../users/user-store.js';
 import { hashPassword, verifyPassword } from '../users/user-store.js';
 import { createJwt } from './auth-middleware.js';
 import type { AuthenticatedRequest } from './auth-middleware.js';
+import { logger } from '../core/logger.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -33,7 +34,7 @@ function resolveJwtSecret(): string {
     const secret = crypto.randomBytes(32).toString('hex');
     process.env['JWT_SECRET'] = secret;
     // Log warning so operator knows to set it explicitly
-    console.warn('[AUTH] JWT_SECRET not set — auto-generated ephemeral secret. Set JWT_SECRET env var for persistence across restarts.');
+    logger.warn('JWT_SECRET not set — auto-generated ephemeral secret. Set JWT_SECRET env var for persistence across restarts.', 'AuthRoutes');
   }
   return process.env['JWT_SECRET']!;
 }

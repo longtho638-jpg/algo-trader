@@ -4,6 +4,7 @@ import { createServer as createHttpServer } from 'node:http';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import { parse } from 'node:url';
 import { TradingEngine } from '../engine/engine.js';
+import { logger } from '../core/logger.js';
 import { createAuthMiddleware, type AuthenticatedRequest } from './auth-middleware.js';
 import { createRateLimitMiddleware } from './api-rate-limiter-middleware.js';
 import { handleRequest } from './routes.js';
@@ -189,7 +190,7 @@ export function createServer(
   });
 
   server.listen(port, () => {
-    console.log(`[API] Server listening on port ${port}`);
+    logger.info(`Server listening on port ${port}`, 'ApiServer');
   });
 
   return server;

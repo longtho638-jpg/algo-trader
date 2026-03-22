@@ -5,6 +5,7 @@ import { createServer as createHttpServer } from 'node:http';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import { parse } from 'node:url';
 import type { TradingSignal } from './signal-parser.js';
+import { logger } from '../core/logger.js';
 import {
   parseTradingViewAlert,
   parseGenericSignal,
@@ -204,7 +205,7 @@ export function createWebhookServer(port: number, onSignal: SignalHandler): Serv
   });
 
   server.listen(port, () => {
-    console.log(`[Webhook] Server listening on port ${port}`);
+    logger.info(`Server listening on port ${port}`, 'WebhookServer');
   });
 
   // Attach retryQueue for cleanup

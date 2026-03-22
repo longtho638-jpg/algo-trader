@@ -1,5 +1,6 @@
 // Parameter space exploration for strategy optimization
 // Generates full cartesian product or random samples from numeric param ranges
+import { logger } from '../core/logger.js';
 
 /** Defines a numeric parameter range to explore during optimization */
 export interface ParamRange {
@@ -63,9 +64,9 @@ export function generateGrid(ranges: ParamRange[]): Record<string, number>[] {
   const totalCount = paramValues.reduce((acc, p) => acc * p.values.length, 1);
 
   if (totalCount > MAX_COMBINATIONS) {
-    console.warn(
-      `[grid-search] Total combinations ${totalCount} exceeds limit ${MAX_COMBINATIONS}. ` +
-        `Truncating to first ${MAX_COMBINATIONS}. Consider using generateRandomSample() instead.`,
+    logger.warn(
+      `Total combinations ${totalCount} exceeds limit ${MAX_COMBINATIONS}. Truncating to first ${MAX_COMBINATIONS}. Consider using generateRandomSample() instead.`,
+      'GridSearch',
     );
   }
 

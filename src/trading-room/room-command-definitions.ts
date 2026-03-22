@@ -3,6 +3,7 @@
 
 import type { CommandDefinition } from './command-registry.js';
 import type { ParsedCommand } from './command-parser.js';
+import { logger } from '../core/logger.js';
 
 // ─── Shared formatting helpers (internal) ────────────────────────────────────
 
@@ -16,7 +17,7 @@ export function stub(command: string, parsed: ParsedCommand): string {
   const flags = Object.entries(parsed.flags)
     .map(([k, v]) => `--${k} ${v}`)
     .join(' ');
-  console.log(`[room-commands] /${command}${sub} ${flags}`.trim());
+  logger.info(`/${command}${sub} ${flags}`.trim(), 'TradingRoom');
   return ok(`/${command}${sub}`, flags || undefined);
 }
 

@@ -5,6 +5,7 @@ import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { join, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { logger } from '../core/logger.js';
 
 /** Map file extensions to MIME content-types */
 const MIME_TYPES: Record<string, string> = {
@@ -83,7 +84,7 @@ export function createLandingServer(port: number): Server {
   });
 
   server.listen(port, () => {
-    console.log(`[Landing] Server listening on http://localhost:${port}`);
+    logger.info(`Server listening on http://localhost:${port}`, 'Landing');
   });
 
   return server;

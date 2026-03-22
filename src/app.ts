@@ -95,7 +95,7 @@ let _stopping = false;
 
 function printBanner(env: string, exchanges: string): void {
   const pad = (s: string) => s.slice(0, 30).padEnd(30);
-  console.log([
+  logger.info([
     '╔══════════════════════════════════════════════╗',
     `║       algo-trade RaaS  v${APP_VERSION}              ║`,
     '╠══════════════════════════════════════════════╣',
@@ -107,7 +107,7 @@ function printBanner(env: string, exchanges: string): void {
     `║  Env        → ${pad(env)}║`,
     `║  Exchanges  → ${pad(exchanges)}║`,
     '╚══════════════════════════════════════════════╝',
-  ].join('\n'));
+  ].join('\n'), 'App');
 }
 
 // ── Graceful shutdown ──────────────────────────────────────────────────────
@@ -430,6 +430,6 @@ export async function startApp(): Promise<void> {
 
 // Auto-start when run directly
 startApp().catch((err) => {
-  console.error('Fatal startup error:', err);
+  logger.error(`Fatal startup error: ${String(err)}`, 'App');
   process.exit(1);
 });

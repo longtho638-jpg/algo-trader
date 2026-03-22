@@ -2,6 +2,7 @@
 import { createInterface } from 'node:readline';
 import { existsSync } from 'node:fs';
 import { generateApiKey, generateWebhookSecret } from './api-key-generator.js';
+import { logger } from '../core/logger.js';
 
 export type ExchangeName = 'polymarket' | 'binance' | 'bybit' | 'okx';
 export type NotificationChannel = 'telegram' | 'discord' | 'slack' | 'none';
@@ -64,7 +65,7 @@ async function collectExchangeCredentials(
   const result: SetupResult['exchanges'] = {};
 
   for (const ex of exchanges) {
-    console.log(`\n  Configure ${ex}:`);
+    logger.info(`Configure ${ex}`, 'SetupWizard');
     if (ex === 'polymarket') {
       const privateKey = await ask(rl, '    Polygon private key (0x...): ');
       result.polymarket = { privateKey };
@@ -95,30 +96,30 @@ export async function runSetupWizard(envPath = '.env'): Promise<SetupResult | nu
   const rl = createInterface({ input: process.stdin, output: process.stdout });
 
   try {
-    console.log('\n  ╔══════════════════════════════════════╗');
-    console.log('  ║   algo-trade — First Run Setup       ║');
-    console.log('  ╚══════════════════════════════════════╝\n');
+    logger.info('╔══════════════════════════════════════╗', 'SetupWizard');
+    logger.info('║   algo-trade — First Run Setup       ║', 'SetupWizard');
+    logger.info('╚══════════════════════════════════════╝', 'SetupWizard');
 
     // Skip if .env exists and user declines overwrite
     if (existsSync(envPath)) {
-      console.log(`  Found existing ${envPath}.`);
+      logger.info(`Found existing ${envPath}.`, 'SetupWizard');
       const overwrite = await askYesNo(rl, '  Overwrite existing config?', false);
       if (!overwrite) {
-        console.log('  Setup cancelled — existing config kept.\n');
+        logger.info('Setup cancelled — existing config kept.', 'SetupWizard');
         return null;
       }
     }
 
     // Step 1: Environment
-    console.log('\n  Step 1/5 — Environment');
+    logger.info('Step 1/5 — Environment', 'SetupWizard');
     const envRaw = await askWithDefault(rl, '  Environment (development/staging/production)', 'development');
     const environment = (['development', 'staging', 'production'].includes(envRaw)
       ? envRaw
       : 'development') as SetupResult['environment'];
 
     // Step 2: Exchange selection
-    console.log('\n  Step 2/5 — Exchange Selection');
-    console.log('  Available: polymarket, binance, bybit, okx (comma-separated)');
+    logger.info('Step 2/5 — Exchange Selection', 'SetupWizard');
+    logger.info('Available: polymarket, binance, bybit, okx (comma-separated)', 'SetupWizard');
     const exchangeRaw = await askWithDefault(rl, '  Exchanges to configure', 'polymarket');
     const exchanges = exchangeRaw
       .split(',')
@@ -128,11 +129,11 @@ export async function runSetupWizard(envPath = '.env'): Promise<SetupResult | nu
       );
 
     // Step 3: API keys
-    console.log('\n  Step 3/5 — API Credentials');
+    logger.info('Step 3/5 — API Credentials', 'SetupWizard');
     const exchangeCredentials = await collectExchangeCredentials(rl, exchanges);
 
     // Step 4: Risk limits
-    console.log('\n  Step 4/5 — Risk Limits');
+    logger.info('Step 4/5 — Risk Limits', 'SetupWizard');
     const maxPositionSize = await askWithDefault(rl, '  Max position size (USD)', '10000');
     const maxDrawdownRaw = await askWithDefault(rl, '  Max drawdown % (e.g. 20)', '20');
     const maxOpenPositionsRaw = await askWithDefault(rl, '  Max open positions', '10');
@@ -148,8 +149,8 @@ export async function runSetupWizard(envPath = '.env'): Promise<SetupResult | nu
     };
 
     // Step 5: Notification channel
-    console.log('\n  Step 5/5 — Notifications');
-    console.log('  Channels: telegram, discord, slack, none');
+    logger.info('Step 5/5 — Notifications', 'SetupWizard');
+    logger.info('Channels: telegram, discord, slack, none', 'SetupWizard');
     const channelRaw = await askWithDefault(rl, '  Notification channel', 'none');
     const notificationChannel = (['telegram', 'discord', 'slack', 'none'].includes(channelRaw)
       ? channelRaw
@@ -166,10 +167,10 @@ export async function runSetupWizard(envPath = '.env'): Promise<SetupResult | nu
     const platformApiKey = generateApiKey();
     const webhookSecret = generateWebhookSecret();
 
-    console.log('\n  Setup complete.');
-    console.log(`  Platform API key : ${platformApiKey}`);
-    console.log(`  Webhook secret   : ${webhookSecret}`);
-    console.log('  (These are also written to your .env file)\n');
+    logger.info('Setup complete.', 'SetupWizard');
+    logger.info(`Platform API key: ${platformApiKey}`, 'SetupWizard');
+    logger.info(`Webhook secret: ${webhookSecret}`, 'SetupWizard');
+    logger.info('(These are also written to your .env file)', 'SetupWizard');
 
     return {
       environment,

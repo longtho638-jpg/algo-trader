@@ -4,6 +4,7 @@
 import { Command } from 'commander';
 import { AiRouter } from './ai-router.js';
 import { loadOpenClawConfig } from './openclaw-config.js';
+import { logger } from '../core/logger.js';
 
 type OperationMode = 'manual' | 'semi-auto' | 'full-auto';
 
@@ -18,15 +19,15 @@ interface ObserveOptions extends OpenClawGlobalOpts { duration: string }
 // ─── Formatting helpers ───────────────────────────────────────────────────────
 
 function printHeader(title: string): void {
-  console.log(`\n  === OpenClaw: ${title} ===\n`);
+  logger.info(`=== OpenClaw: ${title} ===`, 'OpenClaw');
 }
 
 function printSection(label: string, content: string): void {
-  console.log(`  [${label}]\n  ${content.split('\n').join('\n  ')}\n`);
+  logger.info(`[${label}] ${content.split('\n').join(' ')}`, 'OpenClaw');
 }
 
 function printKV(key: string, value: string | number): void {
-  console.log(`  ${key.padEnd(22)}: ${value}`);
+  logger.info(`${key}: ${value}`, 'OpenClaw');
 }
 
 // ─── Action implementations ───────────────────────────────────────────────────
@@ -34,7 +35,7 @@ function printKV(key: string, value: string | number): void {
 async function runAnalyze(opts: OpenClawGlobalOpts): Promise<void> {
   printHeader('Trade Analysis');
   const router = new AiRouter();
-  if (opts.verbose) console.log('  Routing to model:', router.getModel('complex'));
+  if (opts.verbose) logger.info(`Routing to model: ${router.getModel('complex')}`, 'OpenClaw');
   try {
     const resp = await router.chat({
       prompt: 'Analyze recent algorithmic trading activity and provide key insights on performance, patterns, and risk.',
@@ -49,7 +50,7 @@ async function runAnalyze(opts: OpenClawGlobalOpts): Promise<void> {
       printKV('Latency (ms)', resp.latencyMs);
     }
   } catch (err) {
-    console.error(`  Error: ${err instanceof Error ? err.message : String(err)}`);
+    logger.error(`Error: ${err instanceof Error ? err.message : String(err)}`, 'OpenClaw');
     process.exit(1);
   }
 }
@@ -57,7 +58,7 @@ async function runAnalyze(opts: OpenClawGlobalOpts): Promise<void> {
 async function runTune(strategy: string, opts: OpenClawGlobalOpts): Promise<void> {
   printHeader(`Strategy Tuning: ${strategy}`);
   const router = new AiRouter();
-  if (opts.verbose) console.log('  Routing to model:', router.getModel('complex'));
+  if (opts.verbose) logger.info(`Routing to model: ${router.getModel('complex')}`, 'OpenClaw');
   try {
     const resp = await router.chat({
       prompt: `Provide parameter tuning suggestions for the "${strategy}" strategy. Include entry/exit thresholds, position sizing, and risk controls.`,
@@ -72,7 +73,7 @@ async function runTune(strategy: string, opts: OpenClawGlobalOpts): Promise<void
       printKV('Latency (ms)', resp.latencyMs);
     }
   } catch (err) {
-    console.error(`  Error: ${err instanceof Error ? err.message : String(err)}`);
+    logger.error(`Error: ${err instanceof Error ? err.message : String(err)}`, 'OpenClaw');
     process.exit(1);
   }
 }
@@ -91,7 +92,7 @@ async function runReport(opts: ReportOptions): Promise<void> {
     printSection(`${period.toUpperCase()} REPORT`, resp.content);
     if (opts.verbose) printKV('Latency (ms)', resp.latencyMs);
   } catch (err) {
-    console.error(`  Error: ${err instanceof Error ? err.message : String(err)}`);
+    logger.error(`Error: ${err instanceof Error ? err.message : String(err)}`, 'OpenClaw');
     process.exit(1);
   }
 }
@@ -100,23 +101,23 @@ async function runObserve(opts: ObserveOptions): Promise<void> {
   const duration = parseInt(opts.duration, 10) || 60;
   printHeader(`Live Observation (${duration}s)`);
   const router = new AiRouter();
-  console.log(`  Starting live observation for ${duration}s — mode: ${opts.mode ?? 'manual'}\n`);
+  logger.info(`Starting live observation for ${duration}s — mode: ${opts.mode ?? 'manual'}`, 'OpenClaw');
 
   const endTime = Date.now() + duration * 1000;
   const tickMs = Math.min(duration * 100, 10_000); // ~10% of duration, max 10s
   let tick = 0;
 
   const interval = setInterval(() => {
-    if (Date.now() >= endTime) { clearInterval(interval); console.log('\n  Observation complete.\n'); return; }
+    if (Date.now() >= endTime) { clearInterval(interval); logger.info('Observation complete.', 'OpenClaw'); return; }
     tick++;
-    const label = `[T+${String(tick).padStart(3, '0')}]`;
+    const label = `T+${String(tick).padStart(3, '0')}`;
     router.chat({
       prompt: `Tick ${tick}: Flag any immediate trading signals or market anomalies.`,
       systemPrompt: 'You are a real-time market monitor. One sentence per observation.',
       complexity: 'simple',
       maxTokens: 128,
-    }).then((r) => console.log(`  ${label} ${r.content.trim()}`))
-      .catch(() => console.log(`  ${label} Observation failed, retrying...`));
+    }).then((r) => logger.info(`${label} ${r.content.trim()}`, 'OpenClaw'))
+      .catch(() => logger.warn(`${label} Observation failed, retrying...`, 'OpenClaw'));
   }, tickMs);
 }
 
@@ -131,8 +132,7 @@ function runStatus(opts: OpenClawGlobalOpts): void {
   printKV('Model (complex)', config.routing.complex);
   printKV('Mode', opts.mode ?? 'manual');
   printKV('Last analysis', 'N/A (runtime state)');
-  if (opts.verbose) console.log('\n  Set OPENCLAW_GATEWAY_URL, OPENCLAW_API_KEY to configure.\n');
-  console.log('');
+  if (opts.verbose) logger.info('Set OPENCLAW_GATEWAY_URL, OPENCLAW_API_KEY to configure.', 'OpenClaw');
 }
 
 // ─── Command factory ──────────────────────────────────────────────────────────
