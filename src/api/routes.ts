@@ -109,6 +109,27 @@ export function handlePnl(_req: IncomingMessage, res: ServerResponse, engine: Tr
   });
 }
 
+/** GET /api/strategies/performance — aggregated performance metrics per strategy */
+export function handleStrategyPerformance(_req: IncomingMessage, res: ServerResponse, engine: TradingEngine): void {
+  const trades = engine.getExecutor().getTradeLog();
+  const stats: Record<string, { trades: number; totalFees: number; wins: number; losses: number }> = {};
+  for (const t of trades) {
+    if (!stats[t.strategy]) stats[t.strategy] = { trades: 0, totalFees: 0, wins: 0, losses: 0 };
+    const s = stats[t.strategy]!;
+    s.trades++;
+    s.totalFees += parseFloat(t.fees);
+    // Approximate win/loss from fill price vs fees ratio
+    parseFloat(t.fillSize) > 0 ? s.wins++ : s.losses++;
+  }
+  const performance = Object.entries(stats).map(([name, s]) => ({
+    strategy: name,
+    trades: s.trades,
+    winRate: s.trades > 0 ? (s.wins / s.trades * 100).toFixed(1) : '0',
+    totalFees: s.totalFees.toFixed(6),
+  }));
+  sendJson(res, 200, { strategies: performance, count: performance.length });
+}
+
 // ─── Main router ──────────────────────────────────────────────────────────────
 
 /** Route incoming request to appropriate handler */
@@ -152,6 +173,9 @@ export async function handleRequest(
     } else if (pathname === '/api/trades') {
       if (method !== 'GET') { sendMethodNotAllowed(res); return; }
       handleTrades(req, res, engine);
+    } else if (pathname === '/api/strategies/performance') {
+      if (method !== 'GET') { sendMethodNotAllowed(res); return; }
+      handleStrategyPerformance(req, res, engine);
     } else if (pathname === '/api/pnl') {
       if (method !== 'GET') { sendMethodNotAllowed(res); return; }
       handlePnl(req, res, engine);

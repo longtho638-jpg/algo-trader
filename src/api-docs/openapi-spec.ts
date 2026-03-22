@@ -199,6 +199,26 @@ const apiPaths: Record<string, unknown> = {
     },
   },
 
+  '/api/strategies/performance': {
+    get: {
+      tags: ['Engine'],
+      summary: 'Strategy performance metrics',
+      description: 'Aggregated win rate, trade count, and fees per strategy. Drives marketplace confidence.',
+      responses: {
+        200: {
+          description: 'Strategy performance breakdown',
+          content: { 'application/json': { schema: { type: 'object', properties: {
+            strategies: { type: 'array', items: { type: 'object', properties: {
+              strategy: { type: 'string' }, trades: { type: 'integer' },
+              winRate: { type: 'string' }, totalFees: { type: 'string' },
+            } } },
+            count: { type: 'integer' },
+          } } } },
+        },
+      },
+    },
+  },
+
   '/api/pnl': {
     get: {
       tags: ['Engine'],
@@ -1300,6 +1320,12 @@ const apiPaths: Record<string, unknown> = {
   },
   '/api/webhooks/stats': {
     get: { tags: ['User Webhooks'], summary: 'Webhook delivery statistics', responses: { 200: { description: 'Stats' } } },
+  },
+
+  '/api/webhooks/history': {
+    get: { tags: ['User Webhooks'], summary: 'Webhook delivery history (DLQ inspection)',
+      description: 'Returns recent webhook delivery attempts including failed deliveries for dead-letter queue inspection.',
+      responses: { 200: { description: 'Delivery history', content: { 'application/json': { schema: { type: 'object', properties: { deliveries: { type: 'array' }, count: { type: 'integer' } } } } } } } },
   },
 
   // ── Marketplace Top ────────────────────────────────────────────────────

@@ -96,6 +96,11 @@ export class UserWebhookRegistry {
     };
   }
 
+  /** Get delivery history (delivered + failed) for DLQ inspection */
+  getDeliveryHistory(limit = 50) {
+    return this.retryQueue.getHistory(limit);
+  }
+
   stop(): void {
     this.retryQueue.stop();
   }

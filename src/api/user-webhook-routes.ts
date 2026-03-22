@@ -1,5 +1,6 @@
 // API routes for user webhook registration management
 // POST /api/webhooks/register, GET /api/webhooks/my, DELETE /api/webhooks/:id
+// GET /api/webhooks/stats, GET /api/webhooks/history
 
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { sendJson, readJsonBody } from './http-response-helpers.js';
@@ -64,6 +65,13 @@ export function handleUserWebhookRoutes(
   // GET /api/webhooks/stats
   if (pathname === '/api/webhooks/stats' && method === 'GET') {
     sendJson(res, 200, _registry.getStats());
+    return true;
+  }
+
+  // GET /api/webhooks/history — delivery history (DLQ inspection)
+  if (pathname === '/api/webhooks/history' && method === 'GET') {
+    const deliveries = _registry.getDeliveryHistory(100);
+    sendJson(res, 200, { deliveries, count: deliveries.length });
     return true;
   }
 
