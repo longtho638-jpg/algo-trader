@@ -1255,6 +1255,51 @@ const apiPaths = {
     },
   },
 
+  // ── Audit API ───────────────────────────────────────────────────────────
+  '/api/audit/events': {
+    get: {
+      tags: ['Audit'],
+      summary: 'Query audit events',
+      parameters: [
+        { name: 'category', in: 'query', schema: { type: 'string', enum: ['trade', 'auth', 'config', 'system'] } },
+        { name: 'userId', in: 'query', schema: { type: 'string' } },
+        { name: 'from', in: 'query', schema: { type: 'string' }, description: 'ISO date lower bound' },
+        { name: 'to', in: 'query', schema: { type: 'string' }, description: 'ISO date upper bound' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500 } },
+      ],
+      responses: { 200: { description: 'Audit events list' } },
+    },
+  },
+  '/api/audit/stats': {
+    get: { tags: ['Audit'], summary: 'Audit event count by category', responses: { 200: { description: 'Stats' } } },
+  },
+
+  // ── Strategy Clone ─────────────────────────────────────────────────────
+  '/api/marketplace/clone/{id}': {
+    post: {
+      tags: ['Marketplace'],
+      summary: 'Clone a purchased/owned strategy',
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+      requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' } } } } } },
+      responses: { 201: { description: 'Cloned strategy' }, 403: { description: 'Not authorized' }, 404: { description: 'Not found' } },
+    },
+  },
+
+  // ── System Health ──────────────────────────────────────────────────────
+  '/api/system/health': {
+    get: {
+      tags: ['System'],
+      summary: 'Aggregate system health status',
+      description: 'Reports health of all subsystems: engine, DB, scheduler, webhooks, OpenClaw.',
+      responses: {
+        200: { description: 'All healthy', content: { 'application/json': { schema: { type: 'object',
+          properties: { status: { type: 'string' }, uptime: { type: 'number' }, memoryMB: { type: 'integer' }, subsystems: { type: 'object' }, timestamp: { type: 'integer' } },
+        } } } },
+        503: { description: 'Degraded — one or more subsystems unhealthy' },
+      },
+    },
+  },
+
   // ── Webhook Status ──────────────────────────────────────────────────────
   '/webhook/status': {
     get: {

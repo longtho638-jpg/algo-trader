@@ -27,6 +27,8 @@ import { handleAnalyticsRoutes } from './analytics-routes.js';
 import { handleAlertHistoryRoutes } from './alert-history-routes.js';
 import { handleExportRequest, type ExportDeps } from '../export/export-api.js';
 import { handleUserWebhookRoutes } from './user-webhook-routes.js';
+import { handleAuditRoutes } from './audit-routes.js';
+import { handleSystemHealthRoutes } from './system-health-routes.js';
 
 // ─── Export deps setter (called from app.ts after bootstrap) ────────────────
 let _exportDeps: ExportDeps | null = null;
@@ -219,6 +221,12 @@ export async function handleRequest(
       if (!handled) sendNotFound(res);
     } else if (pathname.startsWith('/api/alerts/')) {
       const handled = handleAlertHistoryRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname === '/api/system/health') {
+      const handled = handleSystemHealthRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/audit/')) {
+      const handled = handleAuditRoutes(req, res, pathname, method);
       if (!handled) sendNotFound(res);
     } else if (pathname.startsWith('/api/export/')) {
       if (!_exportDeps) { sendJson(res, 503, { error: 'Export not configured' }); return; }

@@ -41,6 +41,9 @@ import { setAnalyticsEngine } from './api/analytics-routes.js';
 import { AlertHistory } from './notifications/alert-history.js';
 import { setAlertHistory } from './api/alert-history-routes.js';
 import { setExportDeps } from './api/routes.js';
+import { getAuditLogger } from './audit/audit-logger.js';
+import { getAuditStore } from './audit/audit-store.js';
+import { setSystemHealthDeps } from './api/system-health-routes.js';
 import { UserWebhookRegistry } from './webhooks/user-webhook-registry.js';
 import { setUserWebhookRegistry } from './api/user-webhook-routes.js';
 
@@ -156,7 +159,20 @@ export async function startApp(): Promise<void> {
   setAlertHistory(alertHistory);
   logger.info('Alert history wired', 'App');
 
-  // 5a3. Export API — wire trade/PnL/portfolio export to main router
+  // 5a3. Audit logger — captures trade/auth/system events to JSONL + SQLite
+  const auditLogger = getAuditLogger();
+  const auditStore = getAuditStore();
+  eventBus.on('trade.executed', (payload: { trade: TradeResult }) => {
+    const evt = auditLogger.logEvent({ category: 'trade', action: 'trade.executed', details: { marketId: payload.trade.marketId, side: payload.trade.side, strategy: payload.trade.strategy } });
+    auditStore.saveEvent(evt);
+  });
+  eventBus.on('system.startup', (payload: { version: string }) => {
+    const evt = auditLogger.logEvent({ category: 'system', action: 'system.startup', details: { version: payload.version } });
+    auditStore.saveEvent(evt);
+  });
+  logger.info('Audit logger wired', 'App');
+
+  // 5a4. Export API — wire trade/PnL/portfolio export to main router
   setExportDeps({
     getTrades: () => _engine!.getExecutor().getTradeLog(),
     getPnlSnapshots: () => [],
@@ -265,6 +281,16 @@ export async function startApp(): Promise<void> {
     strategies: config.strategies,
     getOpenPositions: () => db.getOpenPositions(),
   });
+
+  // 17b. System health aggregate endpoint
+  setSystemHealthDeps({
+    engine: _engine,
+    getSchedulerStatus: () => ({ running: !!_scheduler, jobCount: _scheduler ? 3 : 0 }),
+    getWebhookStats: () => _userWebhookRegistry?.getStats().deliveryStats ?? { pending: 0, delivered: 0, failed: 0 },
+    getOpenClawStatus: () => _openClaw?.deps.controller ? 'configured' : 'none',
+    getDbStatus: () => { try { db.getOpenPositions(); return true; } catch { return false; } },
+  });
+  logger.info('System health endpoint wired', 'App');
 
   // 18. Process signal handlers (SIGINT/SIGTERM/uncaughtException/unhandledRejection)
   wireProcessSignals({ eventBus, notifier: _notifier, stopApp });

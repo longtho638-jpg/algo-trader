@@ -155,6 +155,34 @@ export async function handleMarketplaceRoutes(
     return true;
   }
 
+  // POST /api/marketplace/clone/:id — one-click clone a purchased/owned strategy
+  const cloneMatch = pathname.match(/^\/api\/marketplace\/clone\/([^/]+)$/);
+  if (cloneMatch && method === 'POST') {
+    if (!PUBLISH_TIERS.has(userTier)) {
+      sendJson(res, 403, { error: 'Forbidden', message: 'Pro or Enterprise tier required to clone strategies' });
+      return true;
+    }
+    const sourceId = cloneMatch[1]!;
+    const listing = svc.getStrategy(sourceId);
+    if (!listing) {
+      sendJson(res, 404, { error: 'Not Found', message: 'Strategy not found' });
+      return true;
+    }
+    // Must be author or purchaser
+    const isPurchaser = svc.getMyPurchased(userId).some(p => p.purchase.strategyId === sourceId);
+    if (listing.authorId !== userId && !isPurchaser) {
+      sendJson(res, 403, { error: 'Forbidden', message: 'You must own or have purchased this strategy to clone it' });
+      return true;
+    }
+    let body: Record<string, unknown> = {};
+    try { body = await readJsonBody(req); } catch { /* use defaults */ }
+    const cloneName = String(body['name'] ?? `${listing.name} (clone)`);
+    const config = JSON.parse(listing.configJson) as Record<string, unknown>;
+    const cloned = svc.publishStrategy(userId, cloneName, listing.description, config, 0, listing.category);
+    sendJson(res, 201, { listing: cloned, clonedFrom: sourceId });
+    return true;
+  }
+
   // POST /api/marketplace/import — import strategy config and publish as new listing
   if (pathname === '/api/marketplace/import' && method === 'POST') {
     if (!PUBLISH_TIERS.has(userTier)) {
