@@ -85,14 +85,38 @@ export interface KalshiOrderResponse { order: unknown; }
 export interface KalshiScanResponse { opportunities: unknown[]; count: number; }
 export interface KalshiCrossScanResponse { opportunities: unknown[]; count: number; }
 
-// ─── Marketplace / backtest stubs (future endpoints) ─────────────────────────
+// ─── Paper Trading response types ────────────────────────────────────────────
 
-/** Stub: future marketplace listing response */
+export interface PaperSessionResponse { sessionId: string; initialCapital: number; startedAt: number; }
+export interface PaperStopResponse { summary: { trades: number; finalEquity: number; pnl: number }; }
+export interface PaperStatusResponse { active: boolean; capital: number; trades: number; pnl: number; }
+export interface PaperTradeResponse { trade: { symbol: string; side: string; size: string; price: number; strategy?: string }; }
+
+// ─── Optimizer response types ────────────────────────────────────────────────
+
+export interface OptimizerRunResponse { jobId: string; status: 'accepted' | 'already_running'; }
+export interface OptimizerResultsResponse { results: unknown | null; completedAt?: number; }
+
+// ─── Exchange response types ─────────────────────────────────────────────────
+
+export interface ExchangeListResponse { exchanges: Array<{ name: string; mode: 'paper' | 'live'; connected: boolean }>; }
+
+// ─── Marketplace review types ────────────────────────────────────────────────
+
+export interface MarketplaceReview { id: string; strategyId: string; userId: string; rating: number; comment: string; createdAt: number; }
+export interface ReviewSubmitResponse { review: MarketplaceReview; }
+export interface ReviewListResponse { reviews: MarketplaceReview[]; count: number; }
+
+// ─── Webhook management types ────────────────────────────────────────────────
+
+export interface WebhookTestResponse { ok: boolean; message: string; }
+
+// ─── Marketplace / backtest stubs ────────────────────────────────────────────
+
 export interface MarketplaceListResponse {
   items: Array<{ id: string; name: string; description: string }>;
 }
 
-/** Stub: future backtest request */
 export interface BacktestRequest {
   strategy: StrategyName;
   from: number;
@@ -100,7 +124,6 @@ export interface BacktestRequest {
   initialCapital: number;
 }
 
-/** Stub: future backtest response */
 export interface BacktestResponse {
   totalReturn: number;
   sharpeRatio: number;

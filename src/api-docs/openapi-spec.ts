@@ -1328,6 +1328,19 @@ const apiPaths: Record<string, unknown> = {
       responses: { 200: { description: 'Delivery history', content: { 'application/json': { schema: { type: 'object', properties: { deliveries: { type: 'array' }, count: { type: 'integer' } } } } } } } },
   },
 
+  '/api/webhooks/{id}/test': {
+    post: {
+      tags: ['User Webhooks'],
+      summary: 'Send test payload to a webhook',
+      description: 'Sends a test event to verify the webhook endpoint is reachable and responding correctly.',
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string', format: 'uuid' } }],
+      responses: {
+        200: { description: 'Test payload queued', content: { 'application/json': { schema: { type: 'object', properties: { ok: { type: 'boolean' }, message: { type: 'string' } } } } } },
+        404: { description: 'Webhook not found or not owned by you', content: { 'application/json': { schema: ErrorSchema } } },
+      },
+    },
+  },
+
   // ── Marketplace Top ────────────────────────────────────────────────────
   '/api/marketplace/top': {
     get: {
@@ -1365,6 +1378,48 @@ const apiPaths: Record<string, unknown> = {
       parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
       requestBody: { content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' } } } } } },
       responses: { 201: { description: 'Cloned strategy' }, 403: { description: 'Not authorized' }, 404: { description: 'Not found' } },
+    },
+  },
+
+  // ── Marketplace Reviews ───────────────────────────────────────────────
+  '/api/marketplace/strategy/{id}/review': {
+    post: {
+      tags: ['Marketplace'],
+      summary: 'Submit a review for a strategy',
+      description: 'Submit a 1-5 star rating and optional comment. One review per user per strategy (upsert).',
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+      requestBody: { required: true, content: { 'application/json': { schema: {
+        type: 'object', required: ['rating'],
+        properties: {
+          rating: { type: 'integer', minimum: 1, maximum: 5, example: 4 },
+          comment: { type: 'string', example: 'Great strategy, consistent returns' },
+        },
+      } } } },
+      responses: {
+        201: { description: 'Review submitted', content: { 'application/json': { schema: { type: 'object', properties: {
+          review: { type: 'object', properties: {
+            id: { type: 'string' }, strategyId: { type: 'string' }, userId: { type: 'string' },
+            rating: { type: 'integer' }, comment: { type: 'string' }, createdAt: { type: 'integer' },
+          } },
+        } } } } },
+        400: { description: 'Invalid rating or strategy not found', content: { 'application/json': { schema: ErrorSchema } } },
+      },
+    },
+  },
+  '/api/marketplace/strategy/{id}/reviews': {
+    get: {
+      tags: ['Marketplace'],
+      summary: 'List reviews for a strategy',
+      parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+      responses: {
+        200: { description: 'Review list', content: { 'application/json': { schema: { type: 'object', properties: {
+          reviews: { type: 'array', items: { type: 'object', properties: {
+            id: { type: 'string' }, strategyId: { type: 'string' }, userId: { type: 'string' },
+            rating: { type: 'integer' }, comment: { type: 'string' }, createdAt: { type: 'integer' },
+          } } },
+          count: { type: 'integer' },
+        } } } } },
+      },
     },
   },
 
@@ -1848,6 +1903,50 @@ apiPaths['/api/kalshi/cross-scan'] = {
       403: { description: 'Pro tier required' },
     },
   },
+};
+
+// ─── Alert History ───────────────────────────────────────────────────────────
+apiPaths['/api/alerts/history'] = {
+  get: {
+    tags: ['Alerts'], summary: 'Get alert history',
+    description: 'Query past alerts, trade notifications, and errors. Supports filtering by type and since-timestamp.',
+    parameters: [
+      { name: 'limit', in: 'query', schema: { type: 'integer', default: 50 } },
+      { name: 'type', in: 'query', schema: { type: 'string', enum: ['alert', 'trade', 'error'] } },
+      { name: 'since', in: 'query', schema: { type: 'integer' }, description: 'Timestamp (ms) to filter from' },
+    ],
+    responses: { 200: { description: 'Alert history list' } },
+  },
+};
+apiPaths['/api/alerts/types'] = {
+  get: { tags: ['Alerts'], summary: 'List available alert types', responses: { 200: { description: 'Alert type list' } } },
+};
+
+// ─── Scaling / Instance Management ──────────────────────────────────────────
+apiPaths['/api/instances'] = {
+  get: { tags: ['Scaling'], summary: 'List trading instances (Enterprise)', responses: { 200: { description: 'Instance list' } } },
+  post: {
+    tags: ['Scaling'], summary: 'Create a new trading instance (Enterprise)',
+    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: {
+      strategy: { type: 'string' }, config: { type: 'object' },
+    }, required: ['strategy'] } } } },
+    responses: { 201: { description: 'Instance created' }, 403: { description: 'Enterprise tier required' } },
+  },
+};
+apiPaths['/api/instances/{id}'] = {
+  get: { tags: ['Scaling'], summary: 'Get instance status (Enterprise)',
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Instance status' }, 404: { description: 'Not found' } } },
+  delete: { tags: ['Scaling'], summary: 'Stop and remove instance (Enterprise)',
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Instance removed' }, 404: { description: 'Not found' } } },
+};
+
+// ─── Onboarding ─────────────────────────────────────────────────────────────
+apiPaths['/api/onboarding/quickstart'] = {
+  get: { tags: ['Onboarding'], summary: 'Get quickstart guide for new users',
+    description: 'Returns setup checklist, tier-specific limits, and getting-started steps.',
+    responses: { 200: { description: 'Quickstart guide with steps and tier info' } } },
 };
 
 // ─── Public export ────────────────────────────────────────────────────────────

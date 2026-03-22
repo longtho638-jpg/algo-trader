@@ -18,6 +18,16 @@ import type {
   KalshiOrderResponse,
   KalshiScanResponse,
   KalshiCrossScanResponse,
+  PaperSessionResponse,
+  PaperStopResponse,
+  PaperStatusResponse,
+  PaperTradeResponse,
+  OptimizerRunResponse,
+  OptimizerResultsResponse,
+  ExchangeListResponse,
+  ReviewSubmitResponse,
+  ReviewListResponse,
+  WebhookTestResponse,
 } from './sdk-types.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -100,42 +110,42 @@ export class AlgoTradeClient {
   // ─── Paper Trading endpoints ─────────────────────────────────────────────────
 
   /** POST /api/paper/start — start paper trading session */
-  async paperStart(initialCapital = 10000): Promise<unknown> { return this.post('/api/paper/start', { initialCapital }); }
+  async paperStart(initialCapital = 10000): Promise<PaperSessionResponse> { return this.post('/api/paper/start', { initialCapital }); }
 
   /** POST /api/paper/stop — stop session and get summary */
-  async paperStop(): Promise<unknown> { return this.post('/api/paper/stop', {}); }
+  async paperStop(): Promise<PaperStopResponse> { return this.post('/api/paper/stop', {}); }
 
   /** GET /api/paper/status — current session status */
-  async paperStatus(): Promise<unknown> { return this.get('/api/paper/status'); }
+  async paperStatus(): Promise<PaperStatusResponse> { return this.get('/api/paper/status'); }
 
   /** POST /api/paper/trade — execute a paper trade */
-  async paperTrade(params: { symbol: string; side: string; size: string; strategy?: string }): Promise<unknown> { return this.post('/api/paper/trade', params); }
+  async paperTrade(params: { symbol: string; side: string; size: string; strategy?: string }): Promise<PaperTradeResponse> { return this.post('/api/paper/trade', params); }
 
   // ─── Optimizer endpoints ────────────────────────────────────────────────────
 
   /** POST /api/optimizer/run — start optimization job */
-  async optimizerRun(strategyName: string, params?: { initialCapital?: number }): Promise<unknown> { return this.post('/api/optimizer/run', { strategyName, ...params }); }
+  async optimizerRun(strategyName: string, params?: { initialCapital?: number }): Promise<OptimizerRunResponse> { return this.post('/api/optimizer/run', { strategyName, ...params }); }
 
   /** GET /api/optimizer/results — get latest results */
-  async optimizerResults(): Promise<unknown> { return this.get('/api/optimizer/results'); }
+  async optimizerResults(): Promise<OptimizerResultsResponse> { return this.get('/api/optimizer/results'); }
 
   // ─── Exchange endpoints ─────────────────────────────────────────────────────
 
   /** GET /api/exchanges — list connected exchanges */
-  async getExchanges(): Promise<unknown> { return this.get('/api/exchanges'); }
+  async getExchanges(): Promise<ExchangeListResponse> { return this.get('/api/exchanges'); }
 
   // ─── Marketplace review endpoints ───────────────────────────────────────────
 
   /** POST /api/marketplace/strategy/:id/review — submit review */
-  async submitReview(strategyId: string, rating: number, comment = ''): Promise<unknown> { return this.post(`/api/marketplace/strategy/${strategyId}/review`, { rating, comment }); }
+  async submitReview(strategyId: string, rating: number, comment = ''): Promise<ReviewSubmitResponse> { return this.post(`/api/marketplace/strategy/${strategyId}/review`, { rating, comment }); }
 
   /** GET /api/marketplace/strategy/:id/reviews — list reviews */
-  async getReviews(strategyId: string): Promise<unknown> { return this.get(`/api/marketplace/strategy/${strategyId}/reviews`); }
+  async getReviews(strategyId: string): Promise<ReviewListResponse> { return this.get(`/api/marketplace/strategy/${strategyId}/reviews`); }
 
   // ─── Webhook management endpoints ───────────────────────────────────────────
 
   /** POST /api/webhooks/:id/test — send test payload */
-  async testWebhook(webhookId: string): Promise<unknown> { return this.post(`/api/webhooks/${webhookId}/test`, {}); }
+  async testWebhook(webhookId: string): Promise<WebhookTestResponse> { return this.post(`/api/webhooks/${webhookId}/test`, {}); }
 
   // ─── Private fetch wrapper ──────────────────────────────────────────────────
 

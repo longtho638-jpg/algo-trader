@@ -3,7 +3,7 @@
 // Also checks alert rules for high error rate and pipeline crash
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { MetricsCollector } from '../metrics/metrics-collector.js';
-import { AlertManager } from '../notifications/alert-rules.js';
+import { AlertManager, type AlertData } from '../notifications/alert-rules.js';
 import { logger } from '../core/logger.js';
 
 // Sliding window for error-rate alert: track last N request outcomes
@@ -20,16 +20,16 @@ function getAlertManager(): AlertManager {
     // Register production alert rules
     alertManager.register({
       name: 'highErrorRate',
-      condition: (rate: number) => rate > 0.1,
-      message: (rate: number) =>
-        `High API error rate: ${(rate * 100).toFixed(1)}% (threshold: 10%)`,
+      condition: (data: AlertData) => (data as number) > 0.1,
+      message: (data: AlertData) =>
+        `High API error rate: ${((data as number) * 100).toFixed(1)}% (threshold: 10%)`,
       cooldownMs: 5 * 60 * 1000, // 5 min cooldown
     });
 
     alertManager.register({
       name: 'pipelineCrash',
-      condition: (running: boolean) => !running,
-      message: (_: boolean) => 'Trading pipeline is down — engine not running',
+      condition: (data: AlertData) => !(data as boolean),
+      message: () => 'Trading pipeline is down — engine not running',
       cooldownMs: 2 * 60 * 1000, // 2 min cooldown
     });
   }
@@ -144,9 +144,9 @@ export function recordTradeOutcome(
   if (!manager.getRuleNames().includes('tradeFailureSpike')) {
     manager.register({
       name: 'tradeFailureSpike',
-      condition: (count: number) => count > 5,
-      message: (count: number) =>
-        `Trade failure spike: ${count} failures in the last 10 minutes (threshold: 5)`,
+      condition: (data: AlertData) => (data as number) > 5,
+      message: (data: AlertData) =>
+        `Trade failure spike: ${data as number} failures in the last 10 minutes (threshold: 5)`,
       cooldownMs: 10 * 60 * 1000,
     });
   }

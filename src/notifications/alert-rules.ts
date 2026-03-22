@@ -2,12 +2,13 @@
 import type { TradeResult, PnlSnapshot } from '../core/types.js';
 import { logger } from '../core/logger.js';
 
+/** Union of all data types that alert rules can receive */
+export type AlertData = TradeResult | PnlSnapshot | string | number | boolean;
+
 export interface AlertRule {
   name: string;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  condition: (data: any) => boolean;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  message: (data: any) => string;
+  condition: (data: AlertData) => boolean;
+  message: (data: AlertData) => string;
   /** Minimum ms between repeated alerts for this rule */
   cooldownMs: number;
 }
@@ -22,29 +23,35 @@ const DRAWDOWN_THRESHOLD = 0.15; // 15%
 export const builtInRules: AlertRule[] = [
   {
     name: 'tradeExecuted',
-    condition: (_data: TradeResult) => true,
-    message: (data: TradeResult) =>
-      `Trade executed: ${data.side.toUpperCase()} ${data.fillSize} @ ${data.fillPrice} on ${data.marketId}`,
+    condition: (_data) => true,
+    message: (data) => {
+      const t = data as TradeResult;
+      return `Trade executed: ${t.side.toUpperCase()} ${t.fillSize} @ ${t.fillPrice} on ${t.marketId}`;
+    },
     cooldownMs: 0, // fire every trade
   },
   {
     name: 'drawdownThreshold',
-    condition: (data: PnlSnapshot) => data.drawdown >= DRAWDOWN_THRESHOLD,
-    message: (data: PnlSnapshot) =>
-      `Drawdown alert: ${(data.drawdown * 100).toFixed(2)}% (threshold: ${DRAWDOWN_THRESHOLD * 100}%)`,
+    condition: (data) => (data as PnlSnapshot).drawdown >= DRAWDOWN_THRESHOLD,
+    message: (data) => {
+      const d = data as PnlSnapshot;
+      return `Drawdown alert: ${(d.drawdown * 100).toFixed(2)}% (threshold: ${DRAWDOWN_THRESHOLD * 100}%)`;
+    },
     cooldownMs: 5 * 60 * 1000, // 5 minutes cooldown
   },
   {
     name: 'errorOccurred',
-    condition: (_data: string) => true,
-    message: (data: string) => `System error: ${data}`,
+    condition: () => true,
+    message: (data) => `System error: ${data as string}`,
     cooldownMs: 60 * 1000, // 1 minute cooldown
   },
   {
     name: 'dailySummary',
-    condition: (_data: PnlSnapshot) => true,
-    message: (data: PnlSnapshot) =>
-      `Daily summary — Equity: ${data.equity}, Realized PnL: ${data.realizedPnl}, Trades: ${data.tradeCount}`,
+    condition: () => true,
+    message: (data) => {
+      const d = data as PnlSnapshot;
+      return `Daily summary — Equity: ${d.equity}, Realized PnL: ${d.realizedPnl}, Trades: ${d.tradeCount}`;
+    },
     cooldownMs: 23 * 60 * 60 * 1000, // 23h cooldown (once per day)
   },
 ];
@@ -68,8 +75,7 @@ export class AlertManager {
    * Returns true if alert should fire (condition met + cooldown expired).
    * Also updates cooldown timestamp when returning true.
    */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  shouldAlert(ruleName: string, data: any): boolean {
+  shouldAlert(ruleName: string, data: AlertData): boolean {
     const rule = this.rules.get(ruleName);
     if (!rule) {
       logger.warn(`Unknown alert rule: ${ruleName}`, 'AlertManager');
@@ -101,8 +107,7 @@ export class AlertManager {
   }
 
   /** Get formatted message for a rule given data (call after shouldAlert returns true) */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  getMessage(ruleName: string, data: any): string | null {
+  getMessage(ruleName: string, data: AlertData): string | null {
     const rule = this.rules.get(ruleName);
     if (!rule) return null;
     try {
