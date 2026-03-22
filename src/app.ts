@@ -54,6 +54,8 @@ import { InstanceManager } from './scaling/instance-manager.js';
 import { setInstanceManager } from './api/scaling-routes.js';
 import { setPnlSnapshotProvider } from './api/pnl-snapshot-routes.js';
 import { savePnlSnapshot, type PnlSnapshot } from './portfolio/pnl-snapshot-store.js';
+import { ExchangeClient } from './cex/exchange-client.js';
+import { setExchangeClient } from './api/exchange-routes.js';
 
 // ── Ports ──────────────────────────────────────────────────────────────────
 
@@ -211,6 +213,20 @@ export async function startApp(): Promise<void> {
   const instanceManager = new InstanceManager();
   setInstanceManager(instanceManager);
   logger.info('Instance manager wired', 'App');
+
+  // 5a8. CEX exchange client — connects to configured exchanges (paper mode by default)
+  const exchangeClient = new ExchangeClient();
+  setExchangeClient(exchangeClient);
+  // Auto-connect exchanges from config if API keys present
+  for (const [name, creds] of Object.entries(config.exchanges)) {
+    try {
+      exchangeClient.connect(name as any, { apiKey: creds.apiKey, apiSecret: creds.apiSecret });
+      logger.info(`Exchange connected: ${name}`, 'App');
+    } catch (err) {
+      logger.warn(`Failed to connect exchange ${name}`, 'App', { error: String(err) });
+    }
+  }
+  logger.info('Exchange client wired', 'App', { connected: exchangeClient.listConnected().length });
 
   // 5b. UserStore — shared across API server + dashboard for real analytics
   const userDbPath = process.env['USER_DB_PATH'] ?? 'data/users.db';

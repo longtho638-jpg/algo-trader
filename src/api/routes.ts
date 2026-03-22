@@ -34,6 +34,11 @@ import { handleUsageRoutes } from './usage-routes.js';
 import { handlePluginRoutes } from './plugin-routes.js';
 import { handleScalingRoutes } from './scaling-routes.js';
 import { handlePnlSnapshotRoutes } from './pnl-snapshot-routes.js';
+import { handlePaperTradingRoutes } from './paper-trading-routes.js';
+import { handleExchangeRoutes } from './exchange-routes.js';
+import { handleTradingRoomRoutes } from './trading-room-routes.js';
+import { handleOptimizerRoutes } from './optimizer-routes.js';
+import { handleTemplateRoutes } from './template-routes.js';
 
 // ─── Export deps setter (called from app.ts after bootstrap) ────────────────
 let _exportDeps: ExportDeps | null = null;
@@ -253,6 +258,21 @@ export async function handleRequest(
       if (!handled) sendNotFound(res);
     } else if (pathname.startsWith('/api/instances')) {
       const handled = handleScalingRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/paper/')) {
+      const handled = handlePaperTradingRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/exchanges')) {
+      const handled = handleExchangeRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/trading-room/')) {
+      const handled = handleTradingRoomRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/optimizer/')) {
+      const handled = handleOptimizerRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/templates')) {
+      const handled = handleTemplateRoutes(req, res, pathname, method);
       if (!handled) sendNotFound(res);
     } else if (pathname.startsWith('/api/openclaw/')) {
       if (!_openClawDeps) { sendJson(res, 503, { error: 'OpenClaw AI not configured' }); return; }

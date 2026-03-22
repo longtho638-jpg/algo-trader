@@ -1539,6 +1539,120 @@ apiPaths['/api/openclaw/recommend'] = {
   },
 };
 
+// ─── Paper Trading ────────────────────────────────────────────────────────────
+apiPaths['/api/paper/start'] = {
+  post: {
+    tags: ['Paper Trading'], summary: 'Start paper trading session',
+    requestBody: { content: { 'application/json': { schema: { type: 'object',
+      properties: { initialCapital: { type: 'number', default: 10000 } } } } } },
+    responses: { 200: { description: 'Session started' }, 409: { description: 'Session already active' } },
+  },
+};
+apiPaths['/api/paper/stop'] = {
+  post: { tags: ['Paper Trading'], summary: 'Stop active session and get summary',
+    responses: { 200: { description: 'Session summary' }, 400: { description: 'No active session' } } },
+};
+apiPaths['/api/paper/status'] = {
+  get: { tags: ['Paper Trading'], summary: 'Get paper session status',
+    responses: { 200: { description: 'Session status or inactive' } } },
+};
+apiPaths['/api/paper/trade'] = {
+  post: {
+    tags: ['Paper Trading'], summary: 'Execute paper trade',
+    requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['symbol', 'side', 'size'],
+      properties: { symbol: { type: 'string' }, side: { type: 'string', enum: ['buy', 'sell'] },
+        size: { type: 'string' }, strategy: { type: 'string' } } } } } },
+    responses: { 200: { description: 'Trade result' }, 400: { description: 'Validation error' } },
+  },
+};
+apiPaths['/api/paper/price'] = {
+  post: {
+    tags: ['Paper Trading'], summary: 'Feed market price into paper session',
+    requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['symbol', 'price'],
+      properties: { symbol: { type: 'string' }, price: { type: 'number' } } } } } },
+    responses: { 200: { description: 'Price accepted' } },
+  },
+};
+apiPaths['/api/paper/reset'] = {
+  post: { tags: ['Paper Trading'], summary: 'Reset paper session',
+    responses: { 200: { description: 'Session reset' } } },
+};
+
+// ─── Exchanges ────────────────────────────────────────────────────────────────
+apiPaths['/api/exchanges'] = {
+  get: { tags: ['Exchanges'], summary: 'List connected exchanges',
+    responses: { 200: { description: 'Exchange list with paper/live mode status' } } },
+};
+apiPaths['/api/exchanges/{name}/balance'] = {
+  get: { tags: ['Exchanges'], summary: 'Get exchange balances',
+    parameters: [{ name: 'name', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Non-zero balances' } } },
+};
+apiPaths['/api/exchanges/{name}/ticker/{symbol}'] = {
+  get: { tags: ['Exchanges'], summary: 'Get ticker for symbol',
+    parameters: [
+      { name: 'name', in: 'path', required: true, schema: { type: 'string' } },
+      { name: 'symbol', in: 'path', required: true, schema: { type: 'string' } },
+    ],
+    responses: { 200: { description: 'Ticker data' } } },
+};
+apiPaths['/api/exchanges/{name}/markets'] = {
+  get: { tags: ['Exchanges'], summary: 'List exchange markets',
+    parameters: [{ name: 'name', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Active markets' } } },
+};
+
+// ─── Trading Room ─────────────────────────────────────────────────────────────
+apiPaths['/api/trading-room/status'] = {
+  get: { tags: ['Trading Room'], summary: 'Get AGI orchestrator status (Enterprise)',
+    responses: { 200: { description: 'Orchestrator status' }, 403: { description: 'Enterprise tier required' } } },
+};
+apiPaths['/api/trading-room/go-live'] = {
+  post: {
+    tags: ['Trading Room'], summary: 'Start AGI orchestrator (Enterprise)',
+    requestBody: { content: { 'application/json': { schema: { type: 'object',
+      properties: { mode: { type: 'string', enum: ['auto', 'semi-auto'] },
+        cycleIntervalMs: { type: 'number' }, watchSymbols: { type: 'array', items: { type: 'string' } } } } } } },
+    responses: { 200: { description: 'Orchestrator started' } },
+  },
+};
+apiPaths['/api/trading-room/go-safe'] = {
+  post: { tags: ['Trading Room'], summary: 'Stop AGI orchestrator gracefully (Enterprise)',
+    responses: { 200: { description: 'Orchestrator stopped' } } },
+};
+
+// ─── Optimizer ────────────────────────────────────────────────────────────────
+apiPaths['/api/optimizer/run'] = {
+  post: {
+    tags: ['Optimizer'], summary: 'Run strategy optimization (Pro+)',
+    requestBody: { content: { 'application/json': { schema: { type: 'object', required: ['strategyName'],
+      properties: { strategyName: { type: 'string' }, initialCapital: { type: 'number' },
+        paramRanges: { type: 'array', items: { type: 'object', properties: {
+          name: { type: 'string' }, min: { type: 'number' }, max: { type: 'number' }, step: { type: 'number' } } } } } } } } },
+    responses: { 202: { description: 'Optimization job accepted' }, 409: { description: 'Already running' } },
+  },
+};
+apiPaths['/api/optimizer/results'] = {
+  get: { tags: ['Optimizer'], summary: 'Get latest optimization results',
+    responses: { 200: { description: 'Optimization results or null' } } },
+};
+
+// ─── Templates ────────────────────────────────────────────────────────────────
+apiPaths['/api/templates'] = {
+  get: { tags: ['Templates'], summary: 'List all strategy templates',
+    responses: { 200: { description: 'Template list' } } },
+};
+apiPaths['/api/templates/search'] = {
+  get: { tags: ['Templates'], summary: 'Search templates by name/description',
+    parameters: [{ name: 'q', in: 'query', schema: { type: 'string' } }],
+    responses: { 200: { description: 'Search results' } } },
+};
+apiPaths['/api/templates/{id}'] = {
+  get: { tags: ['Templates'], summary: 'Get template by ID',
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Template details' }, 404: { description: 'Not found' } } },
+};
+
 // ─── Public export ────────────────────────────────────────────────────────────
 
 /** Returns the complete OpenAPI 3.0 specification as a plain object */
