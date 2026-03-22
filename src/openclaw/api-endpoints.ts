@@ -351,5 +351,31 @@ export async function handleOpenClawRequest(
     return;
   }
 
+  // POST /openclaw/recommend — AI strategy recommendation based on market conditions
+  if (pathname === '/openclaw/recommend') {
+    if (method !== 'POST') { sendError(res, 405, 'Method Not Allowed'); return; }
+    if (!checkAiQuota(authedReq, res)) return;
+    let body: { capitalUsd?: number; riskTolerance?: string; markets?: string[] };
+    try { body = await readJsonBody(req); }
+    catch { sendError(res, 400, 'Invalid JSON body'); return; }
+    const capital = body.capitalUsd ?? 10000;
+    const risk = body.riskTolerance ?? 'moderate';
+    const markets = body.markets ?? ['BTC-USD', 'ETH-USD'];
+    const router = deps.controller ?? new AiRouter();
+    try {
+      const r = await router.chat({
+        prompt: `Recommend trading strategies for $${capital} capital, ${risk} risk tolerance, markets: ${markets.join(', ')}. Include: strategy name, allocation %, expected Sharpe, entry/exit logic, position sizing.`,
+        systemPrompt: 'You are a senior quant advisor. Return actionable strategy recommendations with specific parameters.',
+        complexity: 'complex',
+        maxTokens: 800,
+      });
+      trackAiCall(authedReq, r.tokensUsed);
+      sendJson(res, 200, { ok: true, recommendations: r.content, capital, riskTolerance: risk, markets, model: r.model, tokensUsed: r.tokensUsed, latencyMs: r.latencyMs, timestamp: Date.now() });
+    } catch (err) {
+      sendError(res, 502, `Recommendation failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return;
+  }
+
   sendError(res, 404, 'Not Found');
 }

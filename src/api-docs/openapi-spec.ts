@@ -74,7 +74,7 @@ const StrategyListingSchema = {
 
 // ─── Path definitions ─────────────────────────────────────────────────────────
 
-const apiPaths = {
+const apiPaths: Record<string, unknown> = {
   '/api/health': {
     get: {
       tags: ['System'],
@@ -1312,6 +1312,229 @@ const apiPaths = {
           properties: { stats: { type: 'object', properties: { pending: { type: 'integer' }, delivered: { type: 'integer' }, failed: { type: 'integer' } } }, pending: { type: 'integer' } },
         } } } },
       },
+    },
+  },
+};
+
+// ─── License Management ──────────────────────────────────────────────────────
+
+apiPaths['/api/license/issue'] = {
+  post: {
+    tags: ['License'],
+    summary: 'Issue a new license key for the authenticated user',
+    security: [{ ApiKey: [] }],
+    responses: {
+      201: { description: 'License issued', content: { 'application/json': { schema: { type: 'object',
+        properties: { key: { type: 'string' }, tier: { type: 'string' }, features: { type: 'array', items: { type: 'string' } },
+          maxMarkets: { type: 'integer' }, maxTradesPerDay: { type: 'integer' }, expiresAt: { type: 'string' } },
+      } } } },
+    },
+  },
+};
+
+apiPaths['/api/license/my'] = {
+  get: {
+    tags: ['License'],
+    summary: 'List licenses for the authenticated user',
+    security: [{ ApiKey: [] }],
+    responses: {
+      200: { description: 'License list', content: { 'application/json': { schema: { type: 'object',
+        properties: { licenses: { type: 'array', items: { type: 'object' } }, count: { type: 'integer' } },
+      } } } },
+    },
+  },
+};
+
+apiPaths['/api/license/validate'] = {
+  post: {
+    tags: ['License'],
+    summary: 'Validate a license key',
+    security: [{ ApiKey: [] }],
+    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { key: { type: 'string' } }, required: ['key'] } } } },
+    responses: {
+      200: { description: 'Validation result', content: { 'application/json': { schema: { type: 'object',
+        properties: { valid: { type: 'boolean' }, tier: { type: 'string' }, remainingDays: { type: 'integer' }, error: { type: 'string' } },
+      } } } },
+    },
+  },
+};
+
+apiPaths['/api/license/revoke'] = {
+  post: {
+    tags: ['License'],
+    summary: 'Revoke a license key (owner only)',
+    security: [{ ApiKey: [] }],
+    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { key: { type: 'string' } }, required: ['key'] } } } },
+    responses: { 200: { description: 'Revocation result', content: { 'application/json': { schema: { type: 'object', properties: { revoked: { type: 'boolean' } } } } } } },
+  },
+};
+
+// ─── Usage Reporting ─────────────────────────────────────────────────────────
+
+apiPaths['/api/usage/me'] = {
+  get: {
+    tags: ['Usage'],
+    summary: 'Get usage report for the authenticated user (24h window)',
+    security: [{ ApiKey: [] }],
+    responses: {
+      200: { description: 'Usage report', content: { 'application/json': { schema: { type: 'object',
+        properties: { report: { type: 'object', properties: { userId: { type: 'string' }, totalCalls: { type: 'integer' },
+          avgResponseTime: { type: 'number' }, peakHour: { type: 'integer' }, quotaUtilization: { type: 'number' } } } },
+      } } } },
+    },
+  },
+};
+
+apiPaths['/api/usage/quota'] = {
+  get: {
+    tags: ['Usage'],
+    summary: 'Check remaining API quota for the authenticated user',
+    security: [{ ApiKey: [] }],
+    responses: {
+      200: { description: 'Quota status', content: { 'application/json': { schema: { type: 'object',
+        properties: { quota: { type: 'object', properties: { allowed: { type: 'boolean' }, remaining: { type: 'integer' },
+          resetAt: { type: 'integer' }, reason: { type: 'string' } } } },
+      } } } },
+    },
+  },
+};
+
+// ─── Plugin Management ───────────────────────────────────────────────────────
+
+apiPaths['/api/plugins'] = {
+  get: {
+    tags: ['Plugins'],
+    summary: 'List all registered strategy plugins (Enterprise only)',
+    security: [{ ApiKey: [] }],
+    responses: {
+      200: { description: 'Plugin list', content: { 'application/json': { schema: { type: 'object',
+        properties: { plugins: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' },
+          version: { type: 'string' }, enabled: { type: 'boolean' } } } }, count: { type: 'integer' } },
+      } } } },
+    },
+  },
+};
+
+apiPaths['/api/plugins/{name}/enable'] = {
+  post: {
+    tags: ['Plugins'],
+    summary: 'Enable a registered plugin (Enterprise only)',
+    security: [{ ApiKey: [] }],
+    parameters: [{ name: 'name', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Plugin enabled' }, 404: { description: 'Plugin not found' } },
+  },
+};
+
+apiPaths['/api/plugins/{name}/disable'] = {
+  post: {
+    tags: ['Plugins'],
+    summary: 'Disable a registered plugin (Enterprise only)',
+    security: [{ ApiKey: [] }],
+    parameters: [{ name: 'name', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Plugin disabled' }, 404: { description: 'Plugin not found' } },
+  },
+};
+
+// ─── Instance Scaling ────────────────────────────────────────────────────────
+
+apiPaths['/api/instances'] = {
+  get: {
+    tags: ['Scaling'],
+    summary: 'List all trading instances (Enterprise only)',
+    security: [{ ApiKey: [] }],
+    responses: {
+      200: { description: 'Instance list', content: { 'application/json': { schema: { type: 'object',
+        properties: { instances: { type: 'array', items: { type: 'object' } }, count: { type: 'integer' } },
+      } } } },
+    },
+  },
+  post: {
+    tags: ['Scaling'],
+    summary: 'Create a new trading instance (Enterprise only)',
+    security: [{ ApiKey: [] }],
+    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object',
+      properties: { id: { type: 'string' }, strategies: { type: 'array', items: { type: 'string' } },
+        port: { type: 'integer' }, capitalAllocation: { type: 'string' } },
+    } } } },
+    responses: { 201: { description: 'Instance created' }, 400: { description: 'Bad request' } },
+  },
+};
+
+apiPaths['/api/instances/{id}'] = {
+  get: {
+    tags: ['Scaling'],
+    summary: 'Get a specific trading instance status',
+    security: [{ ApiKey: [] }],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Instance status' }, 404: { description: 'Instance not found' } },
+  },
+  delete: {
+    tags: ['Scaling'],
+    summary: 'Stop and remove a trading instance (Enterprise only)',
+    security: [{ ApiKey: [] }],
+    parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }],
+    responses: { 200: { description: 'Instance removed' }, 404: { description: 'Instance not found' } },
+  },
+};
+
+// ─── P&L Snapshots ───────────────────────────────────────────────────────────
+
+apiPaths['/api/pnl/snapshots'] = {
+  get: {
+    tags: ['P&L'],
+    summary: 'Get recent P&L snapshots (default 30 days)',
+    security: [{ ApiKey: [] }],
+    parameters: [{ name: 'limit', in: 'query', schema: { type: 'integer', default: 30 } }],
+    responses: { 200: { description: 'Snapshot list', content: { 'application/json': { schema: { type: 'object',
+      properties: { snapshots: { type: 'array', items: { type: 'object' } }, count: { type: 'integer' } },
+    } } } } },
+  },
+  post: {
+    tags: ['P&L'],
+    summary: 'Manually capture a P&L snapshot',
+    security: [{ ApiKey: [] }],
+    responses: { 201: { description: 'Snapshot captured' } },
+  },
+};
+
+apiPaths['/api/pnl/snapshots/range'] = {
+  get: {
+    tags: ['P&L'],
+    summary: 'Get P&L snapshots for a date range',
+    security: [{ ApiKey: [] }],
+    parameters: [
+      { name: 'from', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+      { name: 'to', in: 'query', required: true, schema: { type: 'string', format: 'date' } },
+    ],
+    responses: { 200: { description: 'Snapshot range' } },
+  },
+};
+
+apiPaths['/api/pnl/snapshots/today'] = {
+  get: {
+    tags: ['P&L'],
+    summary: "Get today's P&L snapshot",
+    security: [{ ApiKey: [] }],
+    responses: { 200: { description: "Today's snapshot" } },
+  },
+};
+
+// ─── OpenClaw AI Recommendations ─────────────────────────────────────────────
+
+apiPaths['/api/openclaw/recommend'] = {
+  post: {
+    tags: ['OpenClaw'],
+    summary: 'Get AI strategy recommendations based on capital and risk tolerance',
+    security: [{ ApiKey: [] }],
+    requestBody: { required: true, content: { 'application/json': { schema: { type: 'object',
+      properties: { capitalUsd: { type: 'number' }, riskTolerance: { type: 'string', enum: ['conservative', 'moderate', 'aggressive'] },
+        markets: { type: 'array', items: { type: 'string' } } },
+    } } } },
+    responses: {
+      200: { description: 'AI recommendations', content: { 'application/json': { schema: { type: 'object',
+        properties: { ok: { type: 'boolean' }, recommendations: { type: 'string' }, model: { type: 'string' } },
+      } } } },
+      429: { description: 'AI quota exceeded' },
     },
   },
 };

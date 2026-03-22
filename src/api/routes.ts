@@ -29,6 +29,11 @@ import { handleExportRequest, type ExportDeps } from '../export/export-api.js';
 import { handleUserWebhookRoutes } from './user-webhook-routes.js';
 import { handleAuditRoutes } from './audit-routes.js';
 import { handleSystemHealthRoutes } from './system-health-routes.js';
+import { handleLicenseRoutes } from './license-routes.js';
+import { handleUsageRoutes } from './usage-routes.js';
+import { handlePluginRoutes } from './plugin-routes.js';
+import { handleScalingRoutes } from './scaling-routes.js';
+import { handlePnlSnapshotRoutes } from './pnl-snapshot-routes.js';
 
 // ─── Export deps setter (called from app.ts after bootstrap) ────────────────
 let _exportDeps: ExportDeps | null = null;
@@ -233,6 +238,21 @@ export async function handleRequest(
       handleExportRequest(req, res, _exportDeps);
     } else if (pathname.startsWith('/api/webhooks/') && !pathname.startsWith('/api/webhooks/polar') && !pathname.startsWith('/api/webhooks/tradingview')) {
       const handled = handleUserWebhookRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/license/')) {
+      const handled = handleLicenseRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/usage/')) {
+      const handled = handleUsageRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/plugins')) {
+      const handled = handlePluginRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/pnl/snapshots')) {
+      const handled = handlePnlSnapshotRoutes(req, res, pathname, method);
+      if (!handled) sendNotFound(res);
+    } else if (pathname.startsWith('/api/instances')) {
+      const handled = handleScalingRoutes(req, res, pathname, method);
       if (!handled) sendNotFound(res);
     } else if (pathname.startsWith('/api/openclaw/')) {
       if (!_openClawDeps) { sendJson(res, 503, { error: 'OpenClaw AI not configured' }); return; }

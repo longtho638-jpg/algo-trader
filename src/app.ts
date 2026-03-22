@@ -46,6 +46,14 @@ import { getAuditStore } from './audit/audit-store.js';
 import { setSystemHealthDeps } from './api/system-health-routes.js';
 import { UserWebhookRegistry } from './webhooks/user-webhook-registry.js';
 import { setUserWebhookRegistry } from './api/user-webhook-routes.js';
+import { UsageTracker } from './metering/usage-tracker.js';
+import { setUsageTracker } from './api/usage-routes.js';
+import { PluginRegistry } from './plugins/plugin-registry.js';
+import { setPluginRegistry } from './api/plugin-routes.js';
+import { InstanceManager } from './scaling/instance-manager.js';
+import { setInstanceManager } from './api/scaling-routes.js';
+import { setPnlSnapshotProvider } from './api/pnl-snapshot-routes.js';
+import { savePnlSnapshot, type PnlSnapshot } from './portfolio/pnl-snapshot-store.js';
 
 // ── Ports ──────────────────────────────────────────────────────────────────
 
@@ -72,6 +80,7 @@ let _orchestrator: StrategyOrchestrator | null = null;
 let _wsWiring: WsEventWiring | null = null;
 let _openClaw: OpenClawBundle | null = null;
 let _userWebhookRegistry: UserWebhookRegistry | null = null;
+let _usageTracker: UsageTracker | null = null;
 let _stopping = false;
 
 // ── Banner ─────────────────────────────────────────────────────────────────
@@ -114,6 +123,7 @@ export async function stopApp(reason = 'manual'): Promise<void> {
     if (_wsWiring) { _wsWiring.dispose(); _wsWiring = null; }
     if (_notifications) { stopNotifications(_notifications); _notifications = null; }
     if (_userWebhookRegistry) { _userWebhookRegistry.stop(); _userWebhookRegistry = null; }
+    if (_usageTracker) { _usageTracker.destroy(); _usageTracker = null; }
     if (_scheduler) { _scheduler.stop(); _scheduler = null; }
     if (_recovery)  { _recovery.stopAutoSave(); _recovery.clearState(); _recovery = null; }
 
@@ -186,6 +196,22 @@ export async function startApp(): Promise<void> {
   setUserWebhookRegistry(_userWebhookRegistry);
   logger.info('User webhook registry wired', 'App');
 
+  // 5a5. Usage metering — in-memory sliding window tracker for quota enforcement
+  _usageTracker = new UsageTracker();
+  const usageTracker = _usageTracker;
+  setUsageTracker(usageTracker);
+  logger.info('Usage tracker wired', 'App');
+
+  // 5a6. Plugin registry — strategy plugin management (Enterprise feature)
+  const pluginRegistry = new PluginRegistry();
+  setPluginRegistry(pluginRegistry);
+  logger.info('Plugin registry wired', 'App');
+
+  // 5a7. Instance manager — multi-strategy scaling (Enterprise feature)
+  const instanceManager = new InstanceManager();
+  setInstanceManager(instanceManager);
+  logger.info('Instance manager wired', 'App');
+
   // 5b. UserStore — shared across API server + dashboard for real analytics
   const userDbPath = process.env['USER_DB_PATH'] ?? 'data/users.db';
   const userStore = new UserStore(userDbPath);
@@ -241,6 +267,17 @@ export async function startApp(): Promise<void> {
   });
   logger.info('Portfolio tracker wired', 'App');
 
+  // 12b. P&L snapshot provider — daily performance tracking
+  setPnlSnapshotProvider(() => ({
+    totalEquity: '0',
+    unrealizedPnl: '0',
+    realizedPnl: '0',
+    openPositions: 0,
+    tradeCount: _engine ? _engine.getExecutor().getTradeLog().length : 0,
+    winRate: 0,
+  }));
+  logger.info('P&L snapshot provider wired', 'App');
+
   // 13. ML signal feed — weighted scoring model for trading signals
   const mlFeed = new MlSignalFeed();
   setSignalFeed(mlFeed);
@@ -274,6 +311,24 @@ export async function startApp(): Promise<void> {
     _scheduler.schedule('openclawAutoTune', 'every 1h', _openClaw.autoTuningHandler);
     logger.info('OpenClaw auto-tuning job registered (every 1h)', 'App');
   }
+
+  // 16b. Daily P&L snapshot job — captures portfolio state every 24h
+  _scheduler.schedule('dailyPnlSnapshot', 'every 24h', async () => {
+    const trades = _engine ? _engine.getExecutor().getTradeLog() : [];
+    const snapshot: PnlSnapshot = {
+      date: new Date().toISOString().slice(0, 10),
+      totalEquity: '0',
+      unrealizedPnl: '0',
+      realizedPnl: '0',
+      openPositions: 0,
+      tradeCount: trades.length,
+      winRate: 0,
+      timestamp: Date.now(),
+    };
+    savePnlSnapshot(snapshot);
+    logger.info('Daily P&L snapshot captured', 'App', { date: snapshot.date, tradeCount: snapshot.tradeCount });
+  });
+  logger.info('Daily P&L snapshot job registered (every 24h)', 'App');
 
   // 17. Recovery manager
   _recovery = new RecoveryManager();
