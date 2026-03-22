@@ -1,8 +1,9 @@
 /**
  * algo-trade JavaScript Client SDK
- * Public surface: client class + all types + error class.
+ * Public surface: client class + WebSocket client + all types + error class.
  */
 export { AlgoTradeClient } from './algo-trade-client.js';
+export { AlgoTradeWsClient } from './sdk-ws-client.js';
 export { SdkError } from './sdk-auth.js';
 export type { SdkConfig } from './sdk-auth.js';
 export type {
@@ -28,6 +29,18 @@ export type {
   KalshiOrderResponse,
   KalshiScanResponse,
   KalshiCrossScanResponse,
+  // Signals
+  SignalEvent,
+  SignalResponse,
+  WebSocketMessage,
+  WebSocketMessageType,
+  // Strategies
+  StrategyStatus,
+  // Portfolio & positions
+  PortfolioSummary,
+  Position,
+  // Trade history
+  TradeHistory,
   // Future stubs
   MarketplaceListResponse,
   BacktestRequest,

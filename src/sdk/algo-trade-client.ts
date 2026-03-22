@@ -28,6 +28,11 @@ import type {
   ReviewSubmitResponse,
   ReviewListResponse,
   WebhookTestResponse,
+  SignalResponse,
+  StrategyStatus,
+  PortfolioSummary,
+  TradeHistory,
+  Position,
 } from './sdk-types.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -146,6 +151,35 @@ export class AlgoTradeClient {
 
   /** POST /api/webhooks/:id/test — send test payload */
   async testWebhook(webhookId: string): Promise<WebhookTestResponse> { return this.post(`/api/webhooks/${webhookId}/test`, {}); }
+
+  // ─── Signal endpoints ────────────────────────────────────────────────────────
+
+  /** GET /api/signals — latest trading signals from the engine */
+  async getSignals(): Promise<SignalResponse> { return this.get('/api/signals'); }
+
+  // ─── Strategy status endpoint ─────────────────────────────────────────────
+
+  /** GET /api/strategies — detailed status of all configured strategies */
+  async getStrategies(): Promise<StrategyStatus[]> { return this.get('/api/strategies'); }
+
+  // ─── Portfolio endpoints ─────────────────────────────────────────────────
+
+  /** GET /api/portfolio — full portfolio snapshot with positions */
+  async getPortfolio(): Promise<PortfolioSummary> { return this.get('/api/portfolio'); }
+
+  /** GET /api/positions — list of open positions */
+  async getPositions(): Promise<Position[]> { return this.get('/api/positions'); }
+
+  // ─── Trade history endpoint ──────────────────────────────────────────────
+
+  /**
+   * GET /api/trades/history — paginated trade history.
+   * @param limit Maximum number of records to return (default server-side 100).
+   */
+  async getTradeHistory(limit?: number): Promise<TradeHistory[]> {
+    const path = limit !== undefined ? `/api/trades/history?limit=${limit}` : '/api/trades/history';
+    return this.get(path);
+  }
 
   // ─── Private fetch wrapper ──────────────────────────────────────────────────
 

@@ -12,6 +12,12 @@ import { loadOpenClawConfig } from '../openclaw/openclaw-config.js';
 import { logger } from '../core/logger.js';
 import type { OpenClawDeps } from '../openclaw/api-endpoints.js';
 import { createAutoTuningHandler } from '../openclaw/auto-tuning-job.js';
+import { selectStrategies } from '../openclaw/ai-strategy-selector.js';
+import { adjustRisk } from '../openclaw/ai-risk-adjuster.js';
+import { reviewTrade } from '../openclaw/ai-trade-reviewer.js';
+import type { MarketConditions } from '../openclaw/ai-strategy-selector.js';
+import type { RiskParams } from '../openclaw/ai-risk-adjuster.js';
+import type { CompletedTrade } from '../openclaw/ai-trade-reviewer.js';
 
 export interface OpenClawBundle {
   router: AiRouter;
@@ -96,4 +102,60 @@ export function wireOpenClaw(eventBus: EventBus): OpenClawBundle {
   });
 
   return { router, observer, decisionLogger, tuningExecutor, tuningHistory, signalGenerator, deps, autoTuningHandler };
+}
+
+// ---------------------------------------------------------------------------
+// AI Trading Loop Integration
+// ---------------------------------------------------------------------------
+
+/** Orchestrator interface for strategy selection hook */
+export interface StrategyOrchestrator {
+  onStrategySelect?: (
+    conditions: MarketConditions,
+    strategies: Parameters<typeof selectStrategies>[1],
+  ) => ReturnType<typeof selectStrategies>;
+}
+
+/** Risk manager interface for risk evaluation hook */
+export interface RiskManagerHook {
+  onRiskAdjust?: (
+    baseRisk: RiskParams,
+    sentiment: string,
+    recentPnl: number,
+  ) => ReturnType<typeof adjustRisk>;
+  onTradeComplete?: (trade: CompletedTrade) => ReturnType<typeof reviewTrade>;
+}
+
+/**
+ * Wire OpenClaw AI modules (strategy selector, risk adjuster, trade reviewer)
+ * into an existing orchestrator and risk manager.
+ *
+ * Opt-in via env var OPENCLAW_AI_TRADING=true — disabled by default to
+ * avoid unintended AI calls in environments without a gateway.
+ */
+export function wireOpenClawAi(
+  router: AiRouter,
+  orchestrator: StrategyOrchestrator,
+  riskManager: RiskManagerHook,
+): void {
+  if (process.env.OPENCLAW_AI_TRADING !== 'true') {
+    logger.info('OpenClaw AI trading disabled (set OPENCLAW_AI_TRADING=true to enable)', 'OpenClawWiring');
+    return;
+  }
+
+  // Hook: strategy selection phase
+  orchestrator.onStrategySelect = (conditions, strategies) =>
+    selectStrategies(conditions, strategies, router);
+
+  // Hook: risk evaluation phase
+  riskManager.onRiskAdjust = (baseRisk, sentiment, recentPnl) =>
+    adjustRisk(baseRisk, sentiment, recentPnl, router);
+
+  // Hook: post-trade review callback
+  riskManager.onTradeComplete = (trade) =>
+    reviewTrade(trade, router);
+
+  logger.info('OpenClaw AI trading hooks wired', 'OpenClawWiring', {
+    hooks: ['strategy-selector', 'risk-adjuster', 'trade-reviewer'],
+  });
 }

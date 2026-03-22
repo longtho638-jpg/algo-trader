@@ -130,3 +130,78 @@ export interface BacktestResponse {
   maxDrawdown: number;
   trades: TradeResult[];
 }
+
+// ─── Signal types ─────────────────────────────────────────────────────────────
+
+/** A trading signal emitted by the engine */
+export interface SignalEvent {
+  id: string;
+  strategy: StrategyName;
+  symbol: string;
+  side: OrderSide;
+  confidence: number;
+  price: number;
+  timestamp: number;
+}
+
+/** REST response for GET /api/signals */
+export interface SignalResponse {
+  signals: SignalEvent[];
+  count: number;
+}
+
+// ─── Strategy status types ────────────────────────────────────────────────────
+
+/** Detailed status of a single running strategy */
+export interface StrategyStatus {
+  name: StrategyName;
+  running: boolean;
+  tradeCount: number;
+  pnl: number;
+  startedAt: number | null;
+}
+
+// ─── Portfolio types ──────────────────────────────────────────────────────────
+
+/** A single open position */
+export interface Position {
+  symbol: string;
+  side: OrderSide;
+  size: string;
+  entryPrice: string;
+  currentPrice: string;
+  unrealizedPnl: string;
+}
+
+/** Summary of portfolio state */
+export interface PortfolioSummary {
+  totalEquity: number;
+  availableBalance: number;
+  unrealizedPnl: number;
+  positions: Position[];
+}
+
+// ─── Trade history types ──────────────────────────────────────────────────────
+
+/** A single historical trade record */
+export interface TradeHistory {
+  id: string;
+  symbol: string;
+  side: OrderSide;
+  size: string;
+  price: string;
+  fees: string;
+  strategy: StrategyName;
+  timestamp: number;
+}
+
+// ─── WebSocket message types ──────────────────────────────────────────────────
+
+export type WebSocketMessageType = 'signal' | 'status' | 'error' | 'ping';
+
+/** Generic WebSocket message envelope */
+export interface WebSocketMessage<T = unknown> {
+  type: WebSocketMessageType;
+  payload: T;
+  timestamp: number;
+}
