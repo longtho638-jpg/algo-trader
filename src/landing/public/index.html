@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CashClaw — Algorithmic Trading as a Service</title>
-  <meta name="description" content="AI-powered algorithmic trading platform. Polymarket, CEX, DEX. Copy top traders. Start free." />
+  <title>AlgoTrade — AI-Powered Prediction Market Signals</title>
+  <meta name="description" content="AI-powered prediction market analytics SaaS. Daily signals, Kelly sizing, live P&L. We trade our own signals." />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     :root {
@@ -14,6 +14,7 @@
     }
     body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
     a { color: var(--accent); text-decoration: none; }
+    .badge { display: inline-block; background: rgba(0,212,170,.12); color: var(--accent); border: 1px solid rgba(0,212,170,.3); border-radius: 20px; padding: 4px 14px; font-size: .78rem; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 20px; }
 
     /* Nav */
     nav { display: flex; align-items: center; justify-content: space-between; padding: 20px 48px; max-width: 1200px; margin: 0 auto; }
@@ -78,136 +79,131 @@
 <body>
 
 <nav>
-  <div class="nav-logo">CashClaw</div>
+  <div class="nav-logo">AlgoTrade</div>
   <div class="nav-links">
-    <a href="#features">Features</a>
     <a href="#pricing">Pricing</a>
+    <a href="/trading-performance">Live P&amp;L</a>
     <a href="/dashboard">Dashboard</a>
   </div>
-  <a href="/dashboard" class="btn-cta btn-primary">Get Started</a>
+  <a href="#pricing" class="btn-cta btn-primary">Get Signals</a>
 </nav>
 
 <section class="hero">
-  <h1>AI-Powered Algorithmic Trading</h1>
-  <p>Deploy battle-tested strategies on Polymarket, CEX &amp; DEX. Copy top traders. Let OpenClaw AI optimize your edge. Start free, scale to millions.</p>
+  <div class="badge">Prediction Market Analytics SaaS</div>
+  <h1>AI-Powered Prediction Market Signals</h1>
+  <p>We scan every Polymarket market 24/7, score each one with LLM edge analysis, size positions with half-Kelly — and we trade it ourselves first.</p>
   <div class="hero-actions">
-    <a href="/dashboard" class="btn-cta btn-primary">Start Trading Free</a>
-    <a href="#pricing" class="btn-cta btn-outline">View Pricing</a>
+    <a href="#pricing" class="btn-cta btn-primary">Start Free Trial</a>
+    <a href="/trading-performance" class="btn-cta btn-outline">View Live P&amp;L</a>
   </div>
 </section>
 
 <div class="stats-bar">
-  <div class="stat"><div class="stat-value">4</div><div class="stat-label">Strategies</div></div>
-  <div class="stat"><div class="stat-value">50+</div><div class="stat-label">API Endpoints</div></div>
-  <div class="stat"><div class="stat-value">24/7</div><div class="stat-label">Uptime</div></div>
-  <div class="stat"><div class="stat-value">$0</div><div class="stat-label">To Start</div></div>
+  <div class="stat"><div class="stat-value">24/7</div><div class="stat-label">Market Scanning</div></div>
+  <div class="stat"><div class="stat-value">&gt;5%</div><div class="stat-label">Min Edge Filter</div></div>
+  <div class="stat"><div class="stat-value">Live</div><div class="stat-label">Own Capital at Risk</div></div>
+  <div class="stat"><div class="stat-value">Kelly</div><div class="stat-label">Position Sizing</div></div>
 </div>
 
 <section class="features" id="features">
-  <h2>Everything You Need</h2>
+  <h2>How It Works</h2>
   <div class="features-grid">
     <div class="feature-card">
       <div class="feature-icon">~</div>
-      <h3>Polymarket Strategies</h3>
-      <p>Cross-market arb, market maker, momentum scalper, and Kelly-optimized strategies for binary prediction markets.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">&gt;</div>
-      <h3>OpenClaw AI</h3>
-      <p>AI-driven parameter tuning via local LLM (Ollama). Auto-optimize entry thresholds, stop-losses, and position sizing hourly.</p>
-    </div>
-    <div class="feature-card">
-      <div class="feature-icon">#</div>
-      <h3>Copy Trading</h3>
-      <p>Follow top traders on the leaderboard. Proportional position mirroring with slippage guards and allocation controls.</p>
+      <h3>AI Edge Scoring</h3>
+      <p>OpenClaw LLM estimates resolution probability for every active Polymarket market. Signals only fire when edge &gt; 5%.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">%</div>
-      <h3>Backtesting</h3>
-      <p>Run any strategy against historical data. Equity curves, Sharpe ratios, drawdown analysis — all from the dashboard.</p>
+      <h3>Kelly Position Sizing</h3>
+      <p>Half-Kelly formula applied to every trade. Max 2% of bankroll per position. Daily stop-loss at 10% drawdown.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">@</div>
-      <h3>Risk Management</h3>
-      <p>Position sizing limits, max drawdown guards, stop-loss enforcement, and real-time AI risk alerts via Telegram.</p>
+      <h3>We Eat Our Own Cooking</h3>
+      <p>Every signal we publish, we trade with real capital. Public P&amp;L updated daily — no cherry-picking, losses included.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">&gt;</div>
+      <h3>Daily Signal Digest</h3>
+      <p>Top 10 opportunities delivered via Telegram every morning. Market, direction, edge score, and recommended size.</p>
+    </div>
+    <div class="feature-card">
+      <div class="feature-icon">#</div>
+      <h3>Real-Time Stream</h3>
+      <p>Pro subscribers get live signal feed with 15-min latency. Pull via REST API or receive Telegram push alerts.</p>
     </div>
     <div class="feature-card">
       <div class="feature-icon">*</div>
-      <h3>REST API + SDK</h3>
-      <p>50+ endpoints. TypeScript SDK. TradingView webhooks. Build custom integrations or use the dashboard.</p>
+      <h3>Auto-Execution</h3>
+      <p>Connect your Polymarket wallet. Pro engine auto-executes qualifying trades with your own risk limits enforced.</p>
     </div>
   </div>
 </section>
 
 <section class="pricing" id="pricing">
   <h2>Simple Pricing</h2>
-  <p class="pricing-sub">Start free. Upgrade when you're ready.</p>
+  <p class="pricing-sub">Pick your edge. Cancel anytime via Polar.sh.</p>
   <div class="pricing-grid">
 
+    <!-- STARTER -->
     <div class="price-card">
-      <div class="price-tier">Free</div>
-      <div class="price-amount">$0<span>/mo</span></div>
-      <div class="price-desc">Get started with core features</div>
+      <div class="price-tier">Starter</div>
+      <div class="price-amount">$49<span>/mo</span></div>
+      <div class="price-desc">Daily signal digest — know what to trade, decide yourself</div>
       <ul class="price-features">
-        <li>2 active strategies</li>
-        <li>Basic dashboard</li>
-        <li>10 API calls/min</li>
-        <li>Community support</li>
-        <li>Backtest runner</li>
+        <li>Daily signal digest via Telegram</li>
+        <li>AI edge scores per market</li>
+        <li>Top 10 opportunities each morning</li>
+        <li>Kelly-sizing recommendations</li>
+        <li>Community Discord access</li>
+        <li>Monthly performance report</li>
       </ul>
-      <a href="/dashboard" class="btn-cta btn-outline price-cta">Get Started</a>
+      <a href="#" class="btn-cta btn-outline price-cta" id="btn-starter">Get Starter</a>
     </div>
 
+    <!-- PRO -->
     <div class="price-card popular">
       <div class="price-tier">Pro</div>
-      <div class="price-amount">$29<span>/mo</span></div>
-      <div class="price-desc">For serious traders</div>
+      <div class="price-amount">$149<span>/mo</span></div>
+      <div class="price-desc">Real-time signals + optional auto-execution on your wallet</div>
       <ul class="price-features">
-        <li>Unlimited strategies</li>
-        <li>Copy trading access</li>
-        <li>OpenClaw AI (100 calls/mo)</li>
-        <li>60 API calls/min</li>
-        <li>Telegram alerts</li>
-        <li>Priority support</li>
+        <li>Everything in Starter</li>
+        <li>Real-time signal stream (15-min)</li>
+        <li>REST API access — pull programmatically</li>
+        <li>Auto-execution on your Polymarket wallet</li>
+        <li>Per-account risk manager (your limits)</li>
+        <li>Priority Telegram support</li>
+        <li>Weekly calibration report</li>
       </ul>
-      <a href="/api/checkout" class="btn-cta btn-primary price-cta" onclick="checkout('pro')">Upgrade to Pro</a>
+      <a href="#" class="btn-cta btn-primary price-cta" id="btn-pro">Start Pro Trial</a>
     </div>
 
+    <!-- ELITE -->
     <div class="price-card">
-      <div class="price-tier">Enterprise</div>
-      <div class="price-amount">$199<span>/mo</span></div>
-      <div class="price-desc">Maximum edge</div>
+      <div class="price-tier">Elite</div>
+      <div class="price-amount">$499<span>/mo</span></div>
+      <div class="price-desc">Full managed service with custom focus and performance dashboard</div>
       <ul class="price-features">
         <li>Everything in Pro</li>
-        <li>Unlimited AI calls</li>
-        <li>300 API calls/min</li>
-        <li>Strategy marketplace</li>
-        <li>Custom strategy deployment</li>
-        <li>Dedicated support</li>
+        <li>Custom market focus (your categories)</li>
+        <li>Personal performance dashboard</li>
+        <li>Live P&amp;L by position</li>
+        <li>Sharpe, drawdown, win rate analytics</li>
+        <li>Direct founder support (24h response)</li>
+        <li>Early access to new strategies</li>
       </ul>
-      <a href="/api/checkout" class="btn-cta btn-outline price-cta" onclick="checkout('enterprise')">Contact Sales</a>
+      <a href="#" class="btn-cta btn-outline price-cta" id="btn-elite">Get Elite</a>
     </div>
 
   </div>
 </section>
 
-<!-- Testimonials -->
-<section style="max-width:900px;margin:0 auto 80px;padding:0 24px">
-  <h2 style="text-align:center;font-size:28px;font-weight:800;margin-bottom:32px">Trusted by Traders</h2>
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px">
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:12px">"The Polymarket arb strategy paid for my Pro subscription in the first week. The AI tuning is a game-changer."</p>
-      <div style="font-weight:600;font-size:12px">Alex T. — Pro trader</div>
-    </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px">
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:12px">"Copy trading let me follow top performers while I learn. Already up 40% in two months."</p>
-      <div style="font-weight:600;font-size:12px">Sarah K. — Copy trader</div>
-    </div>
-    <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px">
-      <p style="color:var(--muted);font-size:13px;line-height:1.6;margin-bottom:12px">"The API is clean and well-documented. Built a custom TradingView integration in under an hour."</p>
-      <div style="font-weight:600;font-size:12px">Marcus R. — Enterprise user</div>
-    </div>
-  </div>
+<!-- EAT YOUR OWN COOKING -->
+<section style="max-width:700px;margin:0 auto 80px;padding:0 24px;text-align:center">
+  <h2 style="font-size:28px;font-weight:800;margin-bottom:12px">We Eat Our Own Cooking</h2>
+  <p style="color:var(--muted);font-size:15px;margin-bottom:24px">Every signal we sell, we trade with real capital. Full P&amp;L — wins and losses — published daily.</p>
+  <a href="/trading-performance" class="btn-cta btn-outline" style="display:inline-block;padding:12px 28px">View Live P&amp;L Track Record →</a>
 </section>
 
 <!-- FAQ -->
@@ -215,48 +211,41 @@
   <h2 style="text-align:center;font-size:28px;font-weight:800;margin-bottom:32px">FAQ</h2>
   <div style="display:flex;flex-direction:column;gap:12px">
     <details style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer">
-      <summary style="font-weight:600;font-size:14px">Is my money safe?</summary>
-      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Your exchange API keys are stored encrypted. We never have withdrawal access. All strategies start in paper-trading mode by default.</p>
+      <summary style="font-weight:600;font-size:14px">Is my wallet safe with auto-execution?</summary>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Your private key is encrypted at rest (AES-256-GCM). The engine only has trade access, never withdrawal. Hard-coded 2% max position, 10% daily stop-loss enforced.</p>
     </details>
     <details style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer">
-      <summary style="font-weight:600;font-size:14px">What markets are supported?</summary>
-      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Polymarket (prediction markets), major CEX (Binance, etc.), and DEX. We focus 80% on Polymarket where our AI has the highest edge.</p>
+      <summary style="font-weight:600;font-size:14px">What is the edge based on?</summary>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Our LLM (OpenClaw) estimates resolution probability independently of market price. Edge = our estimate minus market-implied probability. Only signals with edge &gt; 5% are published.</p>
     </details>
     <details style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer">
       <summary style="font-weight:600;font-size:14px">Can I cancel anytime?</summary>
-      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Yes. Cancel your subscription anytime through Polar.sh. You keep access until the end of your billing period.</p>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Yes. Cancel through Polar.sh. You keep access until the end of your billing period. No lock-in.</p>
     </details>
     <details style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer">
-      <summary style="font-weight:600;font-size:14px">What is OpenClaw AI?</summary>
-      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Our proprietary AI engine that analyzes markets, tunes strategy parameters, and provides risk alerts. Pro users get 100 AI calls/month; Enterprise gets unlimited.</p>
-    </details>
-    <details style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:16px;cursor:pointer">
-      <summary style="font-weight:600;font-size:14px">How does the referral program work?</summary>
-      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Share your referral code. When someone subscribes to a paid plan, you earn 20% recurring commission for the first 12 months.</p>
+      <summary style="font-weight:600;font-size:14px">What markets are covered?</summary>
+      <p style="color:var(--muted);font-size:13px;margin-top:8px;line-height:1.6">Polymarket — all active binary markets. We filter for resolution within 7–30 days and minimum liquidity thresholds for reliable pricing.</p>
     </details>
   </div>
 </section>
 
 <footer>
-  CashClaw &copy; 2026. Algorithmic Trading as a Service. Built with OpenClaw AI.
+  AlgoTrade &copy; 2026 &mdash; Prediction market analytics SaaS. Not financial advice.
 </footer>
 
 <script>
-async function checkout(tier) {
-  event.preventDefault();
-  try {
-    const res = await fetch('/api/checkout', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tier }),
-    });
-    const data = await res.json();
-    if (data.checkoutUrl) window.location.href = data.checkoutUrl;
-    else alert(data.error || 'Checkout unavailable');
-  } catch (err) {
-    alert('Checkout error: ' + err.message);
-  }
-}
+// Wire up Polar checkout buttons from server-injected env vars
+(function () {
+  var starterUrl = window.__POLAR_STARTER__ || 'mailto:hello@algotrade.ai?subject=Starter';
+  var proUrl     = window.__POLAR_PRO__     || 'mailto:hello@algotrade.ai?subject=Pro';
+  var eliteUrl   = window.__POLAR_ELITE__   || 'mailto:hello@algotrade.ai?subject=Elite';
+  var s = document.getElementById('btn-starter');
+  var p = document.getElementById('btn-pro');
+  var e = document.getElementById('btn-elite');
+  if (s) s.href = starterUrl;
+  if (p) p.href = proUrl;
+  if (e) e.href = eliteUrl;
+})();
 </script>
 </body>
 </html>
