@@ -39,6 +39,12 @@ export interface ScanOptions {
   minPriceSumDelta?: number;
   /** Max markets to analyze (caps API calls in paper mode) */
   limit?: number;
+  /** Upper volume cap — filters out high-volume markets dominated by sophisticated traders */
+  maxVolume?: number;
+  /** Minimum days until market resolution (prefer markets not too stale) */
+  minResolutionDays?: number;
+  /** Maximum days until market resolution (prefer markets resolving soon) */
+  maxResolutionDays?: number;
 }
 
 export class MarketScanner {
@@ -52,6 +58,26 @@ export class MarketScanner {
     logger.info('Starting market scan', 'MarketScanner');
     const rawMarkets = await this.fetchRawMarkets();
     let active = rawMarkets.filter(m => m.active && safeParseFloat(m.volume) >= minVolume);
+
+    // Long-tail filter: exclude high-volume markets dominated by sophisticated players
+    if (options.maxVolume !== undefined) {
+      active = active.filter(m => safeParseFloat(m.volume) <= options.maxVolume!);
+    }
+
+    // Resolution window: prefer markets resolving within the specified day range
+    if (options.minResolutionDays !== undefined || options.maxResolutionDays !== undefined) {
+      const now = Date.now();
+      active = active.filter(m => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const endDate = (m as any).end_date_iso as string | undefined;
+        if (!endDate) return true; // keep if no date field
+        const daysToClose = (new Date(endDate).getTime() - now) / 86_400_000;
+        const minDays = options.minResolutionDays ?? 0;
+        const maxDays = options.maxResolutionDays ?? Infinity;
+        return daysToClose >= minDays && daysToClose <= maxDays;
+      });
+    }
+
     if (options.limit && options.limit > 0) {
       active = active.slice(0, options.limit);
     }
