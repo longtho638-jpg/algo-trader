@@ -9,6 +9,8 @@ vi.mock('commander', () => ({
     version: vi.fn(function() { return this; }),
     option: vi.fn(function() { return this; }),
     addCommand: vi.fn(function() { return this; }),
+    command: vi.fn(function() { return this; }),
+    action: vi.fn(function() { return this; }),
     parse: vi.fn(),
   })),
 }));

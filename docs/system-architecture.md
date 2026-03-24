@@ -9,6 +9,11 @@ algo-trade RaaS Platform
 │   ├─ Dashboard terminal UI
 │   └─ Setup wizard
 │
+├── Agent Dispatcher (src/agents/)
+│   ├─ AgentDispatcher (routes CLI commands → agents)
+│   ├─ AgentBase interface + registry
+│   └─ 7 Specialist Agents (scanner, monitor, estimate, risk, calibrate, report, doctor)
+│
 ├── API Server (src/api/)
 │   ├─ HTTP server (Node.js native)
 │   ├─ Auth middleware (JWT)

@@ -148,8 +148,15 @@ Essential infrastructure modules:
 **Shared Utilities** (src/lib/):
 - `llm-response-parser.ts` — Extract JSON from LLM responses, strip DeepSeek R1 think blocks
 
+**Agents** (src/agents/):
+- `base.ts` — AgentBase interface + AgentResult type definition
+- `dispatcher.ts` — AgentDispatcher (routes CLI → specialist agents)
+- `registry.ts` — Dynamic command registry
+- `scanner.ts`, `monitor.ts`, `estimate.ts`, `risk.ts`, `calibrate.ts`, `report.ts`, `doctor.ts` — 7 specialist agents
+- Commands: `scan`, `monitor`, `estimate`, `risk`, `calibrate`, `report`, `doctor`, `agents`
+
 **CLI** (src/cli/):
-- `index.ts` — Main CLI entry point (Commander.js)
+- `index.ts` — Main CLI entry point (Commander.js + AgentDispatcher)
 - `commands/start.ts`, `status.ts`, `backtest.ts`, `config-cmd.ts`
 - `dashboard.ts` — Terminal UI
 
