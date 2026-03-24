@@ -44,6 +44,7 @@ import { handleKalshiRoutes } from './kalshi-routes.js';
 import { handleConsensusRoutes } from './consensus-routes.js';
 import { handleSubscriptionRoutes } from './subscription-routes.js';
 import { handleStrategyHealthRoutes, type StrategyHealthDeps } from './strategy-health-routes.js';
+import { handleDashboard } from '../dashboard/dashboard-route.js';
 
 // ─── Export deps setter (called from app.ts after bootstrap) ────────────────
 let _exportDeps: ExportDeps | null = null;
@@ -149,6 +150,12 @@ export async function handleRequest(
   copyTradingHandlers?: CopyTradingHandlers,
 ): Promise<void> {
   const method = req.method ?? 'GET';
+
+  // Dashboard — serve before any API middleware
+  if (pathname === '/dashboard' || pathname === '/dashboard/') {
+    handleDashboard(req, res);
+    return;
+  }
 
   // Health and metrics bypass metrics middleware to avoid circularity
   if (pathname === '/api/health') {
