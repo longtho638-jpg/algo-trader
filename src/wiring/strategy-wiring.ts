@@ -12,6 +12,7 @@ import { createSessionVolSniperTick } from '../strategies/polymarket/session-vol
 import { createOrderbookDepthRatioTick } from '../strategies/polymarket/orderbook-depth-ratio.js';
 import { createCrossEventDriftTick } from '../strategies/polymarket/cross-event-drift.js';
 import { createVolCompressionBreakoutTick } from '../strategies/polymarket/vol-compression-breakout.js';
+import { createWhaleTrackerTick } from '../strategies/polymarket/whale-tracker.js';
 import type { MarketScanner } from '../polymarket/market-scanner.js';
 import type { OrderManager } from '../polymarket/order-manager.js';
 import type { OrderExecutor } from '../cex/order-executor.js';
@@ -102,6 +103,13 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
     orc.register(
       { id: 'vol-compression', name: 'Volatility Compression Breakout', type: 'vol-compression', enabled: false, params: {}, intervalMs: parseInt(env('VOL_COMPRESSION_INTERVAL_MS', '8000'), 10) },
       createVolCompressionBreakoutTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'whale-tracker', name: 'Whale Tracker', type: 'whale-tracker', enabled: false, params: {}, intervalMs: parseInt(env('WHALE_TRACKER_INTERVAL_MS', '10000'), 10) },
+      createWhaleTrackerTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
   }
 
