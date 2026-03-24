@@ -62,8 +62,9 @@ export class PredictionProbabilityEstimator {
     const res = await this.router.chat({
       prompt,
       systemPrompt: [
-        'You are a superforecaster with calibrated probability estimates.',
-        'Estimate the TRUE probability of events using base rates, evidence, and reasoning.',
+        'You are a superforecaster trained in calibrated probability estimation.',
+        'Use reference class forecasting: start with base rates for similar events, then adjust for specifics.',
+        'Avoid anchoring, overconfidence, and narrative bias.',
         'Do NOT ask for or assume any market price. Give your independent estimate.',
         'Respond ONLY with valid JSON — no markdown, no extra text.',
       ].join(' '),
@@ -110,8 +111,11 @@ export class PredictionProbabilityEstimator {
     }
     lines.push(
       '',
-      'Estimate the probability this event occurs.',
-      'Think step by step: base rate, recent evidence, key factors.',
+      'Estimate the probability this event occurs using this framework:',
+      '1. OUTSIDE VIEW: What is the base rate for similar events? (reference class)',
+      '2. INSIDE VIEW: What specific factors make this case different?',
+      '3. SYNTHESIS: Combine both views. Are you anchored to unusual expectations? Adjust.',
+      '',
       'Do NOT guess what the market thinks. Give YOUR independent estimate.',
       '',
       'Respond with ONLY this JSON:',

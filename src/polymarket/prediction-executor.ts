@@ -42,7 +42,7 @@ const DEFAULT_CONFIG: ExecutorConfig = {
   capitalUsdc: 500,
   maxPositionFraction: 0.05,
   minTradeUsdc: 5,
-  kellyFraction: 0.5,
+  kellyFraction: 0.25,
   dryRun: false,
 };
 
