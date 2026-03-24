@@ -24,13 +24,14 @@ export interface RankedSignal extends PredictionSignal {
   rank: number;
 }
 
-// Long-tail defaults: volume $1K–$100K, resolves in 7–30 days
+// Long-tail event-only defaults: exclude price markets where LLM has no edge
 const DEFAULT_SCAN_OPTIONS: ScanOptions = {
   minVolume: 1_000,
-  maxVolume: 100_000,
-  minResolutionDays: 7,
-  maxResolutionDays: 30,
+  maxVolume: 200_000,
+  minResolutionDays: 3,
+  maxResolutionDays: 90,
   limit: 50,
+  excludePriceMarkets: true,
 };
 
 const DEFAULT_MIN_EDGE = 0.05;

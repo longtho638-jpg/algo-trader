@@ -45,6 +45,10 @@ export interface ScanOptions {
   minResolutionDays?: number;
   /** Maximum days until market resolution (prefer markets resolving soon) */
   maxResolutionDays?: number;
+  /** Exclude markets matching these categories (e.g. ['Cryptocurrency']) */
+  excludeCategories?: string[];
+  /** Exclude markets whose description matches price-prediction patterns (e.g. "above $X") */
+  excludePriceMarkets?: boolean;
 }
 
 export class MarketScanner {
@@ -76,6 +80,22 @@ export class MarketScanner {
         const maxDays = options.maxResolutionDays ?? Infinity;
         return daysToClose >= minDays && daysToClose <= maxDays;
       });
+    }
+
+    // Category filter: exclude stock/crypto price markets where LLM has no edge
+    if (options.excludeCategories?.length) {
+      const excludeSet = new Set(options.excludeCategories.map(c => c.toLowerCase()));
+      active = active.filter(m => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const cat = ((m as any).category as string | undefined)?.toLowerCase() ?? '';
+        return !excludeSet.has(cat);
+      });
+    }
+
+    // Price-prediction pattern filter: "above $X", "close above", "dip to $X", "price of"
+    if (options.excludePriceMarkets) {
+      const pricePattern = /\b(above|below|close above|close below|dip to|price of|finish.*above|finish.*below)\b.*\$[\d,.]+/i;
+      active = active.filter(m => !pricePattern.test(m.description));
     }
 
     if (options.limit && options.limit > 0) {
