@@ -593,6 +593,60 @@ journalctl -u algotrade -f</code>
     </div></label>
   </div></div>
 
+  <div class="card" style="border-color:var(--accent)"><div class="card-header" style="color:var(--accent)">Step 9 — Connect This Dashboard to Your Bot</div><div class="card-body">
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;margin-bottom:8px"><input type="checkbox" class="wiz-check" data-step="9"><div>
+    <div style="color:var(--bright);font-weight:600;margin-bottom:4px">Start stats server + tunnel so this dashboard shows your real data</div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:6px">The dashboard needs an API to fetch your bot's data. Start the stats server alongside your trading bot.</div>
+    <div id="step9-mac" style="display:none">
+      <code style="display:block;background:#050505;padding:8px;border-radius:2px;font-size:11px;color:var(--green);border:1px solid #1a1a1a;white-space:pre;overflow-x:auto"># 1. Start stats server (from algo-trader directory)
+nohup node scripts/stats-server.mjs 3000 data/algo-trade.db > /tmp/stats-server.log 2>&1 &
+
+# 2. Install cloudflared (exposes your local server to internet)
+brew install cloudflared
+
+# 3. Start tunnel (creates a public HTTPS URL for your stats server)
+cloudflared tunnel --url http://localhost:3000
+
+# You'll see something like:
+# https://xyz-abc-123.trycloudflare.com
+# Copy this URL!
+
+# 4. Go to Dashboard tab → Settings
+#    Paste your tunnel URL into "Bot API URL"
+#    Click "Save & Connect"
+
+# Verify: your stats should appear on the Dashboard tab</code>
+    </div>
+    <div id="step9-vps" style="display:none">
+      <code style="display:block;background:#050505;padding:8px;border-radius:2px;font-size:11px;color:var(--green);border:1px solid #1a1a1a;white-space:pre;overflow-x:auto"># 1. Start stats server (from algo-trader directory)
+nohup node scripts/stats-server.mjs 3000 data/algo-trade.db > /tmp/stats-server.log 2>&1 &
+
+# 2. Option A: Open port 3000 (simplest — if VPS has public IP)
+ufw allow 3000
+# Then in Dashboard Settings, enter: http://YOUR_VPS_IP:3000
+
+# 3. Option B: Use cloudflared tunnel (more secure, HTTPS)
+curl -fsSL https://pkg.cloudflare.com/cloudflared-linux-amd64.deb -o /tmp/cf.deb
+dpkg -i /tmp/cf.deb
+cloudflared tunnel --url http://localhost:3000
+# Copy the https://xyz.trycloudflare.com URL
+# Paste into Dashboard Settings → Bot API URL
+
+# 4. For permanent tunnel, create named tunnel:
+cloudflared tunnel login
+cloudflared tunnel create my-bot
+# Then configure with cloudflared tunnel route dns</code>
+    </div>
+    <div style="background:#050505;padding:8px;border:1px solid #1a1a1a;border-radius:2px;font-size:11px;margin-top:8px">
+      <div style="color:var(--amber);font-weight:600;margin-bottom:4px">Quick Summary:</div>
+      <div>1. Start stats server: <span style="color:var(--green)">node scripts/stats-server.mjs 3000</span></div>
+      <div>2. Start tunnel: <span style="color:var(--green)">cloudflared tunnel --url http://localhost:3000</span></div>
+      <div>3. Copy tunnel URL → Dashboard tab → Settings → Bot API URL → Save</div>
+      <div style="margin-top:4px;color:var(--dim)">Stats server + tunnel must be running for dashboard to show data.</div>
+    </div>
+    </div></label>
+  </div></div>
+
   <!-- Completion banner -->
   <div id="wiz-complete" style="display:none;text-align:center;padding:24px;background:#0a2a0a;border:1px solid var(--green);border-radius:2px;margin-bottom:16px">
     <div style="font-size:36px;margin-bottom:8px">&#127881;</div>
@@ -1146,7 +1200,11 @@ applyLang();
 
 // ── Init ──
 const cfg = loadSettings();
-if (!cfg.api) cfg.api = 'https://api.cashclaw.cc';
+// Always default to HTTPS tunnel — never use raw HTTP LAN IPs (mixed content blocked)
+if (!cfg.api || cfg.api.startsWith('http://192.168') || cfg.api.startsWith('http://10.') || cfg.api.startsWith('http://172.')) {
+  cfg.api = 'https://api.cashclaw.cc';
+  document.getElementById('cfg-api').value = cfg.api;
+}
 connectBot(cfg);
 </script>
 </body>
