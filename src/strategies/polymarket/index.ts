@@ -28,3 +28,6 @@ export type { CrossEventDriftConfig, CrossEventDriftDeps } from './cross-event-d
 
 export { createVolCompressionBreakoutTick } from './vol-compression-breakout.js';
 export type { VolCompressionConfig, VolCompressionDeps } from './vol-compression-breakout.js';
+
+export { createWhaleTrackerTick } from './whale-tracker.js';
+export type { WhaleTrackerConfig, WhaleTrackerDeps } from './whale-tracker.js';
