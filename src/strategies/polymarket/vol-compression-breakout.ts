@@ -479,7 +479,7 @@ export function createVolCompressionBreakoutTick(deps: VolCompressionDeps): () =
       logger.debug('Tick complete', STRATEGY_NAME, {
         openPositions: positions.length,
         trackedMarkets: priceHistory.size,
-        compressedMarkets: [...compressionState.values()].filter(s => s.compressed).length,
+        compressedMarkets: Array.from(compressionState.values()).filter(s => s.compressed).length,
       });
     } catch (err) {
       logger.error('Tick failed', STRATEGY_NAME, { err: String(err) });
