@@ -3,6 +3,8 @@
 
 import { MarketScanner, type ScanOptions, type MarketOpportunity } from './market-scanner.js';
 import { PredictionProbabilityEstimator, type PredictionSignal } from '../openclaw/prediction-probability-estimator.js';
+import { EnsembleEstimator } from '../openclaw/ensemble-estimator.js';
+import { TemperatureScaler } from '../openclaw/temperature-scaler.js';
 import { getDecisionLogger } from '../openclaw/decision-logger.js';
 import { logger } from '../core/logger.js';
 
@@ -17,6 +19,10 @@ export interface PredictionLoopOptions {
   dbPath?: string;
   /** Interval in milliseconds between loop cycles (default: 15 min) */
   intervalMs?: number;
+  /** Enable ensemble voting (N=3, default: true) */
+  useEnsemble?: boolean;
+  /** Enable temperature scaling (default: true, identity until fitted) */
+  useTemperatureScaling?: boolean;
 }
 
 export interface RankedSignal extends PredictionSignal {
@@ -43,21 +49,32 @@ const DEFAULT_INTERVAL_MS = 15 * 60 * 1_000; // 15 minutes
 export class PredictionLoop {
   private readonly scanner: MarketScanner;
   private readonly estimator: PredictionProbabilityEstimator;
-  private readonly opts: Required<Omit<PredictionLoopOptions, 'scanOptions'>> & { scanOptions: ScanOptions };
+  private readonly ensemble: EnsembleEstimator | null;
+  private readonly scaler: TemperatureScaler;
+  private readonly opts: Required<Omit<PredictionLoopOptions, 'scanOptions' | 'useEnsemble' | 'useTemperatureScaling'>> & { scanOptions: ScanOptions; useEnsemble: boolean; useTemperatureScaling: boolean };
   private cycleCount = 0;
   private timer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(scanner: MarketScanner, estimator?: PredictionProbabilityEstimator, opts: PredictionLoopOptions = {}) {
     this.scanner = scanner;
     this.estimator = estimator ?? new PredictionProbabilityEstimator();
+    const useEnsemble = opts.useEnsemble ?? true;
+    this.ensemble = useEnsemble ? new EnsembleEstimator(this.estimator) : null;
+    this.scaler = new TemperatureScaler();
     this.opts = {
       scanOptions: { ...DEFAULT_SCAN_OPTIONS, ...opts.scanOptions },
       minEdge: opts.minEdge ?? DEFAULT_MIN_EDGE,
       maxEstimates: opts.maxEstimates ?? DEFAULT_MAX_ESTIMATES,
       dbPath: opts.dbPath ?? 'data/algo-trade.db',
       intervalMs: opts.intervalMs ?? DEFAULT_INTERVAL_MS,
+      useEnsemble,
+      useTemperatureScaling: opts.useTemperatureScaling ?? true,
     };
+    logger.info(`PredictionLoop v2.0: ensemble=${useEnsemble}, tempScaling=${this.opts.useTemperatureScaling}`, 'PredictionLoop');
   }
+
+  /** Access temperature scaler for external fitting (e.g., from CalibrationTuner) */
+  getScaler(): TemperatureScaler { return this.scaler; }
 
   /**
    * Run a single prediction cycle.
@@ -128,11 +145,30 @@ export class PredictionLoop {
 
   private async estimateAndLog(market: MarketOpportunity): Promise<PredictionSignal | null> {
     try {
-      const signal = await this.estimator.estimate({
+      const input = {
         marketId: market.conditionId,
         question: market.description,
         yesPrice: market.yesMidPrice,
-      });
+      };
+
+      // v2.0: Use ensemble if available, otherwise single estimate
+      let signal = this.ensemble
+        ? await this.ensemble.estimate(input)
+        : await this.estimator.estimate(input);
+
+      // v2.0: Apply temperature scaling (identity until fitted)
+      if (this.opts.useTemperatureScaling) {
+        const rawProb = signal.ourProb;
+        signal = {
+          ...signal,
+          ourProb: this.scaler.scale(rawProb),
+          edge: this.scaler.scale(rawProb) - input.yesPrice,
+        };
+        // Recompute direction after scaling
+        if (signal.edge > 0.05) signal.direction = 'buy_yes';
+        else if (signal.edge < -0.05) signal.direction = 'buy_no';
+        else signal.direction = 'skip';
+      }
 
       // Persist to ai_decisions table
       const decisionLogger = getDecisionLogger(this.opts.dbPath);

@@ -4,6 +4,7 @@
 
 import { AiRouter } from './ai-router.js';
 import { loadOpenClawConfig } from './openclaw-config.js';
+import { getCategoryHint, detectCategory } from './category-prompts.js';
 import { logger } from '../core/logger.js';
 
 export interface PredictionInput {
@@ -59,6 +60,8 @@ export class PredictionProbabilityEstimator {
     const startMs = Date.now();
 
     const prompt = this.buildPrompt(input);
+    const categoryHint = getCategoryHint(input.question);
+    const category = detectCategory(input.question);
     const res = await this.router.chat({
       prompt,
       systemPrompt: [
@@ -66,6 +69,7 @@ export class PredictionProbabilityEstimator {
         'Use reference class forecasting: start with base rates for similar events, then adjust for specifics.',
         'Avoid anchoring, overconfidence, and narrative bias.',
         'Do NOT ask for or assume any market price. Give your independent estimate.',
+        categoryHint,
         'Respond ONLY with valid JSON — no markdown, no extra text.',
       ].join(' '),
       complexity: 'standard',
@@ -79,6 +83,7 @@ export class PredictionProbabilityEstimator {
 
     logger.debug('Prediction estimate', 'PredictionEstimator', {
       marketId: input.marketId,
+      category,
       ourProb: parsed.probability,
       marketProb: input.yesPrice,
       edge,
