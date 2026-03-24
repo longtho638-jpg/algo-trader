@@ -13,6 +13,8 @@ import { createOrderbookDepthRatioTick } from '../strategies/polymarket/orderboo
 import { createCrossEventDriftTick } from '../strategies/polymarket/cross-event-drift.js';
 import { createVolCompressionBreakoutTick } from '../strategies/polymarket/vol-compression-breakout.js';
 import { createWhaleTrackerTick } from '../strategies/polymarket/whale-tracker.js';
+import { createResolutionFrontrunnerTick } from '../strategies/polymarket/resolution-frontrunner.js';
+import { createMultiLegHedgeTick } from '../strategies/polymarket/multi-leg-hedge.js';
 import type { MarketScanner } from '../polymarket/market-scanner.js';
 import type { OrderManager } from '../polymarket/order-manager.js';
 import type { OrderExecutor } from '../cex/order-executor.js';
@@ -110,6 +112,20 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
     orc.register(
       { id: 'whale-tracker', name: 'Whale Tracker', type: 'whale-tracker', enabled: false, params: {}, intervalMs: parseInt(env('WHALE_TRACKER_INTERVAL_MS', '10000'), 10) },
       createWhaleTrackerTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'resolution-frontrunner', name: 'Resolution Frontrunner', type: 'resolution-frontrunner', enabled: false, params: {}, intervalMs: parseInt(env('RESOLUTION_FRONTRUNNER_INTERVAL_MS', '30000'), 10) },
+      createResolutionFrontrunnerTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'multi-leg-hedge', name: 'Multi-Leg Hedge', type: 'multi-leg-hedge', enabled: false, params: {}, intervalMs: parseInt(env('MULTI_LEG_HEDGE_INTERVAL_MS', '20000'), 10) },
+      createMultiLegHedgeTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
   }
 

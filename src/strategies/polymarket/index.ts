@@ -31,3 +31,9 @@ export type { VolCompressionConfig, VolCompressionDeps } from './vol-compression
 
 export { createWhaleTrackerTick } from './whale-tracker.js';
 export type { WhaleTrackerConfig, WhaleTrackerDeps } from './whale-tracker.js';
+
+export { createResolutionFrontrunnerTick } from './resolution-frontrunner.js';
+export type { ResolutionFrontrunnerConfig, ResolutionFrontrunnerDeps } from './resolution-frontrunner.js';
+
+export { createMultiLegHedgeTick } from './multi-leg-hedge.js';
+export type { MultiLegHedgeConfig, MultiLegHedgeDeps } from './multi-leg-hedge.js';
