@@ -9,11 +9,11 @@ const LLM_MODEL = 'mlx-community/Qwen2.5-Coder-32B-Instruct-4bit';
 const MIN_EDGE = 0.05;
 
 // Price market patterns to exclude — LLM has 0% accuracy on these
-const PRICE_PATTERN = /\b(above|below|close above|close below|dip to|price of|finish.*above|finish.*below)\b.*\$[\d,.]+/i;
-const EXCLUDE_CATEGORIES = new Set(['crypto', 'cryptocurrency']);
+const PRICE_PATTERN = /\b(above|below|close above|close below|dip to|price of|finish.*above|finish.*below|hit.*\$|O\/U\s+[\d.]+|Points O\/U|Kills O\/U|Total.*O\/U|spread|handicap)\b/i;
+const EXCLUDE_CATEGORIES = new Set(['crypto', 'cryptocurrency', 'esports']);
 
-async function fetchEventMarkets(limit = 100) {
-  const url = `${GAMMA_API}?active=true&closed=false&limit=${limit}&order=volume&ascending=false`;
+async function fetchEventMarkets(limit = 500) {
+  const url = `${GAMMA_API}?active=true&closed=false&limit=${limit}`;
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`Gamma API: ${res.status}`);
   const markets = await res.json();
@@ -21,8 +21,14 @@ async function fetchEventMarkets(limit = 100) {
   return markets.filter(m => {
     // Must be active binary market
     if (!m.active || m.closed) return false;
-    if (!m.outcomes || m.outcomes.length !== 2) return false;
-    if (m.outcomes[0] !== 'Yes' || m.outcomes[1] !== 'No') return false;
+
+    // Parse outcomes — Gamma API returns JSON string, not array
+    let outcomes;
+    try {
+      outcomes = typeof m.outcomes === 'string' ? JSON.parse(m.outcomes) : m.outcomes;
+    } catch { return false; }
+    if (!Array.isArray(outcomes) || outcomes.length !== 2) return false;
+    if (outcomes[0] !== 'Yes' || outcomes[1] !== 'No') return false;
 
     // Exclude price prediction markets
     const q = m.question || '';
@@ -32,14 +38,14 @@ async function fetchEventMarkets(limit = 100) {
     const cat = (m.category || '').toLowerCase();
     if (EXCLUDE_CATEGORIES.has(cat)) return false;
 
-    // Must have some volume
+    // Must have some volume (lowered to 10 for long-tail)
     const vol = parseFloat(m.volume || '0');
-    if (vol < 500) return false;
+    if (vol < 10) return false;
 
-    // Parse YES price from outcomePrices
+    // Parse YES price from outcomePrices (also JSON string)
     if (!m.outcomePrices) return false;
     try {
-      const prices = JSON.parse(m.outcomePrices);
+      const prices = typeof m.outcomePrices === 'string' ? JSON.parse(m.outcomePrices) : m.outcomePrices;
       const yesPrice = parseFloat(prices[0]);
       if (isNaN(yesPrice) || yesPrice <= 0.01 || yesPrice >= 0.99) return false;
       m._yesPrice = yesPrice;
