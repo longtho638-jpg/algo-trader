@@ -22,6 +22,8 @@ export interface PredictionLoopOptions {
 export interface RankedSignal extends PredictionSignal {
   description: string;
   rank: number;
+  yesTokenId: string;
+  noTokenId: string;
 }
 
 // Long-tail event-only defaults: exclude price markets where LLM has no edge
@@ -81,7 +83,7 @@ export class PredictionLoop {
     for (const market of markets) {
       const signal = await this.estimateAndLog(market);
       if (signal && Math.abs(signal.edge) >= this.opts.minEdge && signal.direction !== 'skip') {
-        signals.push({ ...signal, description: market.description, rank: 0 });
+        signals.push({ ...signal, description: market.description, rank: 0, yesTokenId: market.yesTokenId, noTokenId: market.noTokenId });
       }
     }
 
