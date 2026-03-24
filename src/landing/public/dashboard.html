@@ -722,7 +722,7 @@ cloudflared tunnel create my-bot
     <div class="card">
       <div class="card-header">Bot Connection</div>
       <div class="card-body">
-        <div class="form-group"><label>Bot API URL</label><input id="cfg-api" placeholder="https://api.cashclaw.cc" value="https://api.cashclaw.cc"></div>
+        <div class="form-group"><label>Bot API URL</label><input id="cfg-api" placeholder="https://your-tunnel-url.trycloudflare.com" value=""></div>
         <div class="form-group"><label>License Key</label><input id="cfg-license" type="password" placeholder="Paste your license key"></div>
         <div class="form-group"><label>License Secret</label><input id="cfg-secret" type="password" placeholder="Provided by admin"></div>
         <button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button>
@@ -1200,12 +1200,17 @@ applyLang();
 
 // ── Init ──
 const cfg = loadSettings();
-// Always default to HTTPS tunnel — never use raw HTTP LAN IPs (mixed content blocked)
-if (!cfg.api || cfg.api.startsWith('http://192.168') || cfg.api.startsWith('http://10.') || cfg.api.startsWith('http://172.')) {
-  cfg.api = 'https://api.cashclaw.cc';
-  document.getElementById('cfg-api').value = cfg.api;
+// Reject HTTP LAN IPs (mixed content blocked on HTTPS page)
+if (cfg.api && (cfg.api.startsWith('http://192.168') || cfg.api.startsWith('http://10.') || cfg.api.startsWith('http://172.'))) {
+  cfg.api = '';
 }
-connectBot(cfg);
+if (cfg.api) {
+  connectBot(cfg);
+} else {
+  loadDemoData();
+  updateBotStatus('off', 'Not configured');
+  document.getElementById('ctl-label').textContent = 'Go to Settings → enter your Bot API URL';
+}
 </script>
 </body>
 </html>
