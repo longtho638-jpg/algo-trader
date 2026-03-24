@@ -723,8 +723,7 @@ cloudflared tunnel create my-bot
       <div class="card-header">Bot Connection</div>
       <div class="card-body">
         <div class="form-group"><label>Bot API URL</label><input id="cfg-api" placeholder="https://your-tunnel-url.trycloudflare.com" value=""></div>
-        <div class="form-group"><label>License Key</label><input id="cfg-license" type="password" placeholder="Paste your license key"></div>
-        <div class="form-group"><label>License Secret</label><input id="cfg-secret" type="password" placeholder="Provided by admin"></div>
+        <div class="form-group"><label>License Key</label><input id="cfg-license" type="password" placeholder="Paste your license key (from admin)"></div>
         <button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button>
       </div>
     </div>
@@ -839,7 +838,7 @@ function loadSettings() {
   const s = JSON.parse(localStorage.getItem('algotrade_cfg') || '{}');
   if (s.api) document.getElementById('cfg-api').value = s.api;
   if (s.license) document.getElementById('cfg-license').value = s.license;
-  if (s.secret) document.getElementById('cfg-secret').value = s.secret;
+  // secret removed from UI — stays on server only
   if (s.capital) document.getElementById('cfg-capital').value = s.capital;
   if (s.llm) document.getElementById('cfg-llm').value = s.llm;
   if (s.kelly) document.getElementById('cfg-kelly').value = s.kelly;
@@ -854,7 +853,7 @@ function saveSettings() {
     ...JSON.parse(localStorage.getItem('algotrade_cfg') || '{}'),
     api: document.getElementById('cfg-api').value,
     license: document.getElementById('cfg-license').value,
-    secret: document.getElementById('cfg-secret').value,
+    // secret not stored client-side — validated server-side only
   };
   localStorage.setItem('algotrade_cfg', JSON.stringify(cfg));
   toast('Settings saved! Connecting...');
