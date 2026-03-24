@@ -22,7 +22,7 @@ export interface OpenClawConfig {
 }
 
 const DEFAULT_ROUTING: OpenClawRouting = {
-  simple: 'mlx-community/Qwen2.5-Coder-32B-Instruct-4bit',
+  simple: 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit',
   standard: 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit',
   complex: 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit',
 };

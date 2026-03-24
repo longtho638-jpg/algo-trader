@@ -30,7 +30,7 @@ export function loadLlmConfig(): LlmConfig {
     },
     fallback: {
       url: process.env.LLM_FALLBACK_URL || 'http://127.0.0.1:11434/v1',
-      model: process.env.LLM_FALLBACK_MODEL || 'qwen2.5-coder:32b',
+      model: process.env.LLM_FALLBACK_MODEL || 'deepseek-r1:32b',
       priority: 2,
       maxTokens: 2048,
       timeoutMs: 30000,

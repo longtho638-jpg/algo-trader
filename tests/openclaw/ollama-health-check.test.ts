@@ -6,7 +6,7 @@ describe('autoSelectModels', () => {
     const models: OllamaModel[] = [
       { name: 'llama3.1:8b', size: 4_000_000, parameterSize: '8B' },
       { name: 'deepseek-r1:32b', size: 16_000_000, parameterSize: '32B' },
-      { name: 'qwen2.5:7b', size: 3_500_000, parameterSize: '7B' },
+      { name: 'deepseek-r1:14b', size: 7_000_000, parameterSize: '14B' },
     ];
     const result = autoSelectModels(models);
     expect(result.simple).toBeDefined();
@@ -25,11 +25,11 @@ describe('autoSelectModels', () => {
 
   it('should prefer smaller models for simple tier', () => {
     const models: OllamaModel[] = [
-      { name: 'qwen2.5:7b', size: 3_500_000, parameterSize: '7B' },
+      { name: 'deepseek-r1:14b', size: 7_000_000, parameterSize: '14B' },
       { name: 'deepseek-r1:32b', size: 16_000_000, parameterSize: '32B' },
     ];
     const result = autoSelectModels(models);
-    expect(result.simple).toContain('qwen');
+    expect(result.simple).toContain('deepseek');
   });
 
   it('should fallback to first model when no preferences match', () => {

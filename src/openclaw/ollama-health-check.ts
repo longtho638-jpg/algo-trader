@@ -60,9 +60,9 @@ export function autoSelectModels(models: OllamaModel[]): { simple: string; stand
   const names = models.map(m => m.name);
 
   // Priority lists for each tier
-  const complexPrefs = ['deepseek-r1:70b', 'qwen2.5:72b', 'llama3.1:70b', 'mixtral:8x22b', 'deepseek-r1:32b', 'qwen2.5:32b', 'llama3.1:8b'];
-  const standardPrefs = ['deepseek-r1:32b', 'qwen2.5:32b', 'llama3.1:8b', 'mistral:7b', 'gemma2:9b', 'deepseek-r1:14b'];
-  const simplePrefs = ['qwen2.5:7b', 'llama3.2:3b', 'gemma2:2b', 'phi3:mini', 'mistral:7b', 'llama3.1:8b'];
+  const complexPrefs = ['deepseek-r1:70b', 'llama3.1:70b', 'mixtral:8x22b', 'deepseek-r1:32b', 'llama3.1:8b'];
+  const standardPrefs = ['deepseek-r1:32b', 'llama3.1:8b', 'mistral:7b', 'gemma2:9b', 'deepseek-r1:14b'];
+  const simplePrefs = ['deepseek-r1:14b', 'llama3.2:3b', 'gemma2:2b', 'phi3:mini', 'mistral:7b', 'llama3.1:8b'];
 
   const pick = (prefs: string[]): string => {
     for (const p of prefs) {
