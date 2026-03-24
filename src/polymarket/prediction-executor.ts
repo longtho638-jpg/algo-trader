@@ -6,6 +6,7 @@ import type { ClobClient, OrderArgs } from './clob-client.js';
 import type { RankedSignal } from './prediction-loop.js';
 import type { LicensePayload } from '../license/license-generator.js';
 import { canTrade } from '../license/license-validator.js';
+import { detectCategory, type MarketCategory } from '../openclaw/category-prompts.js';
 import { logger } from '../core/logger.js';
 
 export interface ExecutorConfig {
@@ -46,12 +47,28 @@ const DEFAULT_CONFIG: ExecutorConfig = {
   dryRun: false,
 };
 
+// Category capital weights (from research: Entertainment highest edge, Politics lowest)
+const CATEGORY_CAPITAL_WEIGHTS: Record<MarketCategory, number> = {
+  entertainment: 1.4,  // 70% more capital (highest LLM edge)
+  tech: 1.2,           // 20% more capital (emerging edge)
+  science: 1.2,
+  economics: 1.0,
+  geopolitics: 0.9,
+  politics: 0.7,       // 30% less (tight spreads, institutional competition)
+  sports: 0.8,
+  other: 1.0,
+};
+
+// Max trades per category (signal orthogonality — avoid correlated bets)
+const MAX_PER_CATEGORY = 2;
+
 export class PredictionExecutor {
   private readonly client: ClobClient;
   private readonly config: ExecutorConfig;
   private readonly license: LicensePayload;
   private tradesToday = 0;
   private lastResetDay = '';
+  private categoryCount: Map<MarketCategory, number> = new Map();
 
   constructor(client: ClobClient, license: LicensePayload, config?: Partial<ExecutorConfig>) {
     this.client = client;
@@ -76,11 +93,20 @@ export class PredictionExecutor {
         break;
       }
 
+      // Signal orthogonality: max 2 trades per category
+      const category = detectCategory(signal.description);
+      const catCount = this.categoryCount.get(category) ?? 0;
+      if (catCount >= MAX_PER_CATEGORY) {
+        logger.debug(`Skip: category ${category} at max (${MAX_PER_CATEGORY})`, 'PredictionExecutor');
+        continue;
+      }
+
       try {
-        const trade = await this.executeSingle(signal);
+        const trade = await this.executeSingle(signal, category);
         if (trade) {
           executed.push(trade);
           this.tradesToday++;
+          this.categoryCount.set(category, catCount + 1);
           this.config.onTrade?.(trade);
         }
       } catch (err) {
@@ -91,9 +117,10 @@ export class PredictionExecutor {
     return executed;
   }
 
-  private async executeSingle(signal: RankedSignal): Promise<ExecutedTrade | null> {
-    // Position sizing: half-Kelly based on edge and confidence
-    const sizeUsdc = this.calculateSize(signal.edge, signal.confidence);
+  private async executeSingle(signal: RankedSignal, category: MarketCategory = 'other'): Promise<ExecutedTrade | null> {
+    // Position sizing: quarter-Kelly * category weight
+    const categoryWeight = CATEGORY_CAPITAL_WEIGHTS[category] ?? 1.0;
+    const sizeUsdc = this.calculateSize(signal.edge, signal.confidence) * categoryWeight;
     if (sizeUsdc < this.config.minTradeUsdc) {
       logger.debug(`Skip: size $${sizeUsdc.toFixed(2)} below min`, 'PredictionExecutor');
       return null;
@@ -159,6 +186,7 @@ export class PredictionExecutor {
     const today = new Date().toISOString().slice(0, 10);
     if (today !== this.lastResetDay) {
       this.tradesToday = 0;
+      this.categoryCount.clear();
       this.lastResetDay = today;
     }
   }
