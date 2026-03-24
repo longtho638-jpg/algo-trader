@@ -878,17 +878,15 @@ function startPolling(cfg) {
 }
 
 async function fetchBotData(cfg) {
-  // Fetch signals, trades, stats from bot API
-  // These endpoints would need to be added to the bot's API server
   try {
     const [signals, trades, stats] = await Promise.all([
       fetch(cfg.api + '/api/signals').then(r => r.json()).catch(() => []),
       fetch(cfg.api + '/api/trades').then(r => r.json()).catch(() => []),
-      fetch(cfg.api + '/api/stats').then(r => r.json()).catch(() => ({})),
+      fetch(cfg.api + '/api/stats').then(r => r.json()).catch(() => null),
     ]);
-    if (signals.length) renderSignals(signals);
-    if (trades.length) renderTrades(trades);
-    if (stats.capital) renderStats(stats);
+    if (signals && signals.length) renderSignals(signals);
+    if (trades && trades.length) renderTrades(trades);
+    if (stats) renderFullStats(stats);
   } catch {}
 }
 
@@ -947,6 +945,37 @@ function renderStats(stats) {
   if (stats.capital) document.getElementById('d-capital').textContent = '$' + stats.capital;
   if (stats.pnl != null) { const el = document.getElementById('d-pnl'); el.textContent = (stats.pnl >= 0 ? '+' : '') + '$' + stats.pnl.toFixed(2); el.className = 'val ' + (stats.pnl >= 0 ? 'green' : 'red'); }
   if (stats.winRate != null) document.getElementById('d-winrate').textContent = (stats.winRate * 100).toFixed(1) + '%';
+}
+
+function renderFullStats(data) {
+  // System info
+  if (data.system) {
+    document.getElementById('ctl-model').textContent = data.system.chip || 'Unknown';
+    document.getElementById('ctl-uptime').textContent = data.system.uptime || '--';
+  }
+  // LLM status
+  if (data.llm) {
+    const llmName = data.llm.models?.[1]?.split('/')?.pop()?.slice(0,20) || data.llm.models?.[0]?.split('/')?.pop() || 'Unknown';
+    document.getElementById('ctl-model').textContent = llmName;
+    document.getElementById('ctl-label').textContent = data.llm.status === 'online' ? 'LLM Online — ' + data.system?.chip : 'LLM Offline';
+    document.getElementById('ctl-mode').textContent = data.llm.status === 'online' ? 'Paper Trading' : 'Offline';
+  }
+  // Trade stats
+  if (data.trades) {
+    document.getElementById('d-trades').textContent = data.trades.totalTrades || 0;
+    document.getElementById('d-signals').textContent = data.trades.actionable || 0;
+    const el = document.getElementById('d-pnl');
+    el.textContent = data.resolutions?.simulatedPnl || '$0.00';
+    document.getElementById('d-winrate').textContent = data.trades.accuracy || 'pending';
+    // Show avg edge in capital box as proxy
+    document.getElementById('d-capital').textContent = data.trades.avgEdge || '--';
+    document.getElementById('d-capital').closest('.stat').querySelector('.lbl').textContent = 'Avg Edge';
+  }
+  // Resolutions
+  if (data.resolutions) {
+    const r = data.resolutions;
+    document.getElementById('ctl-license').innerHTML = `${r.resolved} resolved / ${r.pending} pending`;
+  }
 }
 
 // ── Demo data (when bot not connected) ──
