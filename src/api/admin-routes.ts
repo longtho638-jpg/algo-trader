@@ -7,6 +7,8 @@ import type { UserStore } from '../users/user-store.js';
 import type { Tier } from '../users/subscription-tier.js';
 import { sendJson, readJsonBody } from './http-response-helpers.js';
 import { AdminAnalytics } from '../admin/admin-analytics.js';
+import { generateLicense, buildPayload } from '../license/license-generator.js';
+import { initLicenseStore, saveLicense, getActiveLicenses, revokeLicense as revokeLicenseKey } from '../license/license-store.js';
 
 // ─── Admin gate ────────────────────────────────────────────────────────────────
 
@@ -183,6 +185,79 @@ export async function handleAdminRoutes(
   if (tierMatch) {
     if (method !== 'POST') { sendMethodNotAllowed(res); return; }
     await handleAdminSetTier(req, res, tierMatch[1]!, userStore);
+    return;
+  }
+
+  // POST /api/admin/license/issue — admin creates license for any user
+  if (pathname === '/api/admin/license/issue' && method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      const targetUserId = (body['userId'] as string) || `customer_${Date.now()}`;
+      const tier = (body['tier'] as string) || 'pro';
+      const days = parseInt(String(body['days'] ?? '30'), 10);
+      const validTiers: Tier[] = ['free', 'pro', 'enterprise'];
+      if (!validTiers.includes(tier as Tier)) {
+        sendJson(res, 400, { error: 'Invalid tier', valid: validTiers });
+        return;
+      }
+      const licenseSecret = process.env['LICENSE_SECRET'] ?? 'license-secret-change-me';
+      initLicenseStore(process.env['LICENSE_DB_PATH'] ?? 'data/licenses.db');
+      const now = Date.now();
+      const payload = buildPayload({
+        userId: targetUserId,
+        tier: tier as Tier,
+        issuedAt: now,
+        expiresAt: now + days * 24 * 60 * 60 * 1000,
+      });
+      const key = generateLicense(payload, licenseSecret);
+      saveLicense(key, payload);
+      sendJson(res, 201, {
+        key,
+        userId: targetUserId,
+        tier,
+        days,
+        expiresAt: new Date(payload.expiresAt).toISOString(),
+        maxMarkets: payload.maxMarkets,
+        maxTradesPerDay: payload.maxTradesPerDay,
+        features: payload.features,
+      });
+    } catch {
+      sendJson(res, 400, { error: 'Invalid request body' });
+    }
+    return;
+  }
+
+  // GET /api/admin/licenses — list all active licenses
+  if (pathname === '/api/admin/licenses' && method === 'GET') {
+    initLicenseStore(process.env['LICENSE_DB_PATH'] ?? 'data/licenses.db');
+    const licenses = getActiveLicenses();
+    sendJson(res, 200, {
+      licenses: licenses.map(l => ({
+        keyPreview: l.key.slice(0, 20) + '...',
+        fullKey: l.key,
+        userId: l.userId,
+        tier: l.tier,
+        issuedAt: new Date(l.issuedAt).toISOString(),
+        expiresAt: new Date(l.expiresAt).toISOString(),
+        revoked: l.revoked === 1,
+      })),
+      count: licenses.length,
+    });
+    return;
+  }
+
+  // POST /api/admin/license/revoke — admin revokes any license
+  if (pathname === '/api/admin/license/revoke' && method === 'POST') {
+    try {
+      const body = await readJsonBody(req);
+      const key = body['key'] as string;
+      if (!key) { sendJson(res, 400, { error: 'Missing "key" field' }); return; }
+      initLicenseStore(process.env['LICENSE_DB_PATH'] ?? 'data/licenses.db');
+      const revoked = revokeLicenseKey(key);
+      sendJson(res, 200, { revoked });
+    } catch {
+      sendJson(res, 400, { error: 'Invalid request body' });
+    }
     return;
   }
 
