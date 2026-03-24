@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ALGOTRADE — Terminal</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0a0a0a;--panel:#111;--border:#1a1a1a;--amber:#ff9800;--green:#00e676;--red:#ff1744;--blue:#448aff;--dim:#555;--text:#ccc;--bright:#fff;--mono:'JetBrains Mono',monospace}
+body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:12px;overflow:hidden;height:100vh}
+
+/* Header bar */
+.header{display:flex;align-items:center;justify-content:space-between;background:#050505;border-bottom:1px solid var(--amber);padding:4px 12px;height:32px}
+.header .brand{color:var(--amber);font-weight:700;font-size:14px;letter-spacing:2px}
+.header .status{display:flex;gap:16px;font-size:11px}
+.header .status span{color:var(--dim)}
+.header .status b{color:var(--bright)}
+.header .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
+.dot.live{background:var(--green);box-shadow:0 0 6px var(--green)}
+.dot.off{background:var(--red)}
+
+/* Grid layout */
+.grid{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto 1fr 1fr;height:calc(100vh - 32px);gap:1px;background:var(--border)}
+
+/* Ticker bar */
+.ticker{grid-column:1/-1;background:#050505;display:flex;overflow:hidden;border-bottom:1px solid #1a1a1a;padding:4px 0;height:28px;align-items:center}
+.ticker .item{white-space:nowrap;padding:0 20px;font-size:11px;animation:scroll 30s linear infinite}
+.ticker .up{color:var(--green)}.ticker .down{color:var(--red)}.ticker .flat{color:var(--dim)}
+@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* Panels */
+.panel{background:var(--panel);overflow:hidden;display:flex;flex-direction:column}
+.panel-header{background:#0d0d0d;padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--amber);border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center}
+.panel-header .tag{font-size:9px;color:var(--dim);letter-spacing:0}
+.panel-body{flex:1;overflow-y:auto;padding:8px}
+.panel-body::-webkit-scrollbar{width:4px}
+.panel-body::-webkit-scrollbar-track{background:#0a0a0a}
+.panel-body::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+
+/* Stats row */
+.stats-row{display:flex;gap:1px;grid-column:1/-1;background:var(--border)}
+.stat-box{flex:1;background:var(--panel);padding:10px 12px;text-align:center}
+.stat-box .val{font-size:20px;font-weight:700}
+.stat-box .lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.val.pos{color:var(--green)}.val.neg{color:var(--red)}.val.amber{color:var(--amber)}
+
+/* Signal rows */
+.signal-row{display:flex;justify-content:space-between;padding:5px 4px;border-bottom:1px solid #151515;font-size:11px;cursor:default}
+.signal-row:hover{background:#1a1a1a}
+.signal-row .dir{width:60px;font-weight:700}
+.signal-row .dir.buy{color:var(--green)}.signal-row .dir.sell{color:var(--red)}.signal-row .dir.skip{color:var(--dim)}
+.signal-row .edge{width:60px;text-align:right}
+.signal-row .q{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;color:#999}
+.signal-row .conf{width:40px;text-align:right;color:var(--dim)}
+
+/* Trade rows */
+.trade-row{display:flex;justify-content:space-between;padding:5px 4px;border-bottom:1px solid #151515;font-size:11px}
+.trade-row:hover{background:#1a1a1a}
+.trade-row .ts{width:70px;color:var(--dim)}
+.trade-row .side{width:55px;font-weight:600}
+.trade-row .side.buy_yes{color:var(--green)}.trade-row .side.buy_no{color:var(--red)}
+.trade-row .amt{width:55px;text-align:right}
+.trade-row .mkt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;color:#888}
+.trade-row .pnl{width:60px;text-align:right;font-weight:600}
+.trade-row .pnl.pos{color:var(--green)}.trade-row .pnl.neg{color:var(--red)}
+
+/* Market scanner */
+.mkt-row{display:flex;padding:4px;border-bottom:1px solid #151515;font-size:11px;gap:8px}
+.mkt-row:hover{background:#1a1a1a}
+.mkt-row .cat{width:50px;color:var(--amber);font-size:10px}
+.mkt-row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mkt-row .price{width:50px;text-align:right;color:var(--bright)}
+.mkt-row .vol{width:55px;text-align:right;color:var(--dim)}
+
+/* Mini chart (ASCII-style bars) */
+.chart-bar{display:flex;align-items:flex-end;gap:2px;height:80px;padding:8px}
+.chart-bar .bar{flex:1;background:var(--amber);min-width:4px;border-radius:1px 1px 0 0;opacity:0.7}
+.chart-bar .bar.neg{background:var(--red)}
+.chart-bar .bar:hover{opacity:1}
+
+/* Footer */
+.footer{grid-column:1/-1;background:#050505;border-top:1px solid var(--amber);padding:4px 12px;display:flex;justify-content:space-between;font-size:10px;height:24px;align-items:center}
+.footer .left{color:var(--dim)}
+.footer .right{color:var(--amber)}
+
+/* Blink animation for live dot */
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.blink{animation:blink 2s infinite}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="brand">ALGOTRADE <span style="color:var(--dim);font-size:10px;letter-spacing:0">TERMINAL</span></div>
+  <div class="status">
+    <span><span class="dot live blink"></span><b>LIVE</b></span>
+    <span>License: <b id="h-tier">PRO</b></span>
+    <span>Cycle: <b id="h-cycle">#0</b></span>
+    <span id="h-clock">--:--:--</span>
+  </div>
+</div>
+
+<!-- GRID -->
+<div class="grid">
+  <!-- Ticker -->
+  <div class="ticker">
+    <div style="display:flex;animation:scroll 40s linear infinite" id="tickerContent">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-box"><div class="val amber" id="s-capital">$500</div><div class="lbl">Capital</div></div>
+    <div class="stat-box"><div class="val pos" id="s-pnl">+$0.00</div><div class="lbl">Session P&L</div></div>
+    <div class="stat-box"><div class="val" id="s-trades">0</div><div class="lbl">Trades</div></div>
+    <div class="stat-box"><div class="val" id="s-winrate">--</div><div class="lbl">Win Rate</div></div>
+    <div class="stat-box"><div class="val" id="s-brier">--</div><div class="lbl">Brier Score</div></div>
+    <div class="stat-box"><div class="val amber" id="s-next">15:00</div><div class="lbl">Next Cycle</div></div>
+  </div>
+
+  <!-- Panel 1: Signals -->
+  <div class="panel">
+    <div class="panel-header">Active Signals <span class="tag" id="sig-count">0 signals</span></div>
+    <div class="panel-body" id="signals">
+      <div class="signal-row"><span class="dir skip">WAIT</span><span class="q">Waiting for first prediction cycle...</span><span class="edge">--</span><span class="conf">--</span></div>
+    </div>
+  </div>
+
+  <!-- Panel 2: P&L Chart + Performance -->
+  <div class="panel">
+    <div class="panel-header">Performance <span class="tag">30-day</span></div>
+    <div class="panel-body">
+      <div class="chart-bar" id="pnlChart">
+        <!-- Bars populated by JS -->
+      </div>
+      <div style="padding:8px;border-top:1px solid #1a1a1a">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <span style="color:var(--dim)">Calibration</span>
+        </div>
+        <div id="calibration" style="font-size:11px">
+          <div style="display:flex;justify-content:space-between;color:var(--dim)">
+            <span>0-20%</span><span>20-40%</span><span>40-60%</span><span>60-80%</span><span>80-100%</span>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:4px" id="calBars">
+            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
+            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
+            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
+            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
+            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel 3: Market Scanner -->
+  <div class="panel">
+    <div class="panel-header">Market Scanner <span class="tag" id="mkt-count">0 markets</span></div>
+    <div class="panel-body" id="markets">
+      <div class="mkt-row"><span class="cat">--</span><span class="name" style="color:var(--dim)">Scanning markets...</span><span class="price">--</span><span class="vol">--</span></div>
+    </div>
+  </div>
+
+  <!-- Panel 4: Trade History -->
+  <div class="panel" style="grid-column:1/-1">
+    <div class="panel-header">Trade Log <span class="tag" id="trade-count">0 trades</span></div>
+    <div class="panel-body" id="trades">
+      <div style="color:var(--dim);padding:20px;text-align:center">No trades yet — waiting for first prediction cycle</div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <div class="left">ALGOTRADE v1.0 — DeepSeek R1 32B — Event-Only Blind Strategy — Half-Kelly Sizing</div>
+    <div class="right" id="f-license">License: validating...</div>
+  </div>
+</div>
+
+<script>
+// ── Clock ──
+setInterval(() => {
+  document.getElementById('h-clock').textContent = new Date().toLocaleTimeString('en-US', {hour12:false});
+}, 1000);
+
+// ── Demo data (replace with real API calls when backend is running) ──
+const DEMO_SIGNALS = [
+  {dir:'BUY_YES',q:'Will Trump win 2028 Presidential Election?',edge:0.152,conf:0.78,cat:'Politics'},
+  {dir:'BUY_NO',q:'China invades Taiwan before GTA VI?',edge:-0.465,conf:0.85,cat:'Geopolitics'},
+  {dir:'BUY_YES',q:'BitBoy convicted?',edge:0.538,conf:0.72,cat:'Crypto'},
+  {dir:'BUY_YES',q:'GTA VI released before June 2026?',edge:0.578,conf:0.80,cat:'Entertainment'},
+  {dir:'BUY_NO',q:'Will Poland qualify for 2026 FIFA World Cup?',edge:-0.080,conf:0.65,cat:'Sports'},
+  {dir:'BUY_YES',q:'Will Edmonton Oilers win 2026 NHL Stanley Cup?',edge:0.085,conf:0.60,cat:'Sports'},
+  {dir:'BUY_YES',q:'Harvey Weinstein sentenced >30 years?',edge:0.152,conf:0.73,cat:'Legal'},
+  {dir:'BUY_NO',q:'Jesus Christ return before GTA VI?',edge:-0.475,conf:0.95,cat:'Meme'},
+  {dir:'BUY_YES',q:'Will Mexico win 2026 FIFA World Cup?',edge:0.060,conf:0.55,cat:'Sports'},
+  {dir:'BUY_YES',q:'New Rihanna Album before GTA VI?',edge:0.045,conf:0.62,cat:'Entertainment'},
+];
+
+const DEMO_TRADES = [
+  {ts:'11:42',side:'buy_yes',amt:25.00,mkt:'BitBoy convicted?',pnl:null,edge:0.538},
+  {ts:'11:42',side:'buy_no',mkt:'China invades Taiwan before GTA VI?',amt:18.50,pnl:null,edge:-0.465},
+  {ts:'11:42',side:'buy_yes',mkt:'GTA VI released before June 2026?',amt:22.00,pnl:null,edge:0.578},
+  {ts:'11:42',side:'buy_yes',mkt:'Trump win 2028?',amt:15.00,pnl:null,edge:0.152},
+  {ts:'11:42',side:'buy_yes',mkt:'Harvey Weinstein >30 years?',amt:12.00,pnl:null,edge:0.152},
+];
+
+const DEMO_MARKETS = [
+  {cat:'POL',name:'Trump wins 2028 Presidential Election',price:0.38,vol:'$2.1M'},
+  {cat:'GEO',name:'China invades Taiwan before GTA VI',price:0.52,vol:'$890K'},
+  {cat:'ENT',name:'GTA VI released before June 2026',price:0.02,vol:'$4.5M'},
+  {cat:'SPT',name:'France wins 2026 FIFA World Cup',price:0.11,vol:'$1.2M'},
+  {cat:'CRY',name:'BitBoy convicted',price:0.11,vol:'$340K'},
+  {cat:'LEG',name:'Weinstein sentenced >30 years',price:0.05,vol:'$120K'},
+  {cat:'POL',name:'Kamala Harris wins 2028 Dem nomination',price:0.28,vol:'$3.2M'},
+  {cat:'SPT',name:'Edmonton Oilers win Stanley Cup',price:0.07,vol:'$560K'},
+  {cat:'MEM',name:'Jesus Christ return before GTA VI',price:0.48,vol:'$180K'},
+  {cat:'ENT',name:'New Rihanna Album before GTA VI',price:0.56,vol:'$95K'},
+  {cat:'SPT',name:'Mexico wins 2026 World Cup',price:0.01,vol:'$210K'},
+  {cat:'POL',name:'Josh Shapiro wins 2028 Election',price:0.03,vol:'$440K'},
+];
+
+// ── Render functions ──
+
+function renderSignals(signals) {
+  const el = document.getElementById('signals');
+  document.getElementById('sig-count').textContent = signals.length + ' signals';
+  el.innerHTML = signals.map(s => {
+    const dirClass = s.dir.includes('YES') ? 'buy' : s.dir.includes('NO') ? 'sell' : 'skip';
+    const dirLabel = s.dir.includes('YES') ? 'BUY YES' : 'BUY NO';
+    const edgeColor = s.edge > 0 ? 'color:var(--green)' : 'color:var(--red)';
+    return `<div class="signal-row">
+      <span class="dir ${dirClass}">${dirLabel}</span>
+      <span class="q">${s.q}</span>
+      <span class="edge" style="${edgeColor}">${(s.edge*100).toFixed(1)}%</span>
+      <span class="conf">${(s.conf*100).toFixed(0)}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderTrades(trades) {
+  const el = document.getElementById('trades');
+  document.getElementById('trade-count').textContent = trades.length + ' trades';
+  el.innerHTML = trades.map(t => {
+    const pnlStr = t.pnl !== null ? (t.pnl >= 0 ? `+$${t.pnl.toFixed(2)}` : `-$${Math.abs(t.pnl).toFixed(2)}`) : 'OPEN';
+    const pnlClass = t.pnl === null ? '' : t.pnl >= 0 ? 'pos' : 'neg';
+    return `<div class="trade-row">
+      <span class="ts">${t.ts}</span>
+      <span class="side ${t.side}">${t.side.replace('_',' ').toUpperCase()}</span>
+      <span class="amt">$${t.amt.toFixed(2)}</span>
+      <span class="mkt">${t.mkt}</span>
+      <span class="pnl ${pnlClass}">${pnlStr}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderMarkets(markets) {
+  const el = document.getElementById('markets');
+  document.getElementById('mkt-count').textContent = markets.length + ' markets';
+  el.innerHTML = markets.map(m => `<div class="mkt-row">
+    <span class="cat">${m.cat}</span>
+    <span class="name">${m.name}</span>
+    <span class="price">${(m.price*100).toFixed(0)}¢</span>
+    <span class="vol">${m.vol}</span>
+  </div>`).join('');
+}
+
+function renderTicker(signals, markets) {
+  const items = [...signals.slice(0,5).map(s => {
+    const cls = s.edge > 0 ? 'up' : 'down';
+    return `<span class="item ${cls}">${s.q.slice(0,40)} ${s.edge > 0 ? '▲' : '▼'} ${(Math.abs(s.edge)*100).toFixed(1)}%</span>`;
+  }), ...markets.slice(0,5).map(m => {
+    return `<span class="item flat">${m.name.slice(0,30)} ${(m.price*100).toFixed(0)}¢</span>`;
+  })];
+  // Duplicate for seamless scroll
+  document.getElementById('tickerContent').innerHTML = items.join('') + items.join('');
+}
+
+function renderChart() {
+  // Generate demo P&L bars for 30 days
+  const bars = [];
+  for (let i = 0; i < 30; i++) {
+    const val = (Math.random() - 0.4) * 20; // Slight positive bias
+    bars.push(val);
+  }
+  const maxAbs = Math.max(...bars.map(Math.abs), 1);
+  document.getElementById('pnlChart').innerHTML = bars.map(v => {
+    const h = Math.max(4, Math.abs(v) / maxAbs * 70);
+    const cls = v < 0 ? 'neg' : '';
+    return `<div class="bar ${cls}" style="height:${h}px" title="$${v.toFixed(2)}"></div>`;
+  }).join('');
+}
+
+// ── Countdown timer ──
+let countdown = 15 * 60;
+setInterval(() => {
+  countdown--;
+  if (countdown <= 0) countdown = 15 * 60;
+  const min = Math.floor(countdown / 60);
+  const sec = countdown % 60;
+  document.getElementById('s-next').textContent = `${min}:${String(sec).padStart(2,'0')}`;
+}, 1000);
+
+// ── Init ──
+renderSignals(DEMO_SIGNALS);
+renderTrades(DEMO_TRADES);
+renderMarkets(DEMO_MARKETS);
+renderTicker(DEMO_SIGNALS, DEMO_MARKETS);
+renderChart();
+
+// Stats
+document.getElementById('s-capital').textContent = '$500';
+document.getElementById('s-trades').textContent = DEMO_TRADES.length;
+document.getElementById('s-winrate').textContent = '--';
+document.getElementById('s-brier').textContent = '--';
+document.getElementById('h-tier').textContent = 'PRO';
+document.getElementById('h-cycle').textContent = '#1';
+document.getElementById('f-license').textContent = 'License: PRO | 29 days remaining';
+
+// ── WebSocket / API integration placeholder ──
+// When backend is running, replace demo data with:
+// fetch('/api/signals').then(r => r.json()).then(renderSignals);
+// fetch('/api/trades').then(r => r.json()).then(renderTrades);
+// new WebSocket('ws://localhost:3000/ws').onmessage = (e) => { ... };
+</script>
+</body>
+</html>
