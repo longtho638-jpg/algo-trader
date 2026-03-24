@@ -215,26 +215,138 @@ tr:hover{background:#161619}
     <div style="height:4px;background:#1a1a1a;border-radius:2px"><div id="wiz-bar" style="height:100%;background:var(--amber);border-radius:2px;width:0%;transition:width .3s"></div></div>
   </div>
 
-  <!-- PHASE 0: Prerequisites -->
-  <div class="card">
-    <div class="card-header">Phase 0 — What You Need Before Starting</div>
-    <div class="card-body" style="font-size:12px">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-        <div>
-          <div style="color:var(--amber);font-weight:600;margin-bottom:6px">You Need:</div>
-          <div>&#10003; License Key from admin (you should have this)</div>
-          <div>&#10003; $500-1,000 USDC for trading capital</div>
-          <div>&#10003; 1 hour of setup time</div>
-          <div>&#10003; Basic terminal/command line knowledge</div>
-        </div>
-        <div>
-          <div style="color:var(--amber);font-weight:600;margin-bottom:6px">Choose Hardware:</div>
-          <div style="display:flex;gap:8px;margin-top:4px">
-            <button class="btn btn-sm" onclick="showSetup('mac')" id="btn-mac" style="flex:1">&#63743; Mac (M1 Max 64GB)</button>
-            <button class="btn btn-sm" onclick="showSetup('vps')" id="btn-vps" style="flex:1">&#9729; Cloud VPS ($150/mo)</button>
-          </div>
-        </div>
+  <!-- PHASE A: Crypto & Polymarket Account (for complete beginners) -->
+  <div class="card" style="border-color:var(--amber)">
+    <div class="card-header" style="color:var(--amber)">Phase A — Tao Tai Khoan & Mua USDC (Nguoi Moi Bat Dau)</div>
+    <div class="card-body" style="font-size:11px;color:var(--dim)">
+      <div style="color:var(--bright);margin-bottom:8px;font-size:12px">CashClaw la gi? Bot AI du doan ket qua su kien tren Polymarket (thi truong du doan). Bot tu dong mua/ban, ban chi can cap von va de bot chay.</div>
+      <div style="margin-bottom:8px;padding:8px;background:#0d0d10;border-radius:2px;border-left:2px solid var(--amber)">
+        <b style="color:var(--amber)">Luu y:</b> Polymarket la nen tang quoc te hop phap. Nguoi dung VN can VPN de truy cap. Hay dam bao tuan thu phap luat dia phuong.
       </div>
+    </div>
+  </div>
+
+  <div class="card"><div class="card-header">A1 — Cai VPN (Bat Buoc Cho VN)</div><div class="card-body">
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" class="wiz-check" data-step="a1"><div>
+    <div style="color:var(--bright);font-weight:600;margin-bottom:4px">Tai va cai VPN de truy cap Polymarket + Binance</div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:6px">Polymarket va mot so san giao dich chan IP Viet Nam. Can VPN de truy cap.</div>
+    <div style="background:#050505;padding:10px;border:1px solid #1a1a1a;border-radius:2px;font-size:11px">
+      <div style="margin-bottom:6px"><b style="color:var(--amber)">Chon 1 trong cac VPN sau:</b></div>
+      <div style="margin-bottom:4px">&#8226; <b style="color:var(--bright)">Cloudflare WARP</b> (Mien phi) — <a href="https://1.1.1.1" target="_blank">1.1.1.1</a> — Tai app, bat WARP, xong.</div>
+      <div style="margin-bottom:4px">&#8226; <b style="color:var(--bright)">ProtonVPN</b> (Mien phi) — <a href="https://protonvpn.com" target="_blank">protonvpn.com</a> — Chon server US hoac EU.</div>
+      <div style="margin-bottom:4px">&#8226; <b style="color:var(--bright)">NordVPN</b> (~$3/thang) — <a href="https://nordvpn.com" target="_blank">nordvpn.com</a> — On dinh nhat, chon server US.</div>
+      <div style="margin-top:6px;color:var(--green)">&#10003; Sau khi bat VPN, truy cap <a href="https://polymarket.com" target="_blank">polymarket.com</a> — neu thay trang chu = VPN hoat dong.</div>
+    </div>
+    <div style="color:var(--amber);font-size:10px;margin-top:4px">&#9888; Luon bat VPN khi dung Polymarket. Tat VPN = mat ket noi.</div>
+    </div></label>
+  </div></div>
+
+  <div class="card"><div class="card-header">A2 — Tao Vi Crypto (MetaMask)</div><div class="card-body">
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" class="wiz-check" data-step="a2"><div>
+    <div style="color:var(--bright);font-weight:600;margin-bottom:4px">Cai MetaMask — vi crypto pho bien nhat</div>
+    <div style="background:#050505;padding:10px;border:1px solid #1a1a1a;border-radius:2px;font-size:11px">
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">1.</span> Truy cap <a href="https://metamask.io/download/" target="_blank">metamask.io/download</a></div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">2.</span> Cai extension cho Chrome/Brave/Firefox</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">3.</span> Tao vi moi → <b style="color:var(--red)">GHI LAI 12 TU KHOA (seed phrase) RA GIAY!</b></div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">4.</span> Dat mat khau manh</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">5.</span> Them mang Polygon: Settings → Networks → Add Network</div>
+      <div style="padding:6px;background:#0a0a0a;border-radius:2px;font-family:var(--mono);font-size:10px">
+        Network: Polygon Mainnet<br>
+        RPC URL: https://polygon-rpc.com<br>
+        Chain ID: 137<br>
+        Symbol: MATIC<br>
+        Explorer: https://polygonscan.com
+      </div>
+    </div>
+    <div style="color:var(--red);font-size:10px;margin-top:4px">&#9888; KHONG BAO GIO chia se seed phrase hay private key. Ai co seed phrase = co tien cua ban.</div>
+    </div></label>
+  </div></div>
+
+  <div class="card"><div class="card-header">A3 — Mua USDC (Binance P2P — Hoat Dong Tai VN)</div><div class="card-body">
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" class="wiz-check" data-step="a3"><div>
+    <div style="color:var(--bright);font-weight:600;margin-bottom:4px">Mua USDC bang VND qua Binance P2P</div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:6px">Binance P2P cho phep mua crypto bang chuyen khoan ngan hang VN. Khong can VPN.</div>
+    <div style="background:#050505;padding:10px;border:1px solid #1a1a1a;border-radius:2px;font-size:11px">
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">1.</span> Tao tai khoan <a href="https://www.binance.com/vi/register" target="_blank">Binance</a> (dung email + CMND/CCCD xac minh)</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">2.</span> Vao <b style="color:var(--bright)">Trade → P2P Trading</b></div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">3.</span> Chon: <b>Mua</b> → <b>USDC</b> → <b>VND</b> → <b>Chuyen khoan ngan hang</b></div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">4.</span> Chon nguoi ban co nhieu giao dich thanh cong (99%+ rating)</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">5.</span> Nhap so tien VND muon mua (VD: 12.500.000 VND ≈ $500 USDC)</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">6.</span> Chuyen khoan theo thong tin nguoi ban → Xac nhan da chuyen</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">7.</span> Doi nguoi ban tha USDC vao tai khoan Binance cua ban (5-15 phut)</div>
+      <div style="color:var(--green)">&#10003; Kiem tra: Wallet → Spot → USDC balance</div>
+    </div>
+    <div style="color:var(--dim);font-size:10px;margin-top:4px">Ty gia tham khao: 1 USDC ≈ 25,000 VND. $500 ≈ 12.5 trieu VND.</div>
+    </div></label>
+  </div></div>
+
+  <div class="card"><div class="card-header">A4 — Chuyen USDC Tu Binance Sang MetaMask (Polygon)</div><div class="card-body">
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" class="wiz-check" data-step="a4"><div>
+    <div style="color:var(--bright);font-weight:600;margin-bottom:4px">Rut USDC tu Binance vao vi MetaMask qua mang Polygon</div>
+    <div style="background:#050505;padding:10px;border:1px solid #1a1a1a;border-radius:2px;font-size:11px">
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">1.</span> Mo MetaMask → Copy dia chi vi (0x...)</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">2.</span> Binance → Wallet → Withdraw → USDC</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">3.</span> Dan dia chi MetaMask vao o "Address"</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">4.</span> <b style="color:var(--red)">Chon Network: Polygon</b> (KHONG chon Ethereum — phi rat dat!)</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">5.</span> Nhap so USDC muon rut (VD: 500)</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">6.</span> Xac nhan bang 2FA → Doi 5-10 phut</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">7.</span> Kiem tra MetaMask → Polygon network → Thay USDC balance</div>
+      <div style="margin-top:6px;padding:6px;background:#0a0a0a;border-radius:2px">
+        <div style="color:var(--amber)">Cung rut them 1 MATIC (~$0.50) de tra phi gas:</div>
+        <div>Binance → Withdraw → MATIC → Polygon → dia chi MetaMask</div>
+      </div>
+    </div>
+    <div style="color:var(--red);font-size:10px;margin-top:4px">&#9888; PHAI chon Polygon network! Chon sai = mat tien. Luon gui thu $1 truoc.</div>
+    </div></label>
+  </div></div>
+
+  <div class="card"><div class="card-header">A5 — Tao Tai Khoan Polymarket</div><div class="card-body">
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" class="wiz-check" data-step="a5"><div>
+    <div style="color:var(--bright);font-weight:600;margin-bottom:4px">Dang ky Polymarket va ket noi vi MetaMask</div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:6px">Bat VPN truoc khi truy cap Polymarket.</div>
+    <div style="background:#050505;padding:10px;border:1px solid #1a1a1a;border-radius:2px;font-size:11px">
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">1.</span> <b>Bat VPN</b> (buoc A1) → chon server US</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">2.</span> Truy cap <a href="https://polymarket.com" target="_blank">polymarket.com</a></div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">3.</span> Click <b>"Log In"</b> → <b>"Connect Wallet"</b> → Chon <b>MetaMask</b></div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">4.</span> MetaMask popup → <b>Connect</b> → <b>Sign</b> (ky xac nhan)</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">5.</span> Deposit USDC: Click <b>"Deposit"</b> → Nhap so USDC → Approve → Deposit</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">6.</span> Doi 1-2 phut → USDC hien trong Polymarket balance</div>
+      <div style="color:var(--green)">&#10003; Thu mua 1 market $1 bang tay de xac nhan moi thu hoat dong.</div>
+    </div>
+    <div style="color:var(--amber);font-size:10px;margin-top:4px">&#9888; Polymarket deposit = chuyen USDC vao smart contract. An toan nhung khong hoan lai ngay.</div>
+    </div></label>
+  </div></div>
+
+  <div class="card"><div class="card-header">A6 — Lay Private Key Cho Bot</div><div class="card-body">
+    <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer"><input type="checkbox" class="wiz-check" data-step="a6"><div>
+    <div style="color:var(--bright);font-weight:600;margin-bottom:4px">Export private key tu MetaMask de bot tu dong giao dich</div>
+    <div style="color:var(--dim);font-size:11px;margin-bottom:6px">Bot can private key de ky lenh giao dich thay ban. Chi dung vi rieng cho bot, khong de toan bo tien vao.</div>
+    <div style="background:#050505;padding:10px;border:1px solid #1a1a1a;border-radius:2px;font-size:11px">
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">Cach 1: Dung vi MetaMask hien tai</span></div>
+      <div style="margin-bottom:4px;padding-left:12px">MetaMask → 3 cham ⋮ → Account Details → Show Private Key → Nhap mat khau → Copy key (0x...)</div>
+      <div style="margin-bottom:8px;color:var(--amber);padding-left:12px">Hoac:</div>
+      <div style="margin-bottom:6px"><span style="color:var(--amber)">Cach 2: Tao vi rieng cho bot (an toan hon)</span></div>
+      <div style="padding-left:12px">MetaMask → Click avatar → Add Account → Tao vi moi → Chuyen chi $500 USDC vao vi nay → Export key</div>
+    </div>
+    <div style="color:var(--red);font-size:10px;margin-top:4px">&#9888; Private key = quyen truy cap toan bo tien. Chi dung cho bot, khong chia se.</div>
+    </div></label>
+  </div></div>
+
+  <!-- Divider -->
+  <div style="text-align:center;padding:16px 0;color:var(--amber);font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase">
+    ──── Phase B: Cai Dat Bot CashClaw ────
+  </div>
+
+  <!-- PHASE B: Prerequisites -->
+  <div class="card">
+    <div class="card-header">Phase B — Chon Phan Cung Chay Bot</div>
+    <div class="card-body" style="font-size:12px">
+      <div style="color:var(--dim);margin-bottom:8px">Bot AI can may tinh manh de chay mo hinh DeepSeek R1 (18GB). Chon 1 trong 2:</div>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-sm" onclick="showSetup('mac')" id="btn-mac" style="flex:1">&#63743; Mac M1 Max 64GB ($1,800-2,400 mua 1 lan)</button>
+        <button class="btn btn-sm" onclick="showSetup('vps')" id="btn-vps" style="flex:1">&#9729; Thue VPS GPU ($150-400/thang)</button>
+      </div>
+      <div style="color:var(--dim);font-size:10px;margin-top:6px">Mac re hon neu dung > 6 thang. VPS phu hop neu muon thu nghiem truoc.</div>
     </div>
   </div>
 
@@ -614,7 +726,7 @@ function showSetup(type) {
 // Wizard progress tracking
 function updateWizProgress() {
   const checks = document.querySelectorAll('.wiz-check:checked');
-  const total = 8;
+  const total = document.querySelectorAll('.wiz-check').length || 14;
   const done = checks.length;
   document.getElementById('wiz-progress').textContent = `${done}/${total} complete`;
   document.getElementById('wiz-bar').style.width = `${(done/total)*100}%`;
