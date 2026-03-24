@@ -26,3 +26,7 @@ export { WhaleWatchAgent } from './whale-watch-agent.js';
 export { EventClusterAgent } from './event-cluster-agent.js';
 export { VolumeAlertAgent } from './volume-alert-agent.js';
 export { SplitMergeArbAgent } from './split-merge-arb-agent.js';
+
+// Dark edge agents (P3)
+export { NewsSniperAgent } from './news-snipe-agent.js';
+export { ContrarianAgent } from './contrarian-agent.js';

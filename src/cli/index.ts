@@ -34,6 +34,10 @@ import { EventClusterAgent } from '../agents/event-cluster-agent.js';
 import { VolumeAlertAgent } from '../agents/volume-alert-agent.js';
 import { SplitMergeArbAgent } from '../agents/split-merge-arb-agent.js';
 
+// Dark edge agents (P3)
+import { NewsSniperAgent } from '../agents/news-snipe-agent.js';
+import { ContrarianAgent } from '../agents/contrarian-agent.js';
+
 // Agent-dispatched command creators
 import { createScanCommand } from './commands/scan-cmd.js';
 import { createMonitorCommand } from './commands/monitor-cmd.js';
@@ -53,6 +57,10 @@ import { createWhaleWatchCommand } from './commands/whale-watch-cmd.js';
 import { createEventClusterCommand } from './commands/event-cluster-cmd.js';
 import { createVolumeAlertCommand } from './commands/volume-alert-cmd.js';
 import { createSplitMergeArbCommand } from './commands/split-merge-arb-cmd.js';
+
+// Dark edge command creators (P3)
+import { createNewsSniperCommand } from './commands/news-snipe-cmd.js';
+import { createContrarianCommand } from './commands/contrarian-cmd.js';
 
 const require = createRequire(import.meta.url);
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
@@ -90,6 +98,8 @@ dispatcher.register(new WhaleWatchAgent());
 dispatcher.register(new EventClusterAgent());
 dispatcher.register(new VolumeAlertAgent());
 dispatcher.register(new SplitMergeArbAgent());
+dispatcher.register(new NewsSniperAgent());
+dispatcher.register(new ContrarianAgent());
 
 // Agent-dispatched commands
 createScanCommand(program, dispatcher);
@@ -106,6 +116,8 @@ createWhaleWatchCommand(program, dispatcher);
 createEventClusterCommand(program, dispatcher);
 createVolumeAlertCommand(program, dispatcher);
 createSplitMergeArbCommand(program, dispatcher);
+createNewsSniperCommand(program, dispatcher);
+createContrarianCommand(program, dispatcher);
 
 // Meta command: list all registered specialist agents
 program

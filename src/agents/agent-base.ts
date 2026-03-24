@@ -3,7 +3,8 @@
 
 export type AgentTaskType = 'scan' | 'estimate' | 'monitor' | 'risk' | 'calibrate' | 'report' | 'doctor'
   | 'neg-risk-scan' | 'endgame' | 'resolution-arb' | 'whale-watch'
-  | 'event-cluster' | 'volume-alert' | 'split-merge-arb';
+  | 'event-cluster' | 'volume-alert' | 'split-merge-arb'
+  | 'news-snipe' | 'contrarian';
 
 export interface AgentTask {
   id: string;
