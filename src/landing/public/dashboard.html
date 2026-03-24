@@ -3,23 +3,23 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AlgoTrade — Operations Panel</title>
+<title>ALGOTRADE — Terminal</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2129;--border:#30363d;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--amber:#d29922;--text:#c9d1d9;--dim:#8b949e;--bright:#f0f6fc;--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace}
-body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+:root{--bg:#0a0a0a;--surface:#111114;--surface2:#161619;--border:#1e1e22;--accent:#ff9800;--green:#00e676;--red:#ff1744;--amber:#ff9800;--text:#b0b0b0;--dim:#555;--bright:#e0e0e0;--font:'JetBrains Mono',monospace;--mono:'JetBrains Mono',monospace}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:13px;min-height:100vh}
 a{color:var(--accent);text-decoration:none}
 
-/* Nav */
-.nav{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:52px;position:sticky;top:0;z-index:100}
-.nav .logo{font-weight:700;font-size:16px;color:var(--bright);display:flex;align-items:center;gap:8px}
-.nav .logo svg{width:24px;height:24px}
+/* Nav — Bloomberg header bar */
+.nav{display:flex;align-items:center;justify-content:space-between;background:#050505;border-bottom:2px solid var(--amber);padding:0 16px;height:40px;position:sticky;top:0;z-index:100}
+.nav .logo{font-weight:700;font-size:15px;color:var(--amber);letter-spacing:2px;display:flex;align-items:center;gap:8px}
+.nav .logo svg{width:20px;height:20px;color:var(--amber)}
 .nav-tabs{display:flex;gap:0;height:100%}
-.nav-tab{padding:0 20px;height:100%;display:flex;align-items:center;font-size:13px;font-weight:500;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
-.nav-tab:hover{color:var(--text)}
-.nav-tab.active{color:var(--bright);border-bottom-color:var(--accent)}
-.nav-right{display:flex;align-items:center;gap:16px;font-size:12px}
+.nav-tab{padding:0 14px;height:100%;display:flex;align-items:center;font-size:11px;font-weight:600;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;text-transform:uppercase;letter-spacing:1px;transition:all .1s}
+.nav-tab:hover{color:var(--amber);background:#0d0d0d}
+.nav-tab.active{color:var(--amber);border-bottom-color:var(--amber);background:#0d0d0d}
+.nav-right{display:flex;align-items:center;gap:16px;font-size:11px}
 .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
 .dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}.dot.off{background:var(--red)}
 .dot.wait{background:var(--amber)}
@@ -28,73 +28,73 @@ a{color:var(--accent);text-decoration:none}
 .container{max-width:1280px;margin:0 auto;padding:24px}
 .tab-content{display:none}.tab-content.active{display:block}
 
-/* Cards */
-.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden}
-.card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px}
-.card-body{padding:16px}
+/* Cards — Bloomberg panels */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:2px;margin-bottom:12px;overflow:hidden}
+.card-header{padding:6px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--amber);background:#0a0a0c}
+.card-body{padding:12px}
 
-/* Stats */
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
-.stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
-.stat .val{font-size:24px;font-weight:700;font-family:var(--mono)}
-.stat .lbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+/* Stats — dense Bloomberg style */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;margin-bottom:12px;background:var(--border);border:1px solid var(--border)}
+.stat{background:var(--surface);padding:12px;text-align:center}
+.stat .val{font-size:22px;font-weight:700;font-family:var(--mono)}
+.stat .lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
 .val.green{color:var(--green)}.val.red{color:var(--red)}.val.amber{color:var(--amber)}.val.blue{color:var(--accent)}
 
-/* Table */
-table{width:100%;border-collapse:collapse;font-size:13px}
-th{text-align:left;padding:8px 12px;font-weight:500;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
-td{padding:8px 12px;border-bottom:1px solid #1a1f27}
-tr:hover{background:var(--surface2)}
-.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
-.badge.yes{background:#1a3a1a;color:var(--green)}.badge.no{background:#3a1a1a;color:var(--red)}.badge.skip{background:#2a2a2a;color:var(--dim)}
-.badge.open{background:#1a2a3a;color:var(--accent)}.badge.pro{background:#1a1a3a;color:#a78bfa}
+/* Table — Bloomberg dense */
+table{width:100%;border-collapse:collapse;font-size:12px;font-family:var(--mono)}
+th{text-align:left;padding:6px 10px;font-weight:600;color:var(--amber);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border);background:#0a0a0c}
+td{padding:6px 10px;border-bottom:1px solid #131316}
+tr:hover{background:#161619}
+.badge{display:inline-block;padding:1px 6px;border-radius:2px;font-size:10px;font-weight:700;font-family:var(--mono)}
+.badge.yes{background:#0a2a0a;color:var(--green)}.badge.no{background:#2a0a0a;color:var(--red)}.badge.skip{background:#1a1a1a;color:var(--dim)}
+.badge.open{background:#1a1a0a;color:var(--amber)}.badge.pro{background:#1a1a2a;color:var(--accent)}
 
-/* Buttons */
-.btn{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:all .15s}
-.btn:hover{border-color:var(--accent)}
-.btn-primary{background:var(--accent);color:#000;border-color:var(--accent)}.btn-primary:hover{background:#79b8ff}
+/* Buttons — Bloomberg style */
+.btn{padding:6px 14px;border-radius:2px;font-size:11px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;transition:all .1s}
+.btn:hover{border-color:var(--amber);color:var(--amber)}
+.btn-primary{background:var(--amber);color:#000;border-color:var(--amber)}.btn-primary:hover{background:#ffb74d}
 .btn-green{background:var(--green);color:#000;border-color:var(--green)}
 .btn-red{background:var(--red);color:#fff;border-color:var(--red)}
-.btn-sm{padding:4px 10px;font-size:12px}
+.btn-sm{padding:3px 8px;font-size:10px}
 
-/* Forms */
-.form-group{margin-bottom:16px}
-.form-group label{display:block;font-size:12px;font-weight:500;color:var(--dim);margin-bottom:4px}
-.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--bright);font-family:var(--mono);font-size:13px}
-.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent)}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+/* Forms — dark terminal inputs */
+.form-group{margin-bottom:12px}
+.form-group label{display:block;font-size:10px;font-weight:600;color:var(--amber);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:7px 10px;background:#050505;border:1px solid #222;border-radius:2px;color:var(--green);font-family:var(--mono);font-size:12px}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--amber)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 
-/* SOP */
-.sop-step{display:flex;gap:12px;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent)}
-.sop-step .num{width:28px;height:28px;background:var(--accent);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+/* SOP — terminal steps */
+.sop-step{display:flex;gap:10px;margin-bottom:12px;padding:10px;background:#0d0d10;border-radius:2px;border-left:2px solid var(--amber)}
+.sop-step .num{width:24px;height:24px;background:var(--amber);color:#000;border-radius:2px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
 .sop-step .content{flex:1}
-.sop-step h4{font-size:14px;color:var(--bright);margin-bottom:4px}
-.sop-step p{font-size:12px;color:var(--dim);line-height:1.5}
-.sop-step code{display:block;background:var(--bg);padding:8px;border-radius:4px;margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--green);overflow-x:auto;white-space:pre}
+.sop-step h4{font-size:12px;color:var(--amber);margin-bottom:3px;text-transform:uppercase;letter-spacing:.5px}
+.sop-step p{font-size:11px;color:var(--dim);line-height:1.4}
+.sop-step code{display:block;background:#050505;padding:8px;border-radius:2px;margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--green);overflow-x:auto;white-space:pre;border:1px solid #1a1a1a}
 
-/* Signal list (Polymarket style) */
-.signal-item{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #1a1f27;gap:12px;cursor:default}
-.signal-item:hover{background:var(--surface2)}
-.signal-dir{width:64px;font-weight:600;font-size:12px;font-family:var(--mono)}
-.signal-q{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.signal-edge{width:60px;text-align:right;font-family:var(--mono);font-size:13px;font-weight:600}
-.signal-conf{width:40px;text-align:right;font-size:12px;color:var(--dim)}
-.signal-price{width:50px;text-align:right;font-family:var(--mono);font-size:13px;color:var(--dim)}
+/* Signal list — Bloomberg ticker style */
+.signal-item{display:flex;align-items:center;padding:5px 10px;border-bottom:1px solid #131316;gap:8px;cursor:default;font-family:var(--mono);font-size:11px}
+.signal-item:hover{background:#161619}
+.signal-dir{width:56px;font-weight:700;font-size:10px}
+.signal-q{flex:1;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#888}
+.signal-edge{width:55px;text-align:right;font-weight:700}
+.signal-conf{width:36px;text-align:right;color:var(--dim)}
+.signal-price{width:42px;text-align:right;color:var(--dim)}
 
 /* Logs */
 .log-line{font-family:var(--mono);font-size:11px;padding:2px 8px;border-bottom:1px solid #151920;line-height:1.6}
 .log-line .ts{color:var(--dim)}.log-line .lvl-info{color:var(--accent)}.log-line .lvl-warn{color:var(--amber)}.log-line .lvl-err{color:var(--red)}
 .log-line .msg{color:var(--text)}
 
-/* Toast */
-.toast{position:fixed;top:60px;right:16px;padding:10px 16px;border-radius:6px;font-size:13px;z-index:999;display:none;max-width:320px}
-.toast.show{display:block;animation:slideIn .2s}.toast.success{background:#1a3a1a;color:var(--green);border:1px solid #2a4a2a}.toast.error{background:#3a1a1a;color:var(--red);border:1px solid #4a2a2a}
+/* Toast — Bloomberg alert */
+.toast{position:fixed;top:48px;right:12px;padding:8px 14px;border-radius:2px;font-size:11px;font-family:var(--mono);z-index:999;display:none;max-width:300px}
+.toast.show{display:block;animation:slideIn .2s}.toast.success{background:#0a2a0a;color:var(--green);border:1px solid #1a3a1a}.toast.error{background:#2a0a0a;color:var(--red);border:1px solid #3a1a1a}
 @keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
 
-/* Chart bars */
-.chart-bars{display:flex;align-items:flex-end;gap:3px;height:100px;padding:8px 0}
-.chart-bars .bar{flex:1;border-radius:2px 2px 0 0;min-width:6px;transition:height .3s}
-.chart-bars .bar.pos{background:var(--green);opacity:0.6}.chart-bars .bar.neg{background:var(--red);opacity:0.6}
+/* Chart bars — Bloomberg bars */
+.chart-bars{display:flex;align-items:flex-end;gap:2px;height:80px;padding:6px 0}
+.chart-bars .bar{flex:1;border-radius:1px 1px 0 0;min-width:4px;transition:height .2s}
+.chart-bars .bar.pos{background:var(--amber);opacity:0.5}.chart-bars .bar.neg{background:var(--red);opacity:0.5}
 .chart-bars .bar:hover{opacity:1}
 </style>
 </head>
