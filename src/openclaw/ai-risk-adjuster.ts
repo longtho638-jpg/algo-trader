@@ -64,7 +64,12 @@ function clampToBase(adjusted: RiskParams, base: RiskParams): RiskParams {
 }
 
 function parseAdjustedRisk(content: string, base: RiskParams): AdjustedRiskParams | null {
-  const match = content.match(/\{[\s\S]*\}/);
+  // Strip DeepSeek R1 think blocks and markdown fences
+  const cleaned = content
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/```(?:json)?\n?/g, '')
+    .trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) return null;
 
   let parsed: RawRiskJson;
@@ -138,7 +143,7 @@ export async function adjustRisk(
       prompt,
       systemPrompt: 'You are a conservative risk manager. Always reduce risk when uncertain. Respond with valid JSON only.',
       complexity: 'standard',
-      maxTokens: 256,
+      maxTokens: 2000,
     });
 
     const adjusted = parseAdjustedRisk(res.content, baseRisk);

@@ -57,7 +57,7 @@ export class AiSignalGenerator {
       prompt,
       systemPrompt: 'You are a quantitative trading signal generator. Respond with valid JSON only.',
       complexity: 'standard',
-      maxTokens: 256,
+      maxTokens: 2000,
     });
 
     const parsed = this.parseSignal(res.content);
@@ -134,7 +134,11 @@ export class AiSignalGenerator {
     reasoning: string;
   } {
     try {
-      const cleaned = raw.replace(/```(?:json)?\n?/g, '').trim();
+      // Strip DeepSeek R1 think blocks and markdown fences
+      const cleaned = raw
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .replace(/```(?:json)?\n?/g, '')
+        .trim();
       const match = cleaned.match(/\{[\s\S]*\}/);
       if (!match) throw new Error('No JSON found');
 

@@ -56,7 +56,12 @@ function parseRecommendations(
   content: string,
   strategies: StrategyConfig[],
 ): StrategyRecommendation[] {
-  const match = content.match(/\{[\s\S]*\}/);
+  // Strip DeepSeek R1 think blocks and markdown fences
+  const cleaned = content
+    .replace(/<think>[\s\S]*?<\/think>/g, '')
+    .replace(/```(?:json)?\n?/g, '')
+    .trim();
+  const match = cleaned.match(/\{[\s\S]*\}/);
   if (!match) return [];
 
   let parsed: RawAiOutput;

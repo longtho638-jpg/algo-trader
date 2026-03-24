@@ -68,7 +68,7 @@ export class PredictionProbabilityEstimator {
         'Respond ONLY with valid JSON — no markdown, no extra text.',
       ].join(' '),
       complexity: 'standard',
-      maxTokens: 300,
+      maxTokens: 2000,
     });
 
     const latencyMs = Date.now() - startMs;
@@ -122,11 +122,15 @@ export class PredictionProbabilityEstimator {
 
   private parseResponse(raw: string): { probability: number; confidence: number; reasoning: string } {
     try {
-      const cleaned = raw.replace(/```(?:json)?\n?/g, '').trim();
-      const match = cleaned.match(/\{[\s\S]*\}/);
+      // Strip DeepSeek R1 think blocks and markdown fences
+      const cleaned = raw
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .replace(/```(?:json)?\n?/g, '')
+        .trim();
+      const match = cleaned.match(/\{[\s\S]*?\}/g)?.find(m => m.includes('probability'));
       if (!match) throw new Error('No JSON in response');
 
-      const data = JSON.parse(match[0]) as RawEstimateJson;
+      const data = JSON.parse(match) as RawEstimateJson;
       return {
         probability: typeof data.probability === 'number'
           ? Math.max(0.01, Math.min(0.99, data.probability)) : 0.5,

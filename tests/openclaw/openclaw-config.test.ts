@@ -27,9 +27,9 @@ describe('loadOpenClawConfig', () => {
     const cfg = loadOpenClawConfig();
     expect(cfg.gatewayUrl).toBe('http://localhost:11435/v1');
     expect(cfg.routing.simple).toBe('mlx-community/Qwen2.5-Coder-32B-Instruct-4bit');
-    expect(cfg.routing.standard).toBe('mlx-community/Qwen2.5-Coder-32B-Instruct-4bit');
-    expect(cfg.routing.complex).toBe('mlx-community/Qwen2.5-Coder-32B-Instruct-4bit');
-    expect(cfg.timeout).toBe(60_000);
+    expect(cfg.routing.standard).toBe('mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit');
+    expect(cfg.routing.complex).toBe('mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit');
+    expect(cfg.timeout).toBe(120_000);
     expect(cfg.apiKey).toBeUndefined();
   });
 
@@ -53,7 +53,7 @@ describe('loadOpenClawConfig', () => {
   it('should fallback to default timeout for invalid value', () => {
     process.env['OPENCLAW_TIMEOUT_MS'] = 'not-a-number';
     const cfg = loadOpenClawConfig();
-    expect(cfg.timeout).toBe(60_000);
+    expect(cfg.timeout).toBe(120_000);
   });
 
   it('should not set apiKey when env var is empty', () => {
@@ -68,6 +68,6 @@ describe('loadOpenClawConfig', () => {
     const cfg = loadOpenClawConfig();
     expect(cfg.routing.complex).toBe('claude-opus-4-6');
     expect(cfg.routing.simple).toBe('mlx-community/Qwen2.5-Coder-32B-Instruct-4bit'); // default
-    expect(cfg.routing.standard).toBe('mlx-community/Qwen2.5-Coder-32B-Instruct-4bit'); // default
+    expect(cfg.routing.standard).toBe('mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit'); // default
   });
 });

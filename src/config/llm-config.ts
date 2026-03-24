@@ -23,10 +23,10 @@ export function loadLlmConfig(): LlmConfig {
   return {
     primary: {
       url: process.env.LLM_PRIMARY_URL || 'http://127.0.0.1:11435/v1',
-      model: process.env.LLM_PRIMARY_MODEL || 'mlx-community/Qwen2.5-Coder-32B-Instruct-4bit',
+      model: process.env.LLM_PRIMARY_MODEL || 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit',
       priority: 1,
       maxTokens: 2048,
-      timeoutMs: 30000,
+      timeoutMs: 90000,
     },
     fallback: {
       url: process.env.LLM_FALLBACK_URL || 'http://127.0.0.1:11434/v1',

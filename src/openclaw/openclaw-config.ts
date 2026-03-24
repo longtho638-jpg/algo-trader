@@ -23,14 +23,14 @@ export interface OpenClawConfig {
 
 const DEFAULT_ROUTING: OpenClawRouting = {
   simple: 'mlx-community/Qwen2.5-Coder-32B-Instruct-4bit',
-  standard: 'mlx-community/Qwen2.5-Coder-32B-Instruct-4bit',
-  complex: 'mlx-community/Qwen2.5-Coder-32B-Instruct-4bit',
+  standard: 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit',
+  complex: 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit',
 };
 
 const DEFAULT_CONFIG: OpenClawConfig = {
   gatewayUrl: 'http://localhost:11435/v1',
   routing: DEFAULT_ROUTING,
-  timeout: 60_000,
+  timeout: 120_000,
 };
 
 /**

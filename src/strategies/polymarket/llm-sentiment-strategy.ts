@@ -138,10 +138,17 @@ export class LlmSentimentStrategy extends EventEmitter implements RunnableStrate
       { role: 'user', content: question },
     ];
 
-    const response = await this.router.chat({ messages, maxTokens: 150, temperature: 0.1 });
+    const response = await this.router.chat({ messages, maxTokens: 2000, temperature: 0.1 });
 
     try {
-      const parsed = JSON.parse(response.content) as LlmEstimate;
+      // Strip DeepSeek R1 think blocks and markdown fences
+      const cleaned = response.content
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .replace(/```(?:json)?\n?/g, '')
+        .trim();
+      const jsonMatch = cleaned.match(/\{[\s\S]*?\}/g)?.find(m => m.includes('probability'));
+      if (!jsonMatch) throw new Error('No JSON');
+      const parsed = JSON.parse(jsonMatch) as LlmEstimate;
       return {
         probability: Math.max(0, Math.min(1, parsed.probability || 0.5)),
         confidence: Math.max(0, Math.min(1, parsed.confidence || 0.5)),

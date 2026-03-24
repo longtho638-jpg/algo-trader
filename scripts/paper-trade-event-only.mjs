@@ -5,7 +5,7 @@
 
 const GAMMA_API = 'https://gamma-api.polymarket.com/markets';
 const LLM_URL = 'http://localhost:11435/v1/chat/completions';
-const LLM_MODEL = 'mlx-community/Qwen2.5-Coder-32B-Instruct-4bit';
+const LLM_MODEL = 'mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit';
 const MIN_EDGE = 0.05;
 
 // Price market patterns to exclude — LLM has 0% accuracy on these
@@ -80,18 +80,22 @@ async function estimateBlind(question, resolutionCriteria) {
   const res = await fetch(LLM_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ model: LLM_MODEL, messages, max_tokens: 300, temperature: 0.3 }),
-    signal: AbortSignal.timeout(60000),
+    body: JSON.stringify({ model: LLM_MODEL, messages, max_tokens: 2000, temperature: 0.3 }),
+    signal: AbortSignal.timeout(120000),
   });
 
   if (!res.ok) throw new Error(`LLM: ${res.status}`);
   const data = await res.json();
-  const raw = data.choices?.[0]?.message?.content || '';
+  // DeepSeek R1 may put chain-of-thought in content and JSON after </think>
+  const msg = data.choices?.[0]?.message || {};
+  const raw = (msg.content || '') + (msg.reasoning || '');
 
   try {
-    const match = raw.replace(/```(?:json)?\n?/g, '').match(/\{[\s\S]*\}/);
+    // Strip think blocks, markdown fences, then find JSON with probability key
+    const cleaned = raw.replace(/```(?:json)?\n?/g, '').replace(/<think>[\s\S]*?<\/think>/g, '');
+    const match = cleaned.match(/\{[\s\S]*?\}/g)?.find(m => m.includes('probability'));
     if (!match) throw new Error('No JSON');
-    const parsed = JSON.parse(match[0]);
+    const parsed = JSON.parse(match);
     return {
       probability: Math.max(0.01, Math.min(0.99, parsed.probability ?? 0.5)),
       confidence: Math.max(0, Math.min(1, parsed.confidence ?? 0.5)),

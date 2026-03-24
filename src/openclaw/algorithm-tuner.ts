@@ -162,9 +162,14 @@ export class AlgorithmTuner {
     expectedImprovement: number;
   } {
     try {
-      // Strip any accidental markdown fences
-      const cleaned = raw.replace(/```json|```/g, '').trim();
-      const data = JSON.parse(cleaned) as {
+      // Strip DeepSeek R1 think blocks and markdown fences
+      const cleaned = raw
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .replace(/```json|```/g, '')
+        .trim();
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (!match) throw new Error('No JSON in AI response');
+      const data = JSON.parse(match[0]) as {
         suggestedParams?: Record<string, unknown>;
         reasoning?: string;
         confidence?: number;
