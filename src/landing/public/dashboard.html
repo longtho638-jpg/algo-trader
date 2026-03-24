@@ -3,327 +3,583 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ALGOTRADE — Terminal</title>
+<title>AlgoTrade — Operations Panel</title>
 <style>
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap');
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0a0a0a;--panel:#111;--border:#1a1a1a;--amber:#ff9800;--green:#00e676;--red:#ff1744;--blue:#448aff;--dim:#555;--text:#ccc;--bright:#fff;--mono:'JetBrains Mono',monospace}
-body{font-family:var(--mono);background:var(--bg);color:var(--text);font-size:12px;overflow:hidden;height:100vh}
+:root{--bg:#0d1117;--surface:#161b22;--surface2:#1c2129;--border:#30363d;--accent:#58a6ff;--green:#3fb950;--red:#f85149;--amber:#d29922;--text:#c9d1d9;--dim:#8b949e;--bright:#f0f6fc;--font:'Inter',sans-serif;--mono:'JetBrains Mono',monospace}
+body{font-family:var(--font);background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+a{color:var(--accent);text-decoration:none}
 
-/* Header bar */
-.header{display:flex;align-items:center;justify-content:space-between;background:#050505;border-bottom:1px solid var(--amber);padding:4px 12px;height:32px}
-.header .brand{color:var(--amber);font-weight:700;font-size:14px;letter-spacing:2px}
-.header .status{display:flex;gap:16px;font-size:11px}
-.header .status span{color:var(--dim)}
-.header .status b{color:var(--bright)}
-.header .dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px}
-.dot.live{background:var(--green);box-shadow:0 0 6px var(--green)}
-.dot.off{background:var(--red)}
+/* Nav */
+.nav{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:52px;position:sticky;top:0;z-index:100}
+.nav .logo{font-weight:700;font-size:16px;color:var(--bright);display:flex;align-items:center;gap:8px}
+.nav .logo svg{width:24px;height:24px}
+.nav-tabs{display:flex;gap:0;height:100%}
+.nav-tab{padding:0 20px;height:100%;display:flex;align-items:center;font-size:13px;font-weight:500;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+.nav-tab:hover{color:var(--text)}
+.nav-tab.active{color:var(--bright);border-bottom-color:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:16px;font-size:12px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.on{background:var(--green);box-shadow:0 0 8px var(--green)}.dot.off{background:var(--red)}
+.dot.wait{background:var(--amber)}
 
-/* Grid layout */
-.grid{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto 1fr 1fr;height:calc(100vh - 32px);gap:1px;background:var(--border)}
+/* Container */
+.container{max-width:1280px;margin:0 auto;padding:24px}
+.tab-content{display:none}.tab-content.active{display:block}
 
-/* Ticker bar */
-.ticker{grid-column:1/-1;background:#050505;display:flex;overflow:hidden;border-bottom:1px solid #1a1a1a;padding:4px 0;height:28px;align-items:center}
-.ticker .item{white-space:nowrap;padding:0 20px;font-size:11px;animation:scroll 30s linear infinite}
-.ticker .up{color:var(--green)}.ticker .down{color:var(--red)}.ticker .flat{color:var(--dim)}
-@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden}
+.card-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:13px}
+.card-body{padding:16px}
 
-/* Panels */
-.panel{background:var(--panel);overflow:hidden;display:flex;flex-direction:column}
-.panel-header{background:#0d0d0d;padding:6px 10px;font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--amber);border-bottom:1px solid #1a1a1a;display:flex;justify-content:space-between;align-items:center}
-.panel-header .tag{font-size:9px;color:var(--dim);letter-spacing:0}
-.panel-body{flex:1;overflow-y:auto;padding:8px}
-.panel-body::-webkit-scrollbar{width:4px}
-.panel-body::-webkit-scrollbar-track{background:#0a0a0a}
-.panel-body::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px}
+.stat .val{font-size:24px;font-weight:700;font-family:var(--mono)}
+.stat .lbl{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.5px;margin-top:4px}
+.val.green{color:var(--green)}.val.red{color:var(--red)}.val.amber{color:var(--amber)}.val.blue{color:var(--accent)}
 
-/* Stats row */
-.stats-row{display:flex;gap:1px;grid-column:1/-1;background:var(--border)}
-.stat-box{flex:1;background:var(--panel);padding:10px 12px;text-align:center}
-.stat-box .val{font-size:20px;font-weight:700}
-.stat-box .lbl{font-size:9px;color:var(--dim);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
-.val.pos{color:var(--green)}.val.neg{color:var(--red)}.val.amber{color:var(--amber)}
+/* Table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;font-weight:500;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border)}
+td{padding:8px 12px;border-bottom:1px solid #1a1f27}
+tr:hover{background:var(--surface2)}
+.badge{display:inline-block;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:600}
+.badge.yes{background:#1a3a1a;color:var(--green)}.badge.no{background:#3a1a1a;color:var(--red)}.badge.skip{background:#2a2a2a;color:var(--dim)}
+.badge.open{background:#1a2a3a;color:var(--accent)}.badge.pro{background:#1a1a3a;color:#a78bfa}
 
-/* Signal rows */
-.signal-row{display:flex;justify-content:space-between;padding:5px 4px;border-bottom:1px solid #151515;font-size:11px;cursor:default}
-.signal-row:hover{background:#1a1a1a}
-.signal-row .dir{width:60px;font-weight:700}
-.signal-row .dir.buy{color:var(--green)}.signal-row .dir.sell{color:var(--red)}.signal-row .dir.skip{color:var(--dim)}
-.signal-row .edge{width:60px;text-align:right}
-.signal-row .q{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;color:#999}
-.signal-row .conf{width:40px;text-align:right;color:var(--dim)}
+/* Buttons */
+.btn{padding:8px 16px;border-radius:6px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:var(--surface);color:var(--text);transition:all .15s}
+.btn:hover{border-color:var(--accent)}
+.btn-primary{background:var(--accent);color:#000;border-color:var(--accent)}.btn-primary:hover{background:#79b8ff}
+.btn-green{background:var(--green);color:#000;border-color:var(--green)}
+.btn-red{background:var(--red);color:#fff;border-color:var(--red)}
+.btn-sm{padding:4px 10px;font-size:12px}
 
-/* Trade rows */
-.trade-row{display:flex;justify-content:space-between;padding:5px 4px;border-bottom:1px solid #151515;font-size:11px}
-.trade-row:hover{background:#1a1a1a}
-.trade-row .ts{width:70px;color:var(--dim)}
-.trade-row .side{width:55px;font-weight:600}
-.trade-row .side.buy_yes{color:var(--green)}.trade-row .side.buy_no{color:var(--red)}
-.trade-row .amt{width:55px;text-align:right}
-.trade-row .mkt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 8px;color:#888}
-.trade-row .pnl{width:60px;text-align:right;font-weight:600}
-.trade-row .pnl.pos{color:var(--green)}.trade-row .pnl.neg{color:var(--red)}
+/* Forms */
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:12px;font-weight:500;color:var(--dim);margin-bottom:4px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:6px;color:var(--bright);font-family:var(--mono);font-size:13px}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--accent)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
-/* Market scanner */
-.mkt-row{display:flex;padding:4px;border-bottom:1px solid #151515;font-size:11px;gap:8px}
-.mkt-row:hover{background:#1a1a1a}
-.mkt-row .cat{width:50px;color:var(--amber);font-size:10px}
-.mkt-row .name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.mkt-row .price{width:50px;text-align:right;color:var(--bright)}
-.mkt-row .vol{width:55px;text-align:right;color:var(--dim)}
+/* SOP */
+.sop-step{display:flex;gap:12px;margin-bottom:16px;padding:12px;background:var(--surface2);border-radius:8px;border-left:3px solid var(--accent)}
+.sop-step .num{width:28px;height:28px;background:var(--accent);color:#000;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0}
+.sop-step .content{flex:1}
+.sop-step h4{font-size:14px;color:var(--bright);margin-bottom:4px}
+.sop-step p{font-size:12px;color:var(--dim);line-height:1.5}
+.sop-step code{display:block;background:var(--bg);padding:8px;border-radius:4px;margin-top:6px;font-family:var(--mono);font-size:11px;color:var(--green);overflow-x:auto;white-space:pre}
 
-/* Mini chart (ASCII-style bars) */
-.chart-bar{display:flex;align-items:flex-end;gap:2px;height:80px;padding:8px}
-.chart-bar .bar{flex:1;background:var(--amber);min-width:4px;border-radius:1px 1px 0 0;opacity:0.7}
-.chart-bar .bar.neg{background:var(--red)}
-.chart-bar .bar:hover{opacity:1}
+/* Signal list (Polymarket style) */
+.signal-item{display:flex;align-items:center;padding:10px 12px;border-bottom:1px solid #1a1f27;gap:12px;cursor:default}
+.signal-item:hover{background:var(--surface2)}
+.signal-dir{width:64px;font-weight:600;font-size:12px;font-family:var(--mono)}
+.signal-q{flex:1;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.signal-edge{width:60px;text-align:right;font-family:var(--mono);font-size:13px;font-weight:600}
+.signal-conf{width:40px;text-align:right;font-size:12px;color:var(--dim)}
+.signal-price{width:50px;text-align:right;font-family:var(--mono);font-size:13px;color:var(--dim)}
 
-/* Footer */
-.footer{grid-column:1/-1;background:#050505;border-top:1px solid var(--amber);padding:4px 12px;display:flex;justify-content:space-between;font-size:10px;height:24px;align-items:center}
-.footer .left{color:var(--dim)}
-.footer .right{color:var(--amber)}
+/* Logs */
+.log-line{font-family:var(--mono);font-size:11px;padding:2px 8px;border-bottom:1px solid #151920;line-height:1.6}
+.log-line .ts{color:var(--dim)}.log-line .lvl-info{color:var(--accent)}.log-line .lvl-warn{color:var(--amber)}.log-line .lvl-err{color:var(--red)}
+.log-line .msg{color:var(--text)}
 
-/* Blink animation for live dot */
-@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
-.blink{animation:blink 2s infinite}
+/* Toast */
+.toast{position:fixed;top:60px;right:16px;padding:10px 16px;border-radius:6px;font-size:13px;z-index:999;display:none;max-width:320px}
+.toast.show{display:block;animation:slideIn .2s}.toast.success{background:#1a3a1a;color:var(--green);border:1px solid #2a4a2a}.toast.error{background:#3a1a1a;color:var(--red);border:1px solid #4a2a2a}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* Chart bars */
+.chart-bars{display:flex;align-items:flex-end;gap:3px;height:100px;padding:8px 0}
+.chart-bars .bar{flex:1;border-radius:2px 2px 0 0;min-width:6px;transition:height .3s}
+.chart-bars .bar.pos{background:var(--green);opacity:0.6}.chart-bars .bar.neg{background:var(--red);opacity:0.6}
+.chart-bars .bar:hover{opacity:1}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
-<div class="header">
-  <div class="brand">ALGOTRADE <span style="color:var(--dim);font-size:10px;letter-spacing:0">TERMINAL</span></div>
-  <div class="status">
-    <span><span class="dot live blink"></span><b>LIVE</b></span>
-    <span>License: <b id="h-tier">PRO</b></span>
-    <span>Cycle: <b id="h-cycle">#0</b></span>
-    <span id="h-clock">--:--:--</span>
+<div class="toast" id="toast"></div>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 16l4-8 4 4 5-10"/></svg>
+    AlgoTrade
+  </div>
+  <div class="nav-tabs">
+    <div class="nav-tab active" data-tab="dashboard">Dashboard</div>
+    <div class="nav-tab" data-tab="signals">Signals</div>
+    <div class="nav-tab" data-tab="trades">Trades</div>
+    <div class="nav-tab" data-tab="setup">Setup Guide</div>
+    <div class="nav-tab" data-tab="settings">Settings</div>
+    <div class="nav-tab" data-tab="logs">Logs</div>
+  </div>
+  <div class="nav-right">
+    <span><span class="dot" id="bot-dot"></span> <span id="bot-status">Disconnected</span></span>
+    <span style="color:var(--dim)" id="nav-clock">--:--</span>
+  </div>
+</nav>
+
+<!-- ═══════════════════ DASHBOARD TAB ═══════════════════ -->
+<div class="tab-content active" id="tab-dashboard">
+<div class="container">
+  <div class="stats">
+    <div class="stat"><div class="val blue" id="d-capital">$0</div><div class="lbl">Capital USDC</div></div>
+    <div class="stat"><div class="val green" id="d-pnl">$0.00</div><div class="lbl">Total P&L</div></div>
+    <div class="stat"><div class="val" id="d-trades">0</div><div class="lbl">Total Trades</div></div>
+    <div class="stat"><div class="val" id="d-winrate">--%</div><div class="lbl">Win Rate</div></div>
+    <div class="stat"><div class="val" id="d-signals">0</div><div class="lbl">Active Signals</div></div>
+    <div class="stat"><div class="val amber" id="d-next">--:--</div><div class="lbl">Next Cycle</div></div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:2fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-header">P&L History <span style="font-weight:400;color:var(--dim)">30 days</span></div>
+      <div class="card-body"><div class="chart-bars" id="d-chart"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-header">Bot Control</div>
+      <div class="card-body">
+        <div style="text-align:center;padding:12px 0">
+          <div style="font-size:48px;margin-bottom:8px" id="ctl-icon">&#9724;</div>
+          <div style="font-size:13px;color:var(--dim);margin-bottom:16px" id="ctl-label">Bot is offline</div>
+          <div style="display:flex;gap:8px;justify-content:center">
+            <button class="btn btn-green btn-sm" onclick="botAction('start')">Start</button>
+            <button class="btn btn-red btn-sm" onclick="botAction('stop')">Stop</button>
+            <button class="btn btn-sm" onclick="botAction('dry-run')">Dry Run</button>
+          </div>
+        </div>
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);font-size:12px">
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--dim)">Mode</span><span id="ctl-mode">--</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--dim)">License</span><span id="ctl-license">--</span></div>
+          <div style="display:flex;justify-content:space-between;margin-bottom:4px"><span style="color:var(--dim)">LLM Model</span><span id="ctl-model">DeepSeek R1</span></div>
+          <div style="display:flex;justify-content:space-between"><span style="color:var(--dim)">Uptime</span><span id="ctl-uptime">--</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Recent Trades <span style="font-weight:400;color:var(--dim)" id="d-trade-count">0</span></div>
+    <div class="card-body" style="padding:0;max-height:300px;overflow-y:auto">
+      <table><thead><tr><th>Time</th><th>Direction</th><th>Market</th><th>Size</th><th>Edge</th><th>Status</th></tr></thead>
+      <tbody id="d-trades-table"><tr><td colspan="6" style="text-align:center;color:var(--dim);padding:24px">Connect your bot to see trades</td></tr></tbody></table>
+    </div>
   </div>
 </div>
+</div>
 
-<!-- GRID -->
-<div class="grid">
-  <!-- Ticker -->
-  <div class="ticker">
-    <div style="display:flex;animation:scroll 40s linear infinite" id="tickerContent">
-      <!-- Populated by JS -->
+<!-- ═══════════════════ SIGNALS TAB ═══════════════════ -->
+<div class="tab-content" id="tab-signals">
+<div class="container">
+  <div class="card">
+    <div class="card-header">Live Prediction Signals <span style="font-weight:400;color:var(--dim)" id="sig-total">Cycle #0</span></div>
+    <div class="card-body" style="padding:0;max-height:calc(100vh - 160px);overflow-y:auto" id="sig-list">
+      <div style="padding:40px;text-align:center;color:var(--dim)">Signals will appear after first prediction cycle</div>
     </div>
   </div>
+</div>
+</div>
 
-  <!-- Stats row -->
-  <div class="stats-row">
-    <div class="stat-box"><div class="val amber" id="s-capital">$500</div><div class="lbl">Capital</div></div>
-    <div class="stat-box"><div class="val pos" id="s-pnl">+$0.00</div><div class="lbl">Session P&L</div></div>
-    <div class="stat-box"><div class="val" id="s-trades">0</div><div class="lbl">Trades</div></div>
-    <div class="stat-box"><div class="val" id="s-winrate">--</div><div class="lbl">Win Rate</div></div>
-    <div class="stat-box"><div class="val" id="s-brier">--</div><div class="lbl">Brier Score</div></div>
-    <div class="stat-box"><div class="val amber" id="s-next">15:00</div><div class="lbl">Next Cycle</div></div>
+<!-- ═══════════════════ TRADES TAB ═══════════════════ -->
+<div class="tab-content" id="tab-trades">
+<div class="container">
+  <div class="stats">
+    <div class="stat"><div class="val green" id="t-won">0</div><div class="lbl">Won</div></div>
+    <div class="stat"><div class="val red" id="t-lost">0</div><div class="lbl">Lost</div></div>
+    <div class="stat"><div class="val" id="t-open">0</div><div class="lbl">Open</div></div>
+    <div class="stat"><div class="val" id="t-roi">--%</div><div class="lbl">ROI</div></div>
   </div>
-
-  <!-- Panel 1: Signals -->
-  <div class="panel">
-    <div class="panel-header">Active Signals <span class="tag" id="sig-count">0 signals</span></div>
-    <div class="panel-body" id="signals">
-      <div class="signal-row"><span class="dir skip">WAIT</span><span class="q">Waiting for first prediction cycle...</span><span class="edge">--</span><span class="conf">--</span></div>
+  <div class="card">
+    <div class="card-header">Full Trade History</div>
+    <div class="card-body" style="padding:0;max-height:calc(100vh - 240px);overflow-y:auto">
+      <table><thead><tr><th>Date</th><th>Direction</th><th>Market</th><th>Size</th><th>Entry</th><th>Edge</th><th>P&L</th><th>Status</th></tr></thead>
+      <tbody id="t-table"><tr><td colspan="8" style="text-align:center;color:var(--dim);padding:24px">No trade history yet</td></tr></tbody></table>
     </div>
   </div>
+</div>
+</div>
 
-  <!-- Panel 2: P&L Chart + Performance -->
-  <div class="panel">
-    <div class="panel-header">Performance <span class="tag">30-day</span></div>
-    <div class="panel-body">
-      <div class="chart-bar" id="pnlChart">
-        <!-- Bars populated by JS -->
-      </div>
-      <div style="padding:8px;border-top:1px solid #1a1a1a">
-        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
-          <span style="color:var(--dim)">Calibration</span>
+<!-- ═══════════════════ SETUP GUIDE TAB ═══════════════════ -->
+<div class="tab-content" id="tab-setup">
+<div class="container">
+  <h2 style="margin-bottom:8px;color:var(--bright)">Quick Start Guide</h2>
+  <p style="color:var(--dim);margin-bottom:24px">Get your AlgoTrade bot running in 10 minutes</p>
+
+  <div class="card">
+    <div class="card-header">Choose Your Deployment</div>
+    <div class="card-body">
+      <div class="form-row">
+        <div style="padding:16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="showSetup('mac')">
+          <div style="font-size:24px;margin-bottom:8px">&#63743;</div>
+          <div style="font-weight:600;color:var(--bright)">Apple Silicon Mac</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:4px">M1 Max 64GB+ | MLX inference | $0/mo</div>
         </div>
-        <div id="calibration" style="font-size:11px">
-          <div style="display:flex;justify-content:space-between;color:var(--dim)">
-            <span>0-20%</span><span>20-40%</span><span>40-60%</span><span>60-80%</span><span>80-100%</span>
-          </div>
-          <div style="display:flex;gap:4px;margin-top:4px" id="calBars">
-            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
-            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
-            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
-            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
-            <div style="flex:1;height:20px;background:#1a1a1a;border-radius:2px"></div>
-          </div>
+        <div style="padding:16px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);cursor:pointer" onclick="showSetup('vps')">
+          <div style="font-size:24px;margin-bottom:8px">&#9729;</div>
+          <div style="font-weight:600;color:var(--bright)">Cloud VPS</div>
+          <div style="font-size:12px;color:var(--dim);margin-top:4px">RTX 4090 24GB+ | Ollama | ~$150/mo</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Panel 3: Market Scanner -->
-  <div class="panel">
-    <div class="panel-header">Market Scanner <span class="tag" id="mkt-count">0 markets</span></div>
-    <div class="panel-body" id="markets">
-      <div class="mkt-row"><span class="cat">--</span><span class="name" style="color:var(--dim)">Scanning markets...</span><span class="price">--</span><span class="vol">--</span></div>
+  <div id="setup-mac" style="display:none">
+    <div class="sop-step"><div class="num">1</div><div class="content"><h4>Install Dependencies</h4><p>Homebrew, Node.js 20+, Python 3.11+, MLX LM</p><code>brew install node python@3.11
+pip3 install mlx-lm</code></div></div>
+    <div class="sop-step"><div class="num">2</div><div class="content"><h4>Download DeepSeek R1 Model (~18GB)</h4><p>Start MLX server — model downloads automatically on first run</p><code>python3 -m mlx_lm.server \
+  --model mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit \
+  --port 11435 &</code></div></div>
+    <div class="sop-step"><div class="num">3</div><div class="content"><h4>Clone & Build AlgoTrade</h4><code>git clone https://github.com/longtho638-jpg/algo-trader.git
+cd algo-trader && npm install && npx tsc</code></div></div>
+    <div class="sop-step"><div class="num">4</div><div class="content"><h4>Test with Dry Run</h4><p>Replace KEY and SECRET with values from admin</p><code>node scripts/start-trading-bot.mjs \
+  --license-key=YOUR_KEY \
+  --secret=YOUR_SECRET \
+  --dry-run --capital=500</code></div></div>
+    <div class="sop-step"><div class="num">5</div><div class="content"><h4>Go Live</h4><p>Add your Polymarket wallet private key. Fund with USDC on Polygon.</p><code>node scripts/start-trading-bot.mjs \
+  --license-key=YOUR_KEY \
+  --secret=YOUR_SECRET \
+  --private-key=0xYOUR_WALLET_KEY \
+  --capital=500</code></div></div>
+    <div class="sop-step"><div class="num">6</div><div class="content"><h4>Run as Background Service</h4><p>Create a launchd plist to auto-start on boot. See full SOP in docs.</p><code>launchctl load ~/Library/LaunchAgents/com.algotrade.bot.plist
+tail -f /tmp/algotrade-bot.log</code></div></div>
+  </div>
+
+  <div id="setup-vps" style="display:none">
+    <div class="sop-step"><div class="num">1</div><div class="content"><h4>Provision GPU VPS</h4><p>Minimum: RTX 4090 24GB VRAM, 64GB RAM, Ubuntu 22.04</p><code># Recommended providers:
+# RunPod (~$150/mo) | Lambda (~$200/mo) | Vast.ai (~$100/mo)</code></div></div>
+    <div class="sop-step"><div class="num">2</div><div class="content"><h4>Install NVIDIA Drivers + Ollama</h4><code>apt update && apt upgrade -y
+apt install -y nvidia-driver-535
+curl -fsSL https://ollama.com/install.sh | sh
+ollama pull deepseek-r1:32b</code></div></div>
+    <div class="sop-step"><div class="num">3</div><div class="content"><h4>Install Node.js + AlgoTrade</h4><code>curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+apt install -y nodejs
+git clone https://github.com/longtho638-jpg/algo-trader.git
+cd algo-trader && npm install && npx tsc</code></div></div>
+    <div class="sop-step"><div class="num">4</div><div class="content"><h4>Test with Dry Run</h4><code>node scripts/start-trading-bot.mjs \
+  --license-key=YOUR_KEY \
+  --secret=YOUR_SECRET \
+  --dry-run --capital=500 \
+  --llm-url=http://127.0.0.1:11434/v1</code></div></div>
+    <div class="sop-step"><div class="num">5</div><div class="content"><h4>Go Live + systemd Service</h4><code># Create /etc/systemd/system/algotrade.service
+# Then:
+systemctl enable algotrade
+systemctl start algotrade
+journalctl -u algotrade -f</code></div></div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-header">Hardware Requirements</div>
+    <div class="card-body" style="padding:0">
+      <table>
+        <thead><tr><th>Component</th><th>Apple Silicon</th><th>Cloud VPS</th></tr></thead>
+        <tbody>
+          <tr><td>Chip/GPU</td><td>M1 Max or better</td><td>RTX 4090 (24GB VRAM)</td></tr>
+          <tr><td>RAM</td><td>64GB unified</td><td>64GB DDR5</td></tr>
+          <tr><td>Storage</td><td>256GB+ SSD</td><td>100GB+ NVMe</td></tr>
+          <tr><td>Speed</td><td>~33s/prediction</td><td>~45s/prediction</td></tr>
+          <tr><td>Cost</td><td>$1,800-2,400 one-time</td><td>$150-400/month</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════ SETTINGS TAB ═══════════════════ -->
+<div class="tab-content" id="tab-settings">
+<div class="container">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card">
+      <div class="card-header">Bot Connection</div>
+      <div class="card-body">
+        <div class="form-group"><label>Bot API URL</label><input id="cfg-api" placeholder="http://your-vps-ip:3000" value=""></div>
+        <div class="form-group"><label>License Key</label><input id="cfg-license" type="password" placeholder="Paste your license key"></div>
+        <div class="form-group"><label>License Secret</label><input id="cfg-secret" type="password" placeholder="Provided by admin"></div>
+        <button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">Trading Parameters</div>
+      <div class="card-body">
+        <div class="form-row">
+          <div class="form-group"><label>Capital (USDC)</label><input id="cfg-capital" type="number" value="500"></div>
+          <div class="form-group"><label>Max Position (%)</label><input id="cfg-maxpos" type="number" value="5"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Kelly Fraction</label><input id="cfg-kelly" type="number" value="0.5" step="0.1" min="0.1" max="1.0"></div>
+          <div class="form-group"><label>Min Edge (%)</label><input id="cfg-minedge" type="number" value="5"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Cycle Interval (min)</label><input id="cfg-interval" type="number" value="15"></div>
+          <div class="form-group"><label>LLM URL</label><input id="cfg-llm" value="http://localhost:11435/v1"></div>
+        </div>
+        <button class="btn" onclick="saveTrading()">Update Parameters</button>
+      </div>
     </div>
   </div>
 
-  <!-- Panel 4: Trade History -->
-  <div class="panel" style="grid-column:1/-1">
-    <div class="panel-header">Trade Log <span class="tag" id="trade-count">0 trades</span></div>
-    <div class="panel-body" id="trades">
-      <div style="color:var(--dim);padding:20px;text-align:center">No trades yet — waiting for first prediction cycle</div>
+  <div class="card">
+    <div class="card-header">License Info</div>
+    <div class="card-body" id="lic-info" style="font-size:13px;color:var(--dim)">
+      Enter license key above and click Save to view details
     </div>
   </div>
+</div>
+</div>
 
-  <!-- Footer -->
-  <div class="footer">
-    <div class="left">ALGOTRADE v1.0 — DeepSeek R1 32B — Event-Only Blind Strategy — Half-Kelly Sizing</div>
-    <div class="right" id="f-license">License: validating...</div>
+<!-- ═══════════════════ LOGS TAB ═══════════════════ -->
+<div class="tab-content" id="tab-logs">
+<div class="container">
+  <div class="card">
+    <div class="card-header">Bot Logs <div style="display:flex;gap:8px"><button class="btn btn-sm" onclick="refreshLogs()">Refresh</button><button class="btn btn-sm" onclick="clearLogs()">Clear</button></div></div>
+    <div class="card-body" style="padding:0;max-height:calc(100vh - 160px);overflow-y:auto;background:var(--bg)" id="log-container">
+      <div class="log-line"><span class="ts">--:--:--</span> <span class="lvl-info">[INFO]</span> <span class="msg">Waiting for bot connection...</span></div>
+    </div>
   </div>
+</div>
 </div>
 
 <script>
+// ── Tab navigation ──
+document.querySelectorAll('.nav-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+  });
+});
+
 // ── Clock ──
 setInterval(() => {
-  document.getElementById('h-clock').textContent = new Date().toLocaleTimeString('en-US', {hour12:false});
+  document.getElementById('nav-clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false});
 }, 1000);
 
-// ── Demo data (replace with real API calls when backend is running) ──
-const DEMO_SIGNALS = [
-  {dir:'BUY_YES',q:'Will Trump win 2028 Presidential Election?',edge:0.152,conf:0.78,cat:'Politics'},
-  {dir:'BUY_NO',q:'China invades Taiwan before GTA VI?',edge:-0.465,conf:0.85,cat:'Geopolitics'},
-  {dir:'BUY_YES',q:'BitBoy convicted?',edge:0.538,conf:0.72,cat:'Crypto'},
-  {dir:'BUY_YES',q:'GTA VI released before June 2026?',edge:0.578,conf:0.80,cat:'Entertainment'},
-  {dir:'BUY_NO',q:'Will Poland qualify for 2026 FIFA World Cup?',edge:-0.080,conf:0.65,cat:'Sports'},
-  {dir:'BUY_YES',q:'Will Edmonton Oilers win 2026 NHL Stanley Cup?',edge:0.085,conf:0.60,cat:'Sports'},
-  {dir:'BUY_YES',q:'Harvey Weinstein sentenced >30 years?',edge:0.152,conf:0.73,cat:'Legal'},
-  {dir:'BUY_NO',q:'Jesus Christ return before GTA VI?',edge:-0.475,conf:0.95,cat:'Meme'},
-  {dir:'BUY_YES',q:'Will Mexico win 2026 FIFA World Cup?',edge:0.060,conf:0.55,cat:'Sports'},
-  {dir:'BUY_YES',q:'New Rihanna Album before GTA VI?',edge:0.045,conf:0.62,cat:'Entertainment'},
-];
+// ── Toast ──
+function toast(msg, type='success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast show ' + type;
+  setTimeout(() => el.className = 'toast', 3000);
+}
 
-const DEMO_TRADES = [
-  {ts:'11:42',side:'buy_yes',amt:25.00,mkt:'BitBoy convicted?',pnl:null,edge:0.538},
-  {ts:'11:42',side:'buy_no',mkt:'China invades Taiwan before GTA VI?',amt:18.50,pnl:null,edge:-0.465},
-  {ts:'11:42',side:'buy_yes',mkt:'GTA VI released before June 2026?',amt:22.00,pnl:null,edge:0.578},
-  {ts:'11:42',side:'buy_yes',mkt:'Trump win 2028?',amt:15.00,pnl:null,edge:0.152},
-  {ts:'11:42',side:'buy_yes',mkt:'Harvey Weinstein >30 years?',amt:12.00,pnl:null,edge:0.152},
-];
+// ── Setup guide toggle ──
+function showSetup(type) {
+  document.getElementById('setup-mac').style.display = type === 'mac' ? 'block' : 'none';
+  document.getElementById('setup-vps').style.display = type === 'vps' ? 'block' : 'none';
+}
 
-const DEMO_MARKETS = [
-  {cat:'POL',name:'Trump wins 2028 Presidential Election',price:0.38,vol:'$2.1M'},
-  {cat:'GEO',name:'China invades Taiwan before GTA VI',price:0.52,vol:'$890K'},
-  {cat:'ENT',name:'GTA VI released before June 2026',price:0.02,vol:'$4.5M'},
-  {cat:'SPT',name:'France wins 2026 FIFA World Cup',price:0.11,vol:'$1.2M'},
-  {cat:'CRY',name:'BitBoy convicted',price:0.11,vol:'$340K'},
-  {cat:'LEG',name:'Weinstein sentenced >30 years',price:0.05,vol:'$120K'},
-  {cat:'POL',name:'Kamala Harris wins 2028 Dem nomination',price:0.28,vol:'$3.2M'},
-  {cat:'SPT',name:'Edmonton Oilers win Stanley Cup',price:0.07,vol:'$560K'},
-  {cat:'MEM',name:'Jesus Christ return before GTA VI',price:0.48,vol:'$180K'},
-  {cat:'ENT',name:'New Rihanna Album before GTA VI',price:0.56,vol:'$95K'},
-  {cat:'SPT',name:'Mexico wins 2026 World Cup',price:0.01,vol:'$210K'},
-  {cat:'POL',name:'Josh Shapiro wins 2028 Election',price:0.03,vol:'$440K'},
-];
+// ── Settings persistence (localStorage) ──
+function loadSettings() {
+  const s = JSON.parse(localStorage.getItem('algotrade_cfg') || '{}');
+  if (s.api) document.getElementById('cfg-api').value = s.api;
+  if (s.license) document.getElementById('cfg-license').value = s.license;
+  if (s.secret) document.getElementById('cfg-secret').value = s.secret;
+  if (s.capital) document.getElementById('cfg-capital').value = s.capital;
+  if (s.llm) document.getElementById('cfg-llm').value = s.llm;
+  if (s.kelly) document.getElementById('cfg-kelly').value = s.kelly;
+  if (s.minedge) document.getElementById('cfg-minedge').value = s.minedge;
+  if (s.interval) document.getElementById('cfg-interval').value = s.interval;
+  if (s.maxpos) document.getElementById('cfg-maxpos').value = s.maxpos;
+  return s;
+}
+
+function saveSettings() {
+  const cfg = {
+    ...JSON.parse(localStorage.getItem('algotrade_cfg') || '{}'),
+    api: document.getElementById('cfg-api').value,
+    license: document.getElementById('cfg-license').value,
+    secret: document.getElementById('cfg-secret').value,
+  };
+  localStorage.setItem('algotrade_cfg', JSON.stringify(cfg));
+  toast('Settings saved! Connecting...');
+  connectBot(cfg);
+}
+
+function saveTrading() {
+  const cfg = {
+    ...JSON.parse(localStorage.getItem('algotrade_cfg') || '{}'),
+    capital: document.getElementById('cfg-capital').value,
+    llm: document.getElementById('cfg-llm').value,
+    kelly: document.getElementById('cfg-kelly').value,
+    minedge: document.getElementById('cfg-minedge').value,
+    interval: document.getElementById('cfg-interval').value,
+    maxpos: document.getElementById('cfg-maxpos').value,
+  };
+  localStorage.setItem('algotrade_cfg', JSON.stringify(cfg));
+  toast('Trading parameters updated');
+}
+
+// ── Bot connection ──
+let botConnected = false;
+let pollTimer = null;
+
+async function connectBot(cfg) {
+  if (!cfg.api) { updateBotStatus('off', 'No API URL'); return; }
+  updateBotStatus('wait', 'Connecting...');
+  try {
+    const res = await fetch(cfg.api + '/api/health', { signal: AbortSignal.timeout(5000) });
+    if (res.ok) {
+      botConnected = true;
+      updateBotStatus('on', 'Connected');
+      toast('Bot connected!');
+      startPolling(cfg);
+      validateLicense(cfg);
+    } else {
+      updateBotStatus('off', 'API error ' + res.status);
+    }
+  } catch(e) {
+    updateBotStatus('off', 'Unreachable');
+    // Show demo data for preview
+    loadDemoData();
+  }
+}
+
+function updateBotStatus(state, label) {
+  const dot = document.getElementById('bot-dot');
+  dot.className = 'dot ' + state;
+  document.getElementById('bot-status').textContent = label;
+}
+
+async function validateLicense(cfg) {
+  if (!cfg.api || !cfg.license) return;
+  try {
+    const res = await fetch(cfg.api + '/api/license/validate', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ key: cfg.license }),
+    });
+    const data = await res.json();
+    if (data.valid) {
+      document.getElementById('ctl-license').innerHTML = `<span class="badge pro">${data.tier}</span> ${data.remainingDays}d left`;
+      document.getElementById('lic-info').innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div>Tier: <b>${data.tier}</b></div><div>Expires: <b>${data.expiresAt?.slice(0,10)}</b></div>
+          <div>Days left: <b>${data.remainingDays}</b></div><div>Features: <b>${data.features?.join(', ') || 'basic'}</b></div>
+        </div>`;
+    }
+  } catch {}
+}
+
+function startPolling(cfg) {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(() => fetchBotData(cfg), 10000);
+  fetchBotData(cfg);
+}
+
+async function fetchBotData(cfg) {
+  // Fetch signals, trades, stats from bot API
+  // These endpoints would need to be added to the bot's API server
+  try {
+    const [signals, trades, stats] = await Promise.all([
+      fetch(cfg.api + '/api/signals').then(r => r.json()).catch(() => []),
+      fetch(cfg.api + '/api/trades').then(r => r.json()).catch(() => []),
+      fetch(cfg.api + '/api/stats').then(r => r.json()).catch(() => ({})),
+    ]);
+    if (signals.length) renderSignals(signals);
+    if (trades.length) renderTrades(trades);
+    if (stats.capital) renderStats(stats);
+  } catch {}
+}
+
+// ── Bot actions ──
+async function botAction(action) {
+  const cfg = JSON.parse(localStorage.getItem('algotrade_cfg') || '{}');
+  if (!cfg.api) { toast('Set Bot API URL in Settings first', 'error'); return; }
+  toast(`Sending ${action} command...`);
+  try {
+    await fetch(cfg.api + '/api/bot/' + action, { method: 'POST' });
+    toast(`Bot ${action} command sent`);
+  } catch { toast('Failed to reach bot', 'error'); }
+}
 
 // ── Render functions ──
-
 function renderSignals(signals) {
-  const el = document.getElementById('signals');
-  document.getElementById('sig-count').textContent = signals.length + ' signals';
-  el.innerHTML = signals.map(s => {
-    const dirClass = s.dir.includes('YES') ? 'buy' : s.dir.includes('NO') ? 'sell' : 'skip';
-    const dirLabel = s.dir.includes('YES') ? 'BUY YES' : 'BUY NO';
-    const edgeColor = s.edge > 0 ? 'color:var(--green)' : 'color:var(--red)';
-    return `<div class="signal-row">
-      <span class="dir ${dirClass}">${dirLabel}</span>
-      <span class="q">${s.q}</span>
-      <span class="edge" style="${edgeColor}">${(s.edge*100).toFixed(1)}%</span>
-      <span class="conf">${(s.conf*100).toFixed(0)}%</span>
+  document.getElementById('d-signals').textContent = signals.length;
+  document.getElementById('sig-total').textContent = `${signals.length} signals`;
+  const html = signals.map(s => {
+    const cls = s.direction?.includes('yes') ? 'yes' : s.direction?.includes('no') ? 'no' : 'skip';
+    const label = s.direction?.includes('yes') ? 'BUY YES' : 'BUY NO';
+    const ec = s.edge > 0 ? 'color:var(--green)' : 'color:var(--red)';
+    return `<div class="signal-item">
+      <span class="signal-dir"><span class="badge ${cls}">${label}</span></span>
+      <span class="signal-q">${s.description || s.question || ''}</span>
+      <span class="signal-edge" style="${ec}">${(Math.abs(s.edge||0)*100).toFixed(1)}%</span>
+      <span class="signal-conf">${((s.confidence||0)*100).toFixed(0)}%</span>
+      <span class="signal-price">${((s.marketProb||0)*100).toFixed(0)}c</span>
     </div>`;
   }).join('');
+  document.getElementById('sig-list').innerHTML = html || '<div style="padding:24px;text-align:center;color:var(--dim)">No signals yet</div>';
 }
 
 function renderTrades(trades) {
-  const el = document.getElementById('trades');
-  document.getElementById('trade-count').textContent = trades.length + ' trades';
-  el.innerHTML = trades.map(t => {
-    const pnlStr = t.pnl !== null ? (t.pnl >= 0 ? `+$${t.pnl.toFixed(2)}` : `-$${Math.abs(t.pnl).toFixed(2)}`) : 'OPEN';
-    const pnlClass = t.pnl === null ? '' : t.pnl >= 0 ? 'pos' : 'neg';
-    return `<div class="trade-row">
-      <span class="ts">${t.ts}</span>
-      <span class="side ${t.side}">${t.side.replace('_',' ').toUpperCase()}</span>
-      <span class="amt">$${t.amt.toFixed(2)}</span>
-      <span class="mkt">${t.mkt}</span>
-      <span class="pnl ${pnlClass}">${pnlStr}</span>
-    </div>`;
+  document.getElementById('d-trades').textContent = trades.length;
+  document.getElementById('d-trade-count').textContent = trades.length;
+  const tbody = trades.slice(0, 20).map(t => {
+    const dirCls = t.direction?.includes('yes') ? 'yes' : 'no';
+    const dirLabel = t.direction?.includes('yes') ? 'BUY YES' : 'BUY NO';
+    const pnl = t.pnl != null ? (t.pnl >= 0 ? `+$${t.pnl.toFixed(2)}` : `-$${Math.abs(t.pnl).toFixed(2)}`) : '';
+    const status = t.resolved ? (t.correct ? 'Won' : 'Lost') : 'Open';
+    const stCls = t.resolved ? (t.correct ? 'yes' : 'no') : 'open';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--dim)">${new Date(t.timestamp||Date.now()).toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</td>
+      <td><span class="badge ${dirCls}">${dirLabel}</span></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${t.description || t.market || ''}</td>
+      <td style="font-family:var(--mono)">$${(t.sizeUsdc||0).toFixed(2)}</td>
+      <td style="font-family:var(--mono);color:${(t.edge||0)>0?'var(--green)':'var(--red)'}">${((t.edge||0)*100).toFixed(1)}%</td>
+      <td><span class="badge ${stCls}">${status}</span></td>
+    </tr>`;
   }).join('');
+  document.getElementById('d-trades-table').innerHTML = tbody || '<tr><td colspan="6" style="text-align:center;color:var(--dim);padding:24px">No trades yet</td></tr>';
 }
 
-function renderMarkets(markets) {
-  const el = document.getElementById('markets');
-  document.getElementById('mkt-count').textContent = markets.length + ' markets';
-  el.innerHTML = markets.map(m => `<div class="mkt-row">
-    <span class="cat">${m.cat}</span>
-    <span class="name">${m.name}</span>
-    <span class="price">${(m.price*100).toFixed(0)}¢</span>
-    <span class="vol">${m.vol}</span>
-  </div>`).join('');
+function renderStats(stats) {
+  if (stats.capital) document.getElementById('d-capital').textContent = '$' + stats.capital;
+  if (stats.pnl != null) { const el = document.getElementById('d-pnl'); el.textContent = (stats.pnl >= 0 ? '+' : '') + '$' + stats.pnl.toFixed(2); el.className = 'val ' + (stats.pnl >= 0 ? 'green' : 'red'); }
+  if (stats.winRate != null) document.getElementById('d-winrate').textContent = (stats.winRate * 100).toFixed(1) + '%';
 }
 
-function renderTicker(signals, markets) {
-  const items = [...signals.slice(0,5).map(s => {
-    const cls = s.edge > 0 ? 'up' : 'down';
-    return `<span class="item ${cls}">${s.q.slice(0,40)} ${s.edge > 0 ? '▲' : '▼'} ${(Math.abs(s.edge)*100).toFixed(1)}%</span>`;
-  }), ...markets.slice(0,5).map(m => {
-    return `<span class="item flat">${m.name.slice(0,30)} ${(m.price*100).toFixed(0)}¢</span>`;
-  })];
-  // Duplicate for seamless scroll
-  document.getElementById('tickerContent').innerHTML = items.join('') + items.join('');
-}
+// ── Demo data (when bot not connected) ──
+function loadDemoData() {
+  const demoSignals = [
+    {direction:'buy_yes',description:'Will Trump win the 2028 Presidential Election?',edge:0.152,confidence:0.78,marketProb:0.38},
+    {direction:'buy_no',description:'China invades Taiwan before GTA VI?',edge:-0.465,confidence:0.85,marketProb:0.52},
+    {direction:'buy_yes',description:'BitBoy convicted?',edge:0.538,confidence:0.72,marketProb:0.11},
+    {direction:'buy_yes',description:'GTA VI released before June 2026?',edge:0.578,confidence:0.80,marketProb:0.02},
+    {direction:'buy_no',description:'Will Poland qualify for 2026 FIFA World Cup?',edge:-0.080,confidence:0.65,marketProb:0.38},
+    {direction:'buy_yes',description:'Will Edmonton Oilers win 2026 NHL Stanley Cup?',edge:0.085,confidence:0.60,marketProb:0.07},
+    {direction:'buy_yes',description:'New Rihanna Album before GTA VI?',edge:0.045,confidence:0.62,marketProb:0.56},
+    {direction:'buy_yes',description:'Will Mexico win 2026 FIFA World Cup?',edge:0.060,confidence:0.55,marketProb:0.01},
+  ];
+  renderSignals(demoSignals);
+  document.getElementById('d-capital').textContent = '$500';
+  document.getElementById('d-trades').textContent = '0';
+  document.getElementById('ctl-label').textContent = 'Demo mode — connect bot in Settings';
+  document.getElementById('ctl-mode').textContent = 'Demo';
 
-function renderChart() {
-  // Generate demo P&L bars for 30 days
+  // Demo chart
   const bars = [];
-  for (let i = 0; i < 30; i++) {
-    const val = (Math.random() - 0.4) * 20; // Slight positive bias
-    bars.push(val);
-  }
-  const maxAbs = Math.max(...bars.map(Math.abs), 1);
-  document.getElementById('pnlChart').innerHTML = bars.map(v => {
-    const h = Math.max(4, Math.abs(v) / maxAbs * 70);
-    const cls = v < 0 ? 'neg' : '';
-    return `<div class="bar ${cls}" style="height:${h}px" title="$${v.toFixed(2)}"></div>`;
+  for(let i=0;i<30;i++) bars.push((Math.random()-0.4)*15);
+  const mx = Math.max(...bars.map(Math.abs),1);
+  document.getElementById('d-chart').innerHTML = bars.map(v => {
+    const h = Math.max(4, Math.abs(v)/mx*90);
+    return `<div class="bar ${v<0?'neg':'pos'}" style="height:${h}px" title="$${v.toFixed(2)}"></div>`;
   }).join('');
 }
 
-// ── Countdown timer ──
-let countdown = 15 * 60;
-setInterval(() => {
-  countdown--;
-  if (countdown <= 0) countdown = 15 * 60;
-  const min = Math.floor(countdown / 60);
-  const sec = countdown % 60;
-  document.getElementById('s-next').textContent = `${min}:${String(sec).padStart(2,'0')}`;
-}, 1000);
+// ── Logs ──
+function refreshLogs() { toast('Fetching logs...'); }
+function clearLogs() { document.getElementById('log-container').innerHTML = ''; toast('Logs cleared'); }
+
+// ── Countdown ──
+let cd = 15*60;
+setInterval(() => { cd--; if(cd<=0)cd=15*60; document.getElementById('d-next').textContent = `${Math.floor(cd/60)}:${String(cd%60).padStart(2,'0')}`; }, 1000);
 
 // ── Init ──
-renderSignals(DEMO_SIGNALS);
-renderTrades(DEMO_TRADES);
-renderMarkets(DEMO_MARKETS);
-renderTicker(DEMO_SIGNALS, DEMO_MARKETS);
-renderChart();
-
-// Stats
-document.getElementById('s-capital').textContent = '$500';
-document.getElementById('s-trades').textContent = DEMO_TRADES.length;
-document.getElementById('s-winrate').textContent = '--';
-document.getElementById('s-brier').textContent = '--';
-document.getElementById('h-tier').textContent = 'PRO';
-document.getElementById('h-cycle').textContent = '#1';
-document.getElementById('f-license').textContent = 'License: PRO | 29 days remaining';
-
-// ── WebSocket / API integration placeholder ──
-// When backend is running, replace demo data with:
-// fetch('/api/signals').then(r => r.json()).then(renderSignals);
-// fetch('/api/trades').then(r => r.json()).then(renderTrades);
-// new WebSocket('ws://localhost:3000/ws').onmessage = (e) => { ... };
+const cfg = loadSettings();
+if (cfg.api) connectBot(cfg);
+else loadDemoData();
 </script>
 </body>
 </html>
