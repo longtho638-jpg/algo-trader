@@ -11,8 +11,23 @@ algo-trade RaaS Platform
 │
 ├── Agent Dispatcher (src/agents/)
 │   ├─ AgentDispatcher (routes CLI commands → agents)
-│   ├─ AgentBase interface + registry
-│   └─ 7 Specialist Agents (scanner, monitor, estimate, risk, calibrate, report, doctor)
+│   ├─ SpecialistAgent interface + command registry
+│   ├─ 7 System Agents (scanner, monitor, estimate, risk, calibrate, report, doctor)
+│   └─ 9 Dark Edge Agents (P1-P3 tier arbitrage/momentum detection)
+│
+├── Dark Edge Layer (High-Edge Opportunities)
+│   ├─ P1 Tier (Highest Edge)
+│   │   ├─ NegRiskScanAgent — YES sum != $1.00 arbitrage detection
+│   │   ├─ EndgameAgent — Near-certain outcomes in resolving-soon markets
+│   │   ├─ ResolutionArbAgent — UMA oracle challenge window trading
+│   │   └─ WhaleWatchAgent — On-chain whale monitoring (Polygon CTF)
+│   ├─ P2 Tier (Good Edge)
+│   │   ├─ EventClusterAgent — Cross-market correlation detection
+│   │   ├─ VolumeAlertAgent — Volume/liquidity anomalies
+│   │   └─ SplitMergeArbAgent — YES+NO vs $1.00 split/merge arb
+│   └─ P3 Tier (Momentum/Sentiment)
+│       ├─ NewsSniperAgent — News-driven momentum detection
+│       └─ ContrarianAgent — Herding behavior contrarian trades
 │
 ├── API Server (src/api/)
 │   ├─ HTTP server (Node.js native)
@@ -199,6 +214,7 @@ Data:
 | dex | 3 | evm-client, solana-client, swap-router |
 | analytics | 3 | performance-metrics, report-exporter, tax-reporter |
 | scheduler | 3 | job-scheduler, job-registry, job-history |
+| agents | 16 | dispatcher, command-registry, base (7 system + 9 dark edge agents) |
 | scripts | 2 | check-batch-resolutions (monitor Polymarket outcomes) |
 | lib | 1 | llm-response-parser (DeepSeek R1 think block handling) |
 

@@ -149,11 +149,29 @@ Essential infrastructure modules:
 - `llm-response-parser.ts` — Extract JSON from LLM responses, strip DeepSeek R1 think blocks
 
 **Agents** (src/agents/):
-- `base.ts` — AgentBase interface + AgentResult type definition
-- `dispatcher.ts` — AgentDispatcher (routes CLI → specialist agents)
-- `registry.ts` — Dynamic command registry
-- `scanner.ts`, `monitor.ts`, `estimate.ts`, `risk.ts`, `calibrate.ts`, `report.ts`, `doctor.ts` — 7 specialist agents
-- Commands: `scan`, `monitor`, `estimate`, `risk`, `calibrate`, `report`, `doctor`, `agents`
+- `agent-base.ts` — SpecialistAgent interface + AgentTask/AgentResult types
+- `agent-dispatcher.ts` — AgentDispatcher (routes CLI → specialist agents)
+- `command-registry.ts` — Dynamic command registration via registerCommand()
+
+**Core Agents**:
+- `scanner-agent.ts`, `monitor-agent.ts`, `estimate-agent.ts`, `risk-agent.ts`, `calibrate-agent.ts`, `report-agent.ts`, `doctor-agent.ts` — 7 system agents
+
+**Dark Edge Agents (P1-P3 Tier)**:
+- **P1 (Highest Edge)**:
+  - `neg-risk-scan-agent.ts` — NegRiskScanAgent — Scan multi-outcome events for YES sum arbitrage
+  - `endgame-agent.ts` — EndgameAgent — Trading near-certain outcomes in resolving-soon markets
+  - `resolution-arb-agent.ts` — ResolutionArbAgent — UMA oracle challenge window trading
+  - `whale-watch-agent.ts` — WhaleWatchAgent — Polygon CTF on-chain whale monitoring (Polygon RPC)
+- **P2 (Good Edge)**:
+  - `event-cluster-agent.ts` — EventClusterAgent — Cross-market correlation detection within events
+  - `volume-alert-agent.ts` — VolumeAlertAgent — Volume/liquidity anomaly detection
+  - `split-merge-arb-agent.ts` — SplitMergeArbAgent — YES+NO vs $1.00 split/merge arbitrage
+- **P3 (Momentum/Sentiment)**:
+  - `news-snipe-agent.ts` — NewsSniperAgent — News-driven momentum detection
+  - `contrarian-agent.ts` — ContrarianAgent — Herding behavior contrarian opportunities
+
+**Total**: 16 agents, 22+ CLI commands
+**Data Sources**: Gamma API (most agents), Polygon RPC (whale-watch), ethers.js (whale-watch)
 
 **CLI** (src/cli/):
 - `index.ts` — Main CLI entry point (Commander.js + AgentDispatcher)
