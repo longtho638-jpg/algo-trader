@@ -668,7 +668,7 @@ journalctl -u algotrade -f</code>
     <div class="card">
       <div class="card-header">Bot Connection</div>
       <div class="card-body">
-        <div class="form-group"><label>Bot API URL</label><input id="cfg-api" placeholder="http://your-vps-ip:3000" value=""></div>
+        <div class="form-group"><label>Bot API URL</label><input id="cfg-api" placeholder="https://api.cashclaw.cc" value="https://api.cashclaw.cc"></div>
         <div class="form-group"><label>License Key</label><input id="cfg-license" type="password" placeholder="Paste your license key"></div>
         <div class="form-group"><label>License Secret</label><input id="cfg-secret" type="password" placeholder="Provided by admin"></div>
         <button class="btn btn-primary" onclick="saveSettings()">Save & Connect</button>
@@ -1117,8 +1117,8 @@ applyLang();
 
 // ── Init ──
 const cfg = loadSettings();
-if (cfg.api) connectBot(cfg);
-else loadDemoData();
+if (!cfg.api) cfg.api = 'https://api.cashclaw.cc';
+connectBot(cfg);
 </script>
 </body>
 </html>
