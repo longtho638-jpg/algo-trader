@@ -2,6 +2,7 @@
 // Tables: trades, positions, pnl_snapshots, strategy_state
 
 import Database from 'better-sqlite3';
+import { mkdirSync } from 'node:fs';
 import type { TradeResult, Position, PnlSnapshot } from '../core/types.js';
 
 export interface TradeRow {
@@ -62,6 +63,8 @@ export class AlgoDatabase {
   private stmtUpsertState!: Database.Statement;
 
   constructor(dbPath: string) {
+    const dir = dbPath.includes('/') ? dbPath.slice(0, dbPath.lastIndexOf('/')) : '.';
+    if (dir && dir !== '.') mkdirSync(dir, { recursive: true });
     this.db = new Database(dbPath);
     this.db.exec(SCHEMA_SQL);
     this.stmtInsertTrade = this.db.prepare(

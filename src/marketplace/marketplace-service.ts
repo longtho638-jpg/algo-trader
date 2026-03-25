@@ -3,6 +3,7 @@
 // Revenue split: 70% creator / 30% platform
 
 import Database from 'better-sqlite3';
+import { mkdirSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
 export type MarketplaceCategory = 'polymarket' | 'crypto' | 'forex' | 'equities' | 'other';
@@ -89,6 +90,8 @@ export class MarketplaceService {
   private db: Database.Database;
 
   constructor(dbPath = 'data/algo-trade.db') {
+    const dir = dbPath.includes('/') ? dbPath.slice(0, dbPath.lastIndexOf('/')) : '.';
+    if (dir && dir !== '.') mkdirSync(dir, { recursive: true });
     this.db = new Database(dbPath);
     this.db.exec(SCHEMA_SQL);
   }
