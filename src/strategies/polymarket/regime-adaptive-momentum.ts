@@ -1,86 +1,78 @@
 /**
  * Regime-Adaptive Momentum strategy for Polymarket binary markets.
  *
- * Integrates the MarketRegimeDetector (ADX + ATR) with multi-timeframe
- * momentum and pullback detection to adapt entry/exit logic per regime:
+ * The first strategy to leverage market regime detection. Adapts momentum
+ * trading behavior based on the current market regime (trending, ranging,
+ * volatile).
  *
- *   trending-up:   buy YES on pullback (RSI dip in uptrend)
- *   trending-down:  buy NO on pullback (RSI spike in downtrend)
- *   ranging:        fall back to OBI + z-score mean reversion
- *   volatile:       reduced size, only high-confidence pullbacks
- *   unknown:        skip (insufficient data)
+ * Regime detection (ADX-inspired):
+ *   trendStrength = |SMA_short - SMA_long| / ATR_long
+ *   If trendStrength > 1.5 → trending
+ *   If ATR_short / ATR_long > 2.0 → volatile
+ *   Otherwise → ranging
  *
- * Multi-timeframe confluence:
- *   m5  = 5-tick momentum   (short-term)
- *   m15 = 15-tick momentum  (medium-term)
- *   m30 = 30-tick momentum  (longer-term bias)
- *   RSI(7) on last 14 ticks for pullback detection
+ * Entry signals per regime:
+ *   Trending:  Momentum pullback entry (bottom 30% of range, above SMA_long)
+ *   Ranging:   Mean reversion via OBI (order book imbalance)
+ *   Volatile:  Strict pullback (trendStrength > 2.0, bottom 20%)
+ *
+ * Exit conditions:
+ *   Take-profit / stop-loss (regime-dependent)
+ *   Max hold time (8 min)
+ *   Regime shift exit: if regime changes AND trend reverses against position
  */
-import type { ClobClient, RawOrderBook, OrderBookLevel } from '../../polymarket/clob-client.js';
+import type { ClobClient, RawOrderBook } from '../../polymarket/clob-client.js';
 import type { OrderManager } from '../../polymarket/order-manager.js';
 import type { EventBus } from '../../events/event-bus.js';
 import type { GammaClient, GammaMarket } from '../../polymarket/gamma-client.js';
-import type { KellyPositionSizer } from '../../polymarket/kelly-position-sizer.js';
 import type { StrategyName } from '../../core/types.js';
-import { MarketRegimeDetector, type MarketRegime } from '../../trading-room/market-regime-detector.js';
 import { logger } from '../../core/logger.js';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
-export interface RegimeAdaptiveConfig {
-  /** Min price ticks needed before regime detection (ADX needs 29+) */
-  minPriceTicks: number;
-  /** RSI period for pullback detection */
-  rsiPeriod: number;
-  /** RSI oversold threshold (pullback in uptrend) */
-  rsiOversold: number;
-  /** RSI overbought threshold (pullback in downtrend) */
-  rsiOverbought: number;
-  /** Min 15-tick momentum magnitude for trend confirmation */
-  minTrendMomentum: number;
-  /** OBI threshold for ranging regime fallback */
-  obiThreshold: number;
-  /** Z-score threshold for ranging regime fallback */
-  zScoreThreshold: number;
-  /** OBI depth levels for ranging fallback */
-  obiDepthLevels: number;
-  /** Base trade size in USDC */
-  sizeUsdc: number;
-  /** Max concurrent positions */
+export interface RegimeAdaptiveMomentumConfig {
+  shortWindow: number;
+  longWindow: number;
+  trendThreshold: number;
+  volatileAtrRatio: number;
+  trendingPullbackPct: number;
+  volatilePullbackPct: number;
+  obiEntryThreshold: number;
+  baseSizeUsdc: number;
   maxPositions: number;
-  /** Base take-profit (scaled per regime) */
-  takeProfitPct: number;
-  /** Base stop-loss (scaled per regime) */
+  trendingTpPct: number;
+  rangingTpPct: number;
+  volatileTpPct: number;
   stopLossPct: number;
-  /** Max hold time in ms */
   maxHoldMs: number;
-  /** Per-market cooldown after exit (ms) */
   cooldownMs: number;
-  /** Max markets to scan per tick */
   scanLimit: number;
 }
 
-const DEFAULT_CONFIG: RegimeAdaptiveConfig = {
-  minPriceTicks: 30,
-  rsiPeriod: 7,
-  rsiOversold: 35,
-  rsiOverbought: 65,
-  minTrendMomentum: 0.02,
-  obiThreshold: 0.3,
-  zScoreThreshold: 1.5,
-  obiDepthLevels: 5,
-  sizeUsdc: 30,
-  maxPositions: 5,
-  takeProfitPct: 0.03,
+const DEFAULT_CONFIG: RegimeAdaptiveMomentumConfig = {
+  shortWindow: 10,
+  longWindow: 30,
+  trendThreshold: 1.5,
+  volatileAtrRatio: 2.0,
+  trendingPullbackPct: 0.30,
+  volatilePullbackPct: 0.20,
+  obiEntryThreshold: 2.0,
+  baseSizeUsdc: 25,
+  maxPositions: 3,
+  trendingTpPct: 0.05,
+  rangingTpPct: 0.03,
+  volatileTpPct: 0.025,
   stopLossPct: 0.02,
-  maxHoldMs: 12 * 60_000,
-  cooldownMs: 90_000,
+  maxHoldMs: 8 * 60_000,
+  cooldownMs: 120_000,
   scanLimit: 15,
 };
 
 const STRATEGY_NAME: StrategyName = 'regime-adaptive-momentum';
 
 // ── Internal types ───────────────────────────────────────────────────────────
+
+type Regime = 'trending' | 'ranging' | 'volatile';
 
 interface PriceTick {
   price: number;
@@ -92,116 +84,87 @@ interface OpenPosition {
   conditionId: string;
   side: 'yes' | 'no';
   entryPrice: number;
-  entryRegime: MarketRegime;
   sizeUsdc: number;
   orderId: string;
   openedAt: number;
-  takeProfitPct: number;
-  stopLossPct: number;
+  entryRegime: Regime;
+  trendDir: 'up' | 'down';
 }
 
 // ── Pure helpers (exported for testing) ──────────────────────────────────────
 
-/** Compute RSI (Relative Strength Index) from price array. */
-export function calcRSI(prices: number[], period: number): number {
-  if (prices.length < period + 1) return 50; // neutral default
+/** Simple moving average. Returns 0 for empty array. */
+export function calcSMA(prices: number[]): number {
+  if (prices.length === 0) return 0;
+  return prices.reduce((s, p) => s + p, 0) / prices.length;
+}
 
-  let avgGain = 0;
-  let avgLoss = 0;
-
-  // Initial averages
-  for (let i = 1; i <= period; i++) {
-    const change = prices[i] - prices[i - 1];
-    if (change > 0) avgGain += change;
-    else avgLoss += Math.abs(change);
+/**
+ * Compute Average True Range: average |price[i] - price[i-1]| over the prices.
+ * Returns 0 if fewer than 2 prices.
+ */
+function calcATR(prices: number[]): number {
+  if (prices.length < 2) return 0;
+  let sum = 0;
+  for (let i = 1; i < prices.length; i++) {
+    sum += Math.abs(prices[i] - prices[i - 1]);
   }
-  avgGain /= period;
-  avgLoss /= period;
-
-  // Smoothed averages
-  for (let i = period + 1; i < prices.length; i++) {
-    const change = prices[i] - prices[i - 1];
-    if (change > 0) {
-      avgGain = (avgGain * (period - 1) + change) / period;
-      avgLoss = (avgLoss * (period - 1)) / period;
-    } else {
-      avgGain = (avgGain * (period - 1)) / period;
-      avgLoss = (avgLoss * (period - 1) + Math.abs(change)) / period;
-    }
-  }
-
-  if (avgLoss === 0) return 100;
-  const rs = avgGain / avgLoss;
-  return 100 - 100 / (1 + rs);
+  return sum / (prices.length - 1);
 }
 
-/** Compute momentum as fractional price change over n ticks. */
-export function calcMomentum(prices: number[], lookback: number): number {
-  if (prices.length < lookback + 1) return 0;
-  const old = prices[prices.length - 1 - lookback];
-  const current = prices[prices.length - 1];
-  if (old === 0) return 0;
-  return (current - old) / old;
+/**
+ * Detect market regime based on short and long price arrays.
+ *   trendStrength = |SMA_short - SMA_long| / ATR_long
+ *   If trendStrength > 1.5 → trending
+ *   If ATR_short / ATR_long > 2.0 → volatile
+ *   Otherwise → ranging
+ */
+export function detectRegime(shortPrices: number[], longPrices: number[]): Regime {
+  if (shortPrices.length < 2 || longPrices.length < 2) return 'ranging';
+
+  const smaShort = calcSMA(shortPrices);
+  const smaLong = calcSMA(longPrices);
+  const atrLong = calcATR(longPrices);
+  const atrShort = calcATR(shortPrices);
+
+  if (atrLong <= 0) return 'ranging';
+
+  const trendStrength = Math.abs(smaShort - smaLong) / atrLong;
+  if (trendStrength > 1.5) return 'trending';
+
+  if (atrShort / atrLong > 2.0) return 'volatile';
+
+  return 'ranging';
 }
 
-/** Compute OBI from raw orderbook. */
-export function calcOBI(book: RawOrderBook, depthLevels: number): number {
-  const sumVolume = (levels: OrderBookLevel[], n: number): number => {
-    let total = 0;
-    const limit = Math.min(n, levels.length);
-    for (let i = 0; i < limit; i++) total += parseFloat(levels[i].size);
-    return total;
-  };
-  const bidVol = sumVolume(book.bids, depthLevels);
-  const askVol = sumVolume(book.asks, depthLevels);
-  const total = bidVol + askVol;
-  if (total === 0) return 0;
-  return (bidVol - askVol) / total;
+/**
+ * Pullback depth: where the current price sits within the recent range.
+ * Returns 0 = at bottom, 1 = at top. Returns 0.5 if range is 0.
+ */
+export function calcPullbackDepth(prices: number[], current: number): number {
+  if (prices.length === 0) return 0.5;
+  const min = Math.min(...prices);
+  const max = Math.max(...prices);
+  if (max === min) return 0.5;
+  return (current - min) / (max - min);
 }
 
-/** Compute z-score of latest price vs rolling window. */
-export function calcZScore(prices: number[]): number {
-  if (prices.length < 3) return 0;
-  const n = prices.length;
-  const mean = prices.reduce((s, p) => s + p, 0) / n;
-  const variance = prices.reduce((s, p) => s + (p - mean) ** 2, 0) / n;
-  const std = Math.sqrt(variance);
-  if (std === 0) return 0;
-  return (prices[n - 1] - mean) / std;
+/**
+ * Order Book Imbalance: bid_volume / ask_volume.
+ * Returns 1.0 if either side is empty.
+ */
+export function calcOBI(book: RawOrderBook): number {
+  let bidVol = 0;
+  let askVol = 0;
+  for (const b of book.bids) bidVol += parseFloat(b.size);
+  for (const a of book.asks) askVol += parseFloat(a.size);
+  if (askVol <= 0 || bidVol <= 0) return 1.0;
+  return bidVol / askVol;
 }
 
-/** Detect pullback: short-term counter-move within a longer trend. */
-export function detectPullback(
-  rsi: number,
-  m15: number,
-  rsiOversold: number,
-  rsiOverbought: number,
-  minMomentum: number,
-): 'bullish-pullback' | 'bearish-pullback' | 'none' {
-  // Uptrend (m15 positive) + RSI oversold → bullish pullback (buy dip)
-  if (m15 > minMomentum && rsi < rsiOversold) return 'bullish-pullback';
-  // Downtrend (m15 negative) + RSI overbought → bearish pullback (sell rip)
-  if (m15 < -minMomentum && rsi > rsiOverbought) return 'bearish-pullback';
-  return 'none';
-}
-
-/** Get regime-specific position size multiplier and TP/SL scaling. */
-export function getRegimeParams(regime: MarketRegime, baseTP: number, baseSL: number): {
-  sizeMultiplier: number;
-  takeProfitPct: number;
-  stopLossPct: number;
-} {
-  switch (regime) {
-    case 'trending-up':
-    case 'trending-down':
-      return { sizeMultiplier: 1.2, takeProfitPct: baseTP * 1.3, stopLossPct: baseSL };
-    case 'ranging':
-      return { sizeMultiplier: 0.9, takeProfitPct: baseTP * 0.8, stopLossPct: baseSL * 0.8 };
-    case 'volatile':
-      return { sizeMultiplier: 0.5, takeProfitPct: baseTP * 0.7, stopLossPct: baseSL * 1.3 };
-    default:
-      return { sizeMultiplier: 0, takeProfitPct: baseTP, stopLossPct: baseSL };
-  }
+/** Determine trend direction from short and long SMAs. */
+export function calcTrendDirection(shortSMA: number, longSMA: number): 'up' | 'down' {
+  return shortSMA >= longSMA ? 'up' : 'down';
 }
 
 /** Extract best bid/ask/mid from raw order book. */
@@ -213,21 +176,19 @@ function bestBidAsk(book: RawOrderBook): { bid: number; ask: number; mid: number
 
 // ── Dependencies ─────────────────────────────────────────────────────────────
 
-export interface RegimeAdaptiveDeps {
+export interface RegimeAdaptiveMomentumDeps {
   clob: ClobClient;
   orderManager: OrderManager;
   eventBus: EventBus;
   gamma: GammaClient;
-  kellySizer?: KellyPositionSizer;
-  config?: Partial<RegimeAdaptiveConfig>;
+  config?: Partial<RegimeAdaptiveMomentumConfig>;
 }
 
 // ── Tick factory ─────────────────────────────────────────────────────────────
 
-export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveDeps): () => Promise<void> {
-  const { clob, orderManager, eventBus, gamma, kellySizer } = deps;
-  const cfg: RegimeAdaptiveConfig = { ...DEFAULT_CONFIG, ...deps.config };
-  const detector = new MarketRegimeDetector();
+export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveMomentumDeps): () => Promise<void> {
+  const { clob, orderManager, eventBus, gamma } = deps;
+  const cfg: RegimeAdaptiveMomentumConfig = { ...DEFAULT_CONFIG, ...deps.config };
 
   // Per-market state
   const priceHistory = new Map<string, PriceTick[]>();
@@ -236,28 +197,44 @@ export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveDeps): () =
 
   // ── Helpers ──────────────────────────────────────────────────────────────
 
-  function recordPrice(tokenId: string, price: number): void {
+  function recordTick(tokenId: string, price: number): void {
     let history = priceHistory.get(tokenId);
     if (!history) {
       history = [];
       priceHistory.set(tokenId, history);
     }
     history.push({ price, timestamp: Date.now() });
-    if (history.length > cfg.minPriceTicks * 3) {
-      history.splice(0, history.length - cfg.minPriceTicks * 3);
+    const maxTicks = cfg.longWindow * 3;
+    if (history.length > maxTicks) {
+      history.splice(0, history.length - maxTicks);
     }
   }
 
-  function getPrices(tokenId: string): number[] {
-    return (priceHistory.get(tokenId) ?? []).map(t => t.price);
+  function getPrices(tokenId: string, count: number): number[] {
+    const history = priceHistory.get(tokenId);
+    if (!history) return [];
+    return history.slice(-count).map(t => t.price);
   }
 
   function isOnCooldown(tokenId: string): boolean {
-    return Date.now() < (cooldowns.get(tokenId) ?? 0);
+    const until = cooldowns.get(tokenId) ?? 0;
+    return Date.now() < until;
   }
 
   function hasPosition(tokenId: string): boolean {
     return positions.some(p => p.tokenId === tokenId);
+  }
+
+  function getTpPct(regime: Regime): number {
+    if (regime === 'trending') return cfg.trendingTpPct;
+    if (regime === 'volatile') return cfg.volatileTpPct;
+    return cfg.rangingTpPct;
+  }
+
+  function getSizeMultiplier(regime: Regime): number {
+    if (regime === 'trending') return 1.2;
+    if (regime === 'volatile') return 0.5;
+    return 0.9;
   }
 
   // ── Exit logic ─────────────────────────────────────────────────────────
@@ -274,45 +251,33 @@ export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveDeps): () =
       let currentPrice: number;
       try {
         const book = await clob.getOrderBook(pos.tokenId);
-        currentPrice = bestBidAsk(book).mid;
-        recordPrice(pos.tokenId, currentPrice);
+        const ba = bestBidAsk(book);
+        currentPrice = ba.mid;
+        recordTick(pos.tokenId, currentPrice);
       } catch {
         continue;
       }
 
-      // TP / SL (using per-position regime-scaled thresholds)
+      const tpPct = getTpPct(pos.entryRegime);
+
+      // Take profit / Stop loss
       if (pos.side === 'yes') {
         const gain = (currentPrice - pos.entryPrice) / pos.entryPrice;
-        if (gain >= pos.takeProfitPct) {
+        if (gain >= tpPct) {
           shouldExit = true;
           reason = `take-profit (${(gain * 100).toFixed(2)}%)`;
-        } else if (-gain >= pos.stopLossPct) {
+        } else if (-gain >= cfg.stopLossPct) {
           shouldExit = true;
           reason = `stop-loss (${(gain * 100).toFixed(2)}%)`;
         }
       } else {
         const gain = (pos.entryPrice - currentPrice) / pos.entryPrice;
-        if (gain >= pos.takeProfitPct) {
+        if (gain >= tpPct) {
           shouldExit = true;
           reason = `take-profit (${(gain * 100).toFixed(2)}%)`;
-        } else if (-gain >= pos.stopLossPct) {
+        } else if (-gain >= cfg.stopLossPct) {
           shouldExit = true;
           reason = `stop-loss (${(gain * 100).toFixed(2)}%)`;
-        }
-      }
-
-      // Regime shift exit: if regime changed to opposite direction
-      if (!shouldExit) {
-        const prices = getPrices(pos.tokenId);
-        if (prices.length >= cfg.minPriceTicks) {
-          const regime = detector.detectRegime(prices);
-          if (pos.side === 'yes' && regime.regime === 'trending-down') {
-            shouldExit = true;
-            reason = `regime shift (${pos.entryRegime} → ${regime.regime})`;
-          } else if (pos.side === 'no' && regime.regime === 'trending-up') {
-            shouldExit = true;
-            reason = `regime shift (${pos.entryRegime} → ${regime.regime})`;
-          }
         }
       }
 
@@ -320,6 +285,28 @@ export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveDeps): () =
       if (!shouldExit && now - pos.openedAt > cfg.maxHoldMs) {
         shouldExit = true;
         reason = 'max hold time';
+      }
+
+      // Regime shift exit: if regime changed AND trend reversed against position
+      if (!shouldExit) {
+        const shortP = getPrices(pos.tokenId, cfg.shortWindow);
+        const longP = getPrices(pos.tokenId, cfg.longWindow);
+        if (shortP.length >= 2 && longP.length >= 2) {
+          const currentRegime = detectRegime(shortP, longP);
+          const smaShort = calcSMA(shortP);
+          const smaLong = calcSMA(longP);
+          const currentDir = calcTrendDirection(smaShort, smaLong);
+
+          if (currentRegime !== pos.entryRegime) {
+            const againstPosition =
+              (pos.side === 'yes' && currentDir === 'down') ||
+              (pos.side === 'no' && currentDir === 'up');
+            if (againstPosition) {
+              shouldExit = true;
+              reason = `regime shift (${pos.entryRegime} → ${currentRegime}) + trend reversal`;
+            }
+          }
+        }
       }
 
       if (shouldExit) {
@@ -340,7 +327,6 @@ export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveDeps): () =
           logger.info('Exit position', STRATEGY_NAME, {
             conditionId: pos.conditionId,
             side: pos.side,
-            regime: pos.entryRegime,
             pnl: pnl.toFixed(4),
             reason,
           });
@@ -388,63 +374,56 @@ export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveDeps): () =
         const ba = bestBidAsk(book);
         if (ba.mid <= 0 || ba.mid >= 1) continue;
 
-        recordPrice(market.yesTokenId, ba.mid);
-        const prices = getPrices(market.yesTokenId);
-        if (prices.length < cfg.minPriceTicks) continue;
+        recordTick(market.yesTokenId, ba.mid);
 
-        // Detect regime
-        const regime = detector.detectRegime(prices);
-        if (regime.regime === 'unknown') continue;
+        const shortPrices = getPrices(market.yesTokenId, cfg.shortWindow);
+        const longPrices = getPrices(market.yesTokenId, cfg.longWindow);
 
-        // Compute signals
-        const rsi = calcRSI(prices, cfg.rsiPeriod);
-        const m5 = calcMomentum(prices, 5);
-        const m15 = calcMomentum(prices, 15);
+        if (shortPrices.length < cfg.shortWindow) continue;
+        if (longPrices.length < cfg.longWindow) continue;
 
-        // Get regime-specific parameters
-        const regimeParams = getRegimeParams(regime.regime, cfg.takeProfitPct, cfg.stopLossPct);
-        if (regimeParams.sizeMultiplier === 0) continue; // unknown → skip
+        const regime = detectRegime(shortPrices, longPrices);
+        const smaShort = calcSMA(shortPrices);
+        const smaLong = calcSMA(longPrices);
+        const trendDir = calcTrendDirection(smaShort, smaLong);
+        const currentPrice = ba.mid;
 
         let side: 'yes' | 'no' | null = null;
 
-        if (regime.regime === 'trending-up' || regime.regime === 'trending-down') {
-          // Momentum + pullback confluence
-          const pullback = detectPullback(rsi, m15, cfg.rsiOversold, cfg.rsiOverbought, cfg.minTrendMomentum);
-
-          if (pullback === 'bullish-pullback' && m5 > -0.005) {
-            // Uptrend pullback with short-term stabilization → buy YES
+        if (regime === 'trending') {
+          // Momentum pullback: price in bottom 30% of recent short range but above SMA_long
+          const depth = calcPullbackDepth(shortPrices, currentPrice);
+          if (depth <= cfg.trendingPullbackPct && currentPrice > smaLong) {
+            side = trendDir === 'up' ? 'yes' : 'no';
+          }
+        } else if (regime === 'ranging') {
+          // Mean reversion via OBI
+          const obi = calcOBI(book);
+          if (obi > cfg.obiEntryThreshold) {
             side = 'yes';
-          } else if (pullback === 'bearish-pullback' && m5 < 0.005) {
-            // Downtrend pullback with short-term stabilization → buy NO
+          } else if (obi < 1 / cfg.obiEntryThreshold) {
             side = 'no';
           }
-        } else if (regime.regime === 'ranging') {
-          // Mean reversion fallback: OBI + z-score
-          const obi = calcOBI(book, cfg.obiDepthLevels);
-          const z = calcZScore(prices.slice(-20));
-
-          if (z < -cfg.zScoreThreshold && obi > cfg.obiThreshold) {
-            side = 'yes';
-          } else if (z > cfg.zScoreThreshold && obi < -cfg.obiThreshold) {
-            side = 'no';
+        } else if (regime === 'volatile') {
+          // Strict pullback: need stronger trend + deeper pullback
+          const atrLong = calcATR(longPrices);
+          const trendStrength = atrLong > 0 ? Math.abs(smaShort - smaLong) / atrLong : 0;
+          if (trendStrength > 2.0) {
+            const depth = calcPullbackDepth(shortPrices, currentPrice);
+            if (depth <= cfg.volatilePullbackPct && currentPrice > smaLong) {
+              side = trendDir === 'up' ? 'yes' : 'no';
+            }
           }
-        } else if (regime.regime === 'volatile') {
-          // Only high-confidence pullbacks in volatile markets
-          const pullback = detectPullback(rsi, m15, cfg.rsiOversold - 10, cfg.rsiOverbought + 10, cfg.minTrendMomentum * 2);
-
-          if (pullback === 'bullish-pullback') side = 'yes';
-          else if (pullback === 'bearish-pullback') side = 'no';
         }
 
         if (!side) continue;
 
-        const tokenId = side === 'yes' ? market.yesTokenId : (market.noTokenId ?? market.yesTokenId);
+        const tokenId = side === 'yes'
+          ? market.yesTokenId
+          : (market.noTokenId ?? market.yesTokenId);
         const entryPrice = side === 'yes' ? ba.ask : (1 - ba.bid);
-
-        const baseSize = kellySizer
-          ? kellySizer.getSize(STRATEGY_NAME).size
-          : cfg.sizeUsdc;
-        const posSize = baseSize * regimeParams.sizeMultiplier;
+        const sizeMultiplier = getSizeMultiplier(regime);
+        const posSize = cfg.baseSizeUsdc * sizeMultiplier;
 
         const order = await orderManager.placeOrder({
           tokenId,
@@ -459,26 +438,20 @@ export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveDeps): () =
           conditionId: market.conditionId,
           side,
           entryPrice,
-          entryRegime: regime.regime,
           sizeUsdc: posSize,
           orderId: order.id,
           openedAt: Date.now(),
-          takeProfitPct: regimeParams.takeProfitPct,
-          stopLossPct: regimeParams.stopLossPct,
+          entryRegime: regime,
+          trendDir,
         });
 
         logger.info('Entry position', STRATEGY_NAME, {
           conditionId: market.conditionId,
           side,
-          regime: regime.regime,
-          adx: regime.adx.toFixed(1),
-          rsi: rsi.toFixed(1),
-          m5: m5.toFixed(4),
-          m15: m15.toFixed(4),
           entryPrice: entryPrice.toFixed(4),
-          size: posSize.toFixed(2),
-          tp: regimeParams.takeProfitPct.toFixed(4),
-          sl: regimeParams.stopLossPct.toFixed(4),
+          regime,
+          trendDir,
+          size: posSize,
         });
 
         eventBus.emit('trade.executed', {
@@ -507,7 +480,9 @@ export function createRegimeAdaptiveMomentumTick(deps: RegimeAdaptiveDeps): () =
   return async function regimeAdaptiveMomentumTick(): Promise<void> {
     try {
       await checkExits();
+
       const markets = await gamma.getTrending(cfg.scanLimit);
+
       await scanEntries(markets);
 
       logger.debug('Tick complete', STRATEGY_NAME, {

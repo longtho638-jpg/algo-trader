@@ -16,6 +16,9 @@ import { createVolCompressionBreakoutTick } from '../strategies/polymarket/vol-c
 import { createWhaleTrackerTick } from '../strategies/polymarket/whale-tracker.js';
 import { createResolutionFrontrunnerTick } from '../strategies/polymarket/resolution-frontrunner.js';
 import { createMultiLegHedgeTick } from '../strategies/polymarket/multi-leg-hedge.js';
+import { createLiquidationCascadeTick } from '../strategies/polymarket/liquidation-cascade.js';
+import { createOrderFlowToxicityTick } from '../strategies/polymarket/order-flow-toxicity.js';
+import { createGammaScalpingTick } from '../strategies/polymarket/gamma-scalping.js';
 import type { MarketScanner } from '../polymarket/market-scanner.js';
 import type { OrderManager } from '../polymarket/order-manager.js';
 import type { OrderExecutor } from '../cex/order-executor.js';
@@ -90,13 +93,6 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
 
   if (clobClient && orderManager && gammaClient) {
     orc.register(
-      { id: 'regime-momentum', name: 'Regime-Adaptive Momentum', type: 'regime-momentum', enabled: false, params: {}, intervalMs: parseInt(env('REGIME_MOMENTUM_INTERVAL_MS', '15000'), 10) },
-      createRegimeAdaptiveMomentumTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
-    );
-  }
-
-  if (clobClient && orderManager && gammaClient) {
-    orc.register(
       { id: 'orderbook-depth', name: 'Orderbook Depth Ratio', type: 'orderbook-depth', enabled: false, params: {}, intervalMs: parseInt(env('ORDERBOOK_DEPTH_INTERVAL_MS', '10000'), 10) },
       createOrderbookDepthRatioTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
@@ -134,6 +130,34 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
     orc.register(
       { id: 'multi-leg-hedge', name: 'Multi-Leg Hedge', type: 'multi-leg-hedge', enabled: false, params: {}, intervalMs: parseInt(env('MULTI_LEG_HEDGE_INTERVAL_MS', '20000'), 10) },
       createMultiLegHedgeTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'regime-adaptive-momentum', name: 'Regime-Adaptive Momentum', type: 'regime-adaptive-momentum', enabled: false, params: {}, intervalMs: parseInt(env('REGIME_MOMENTUM_INTERVAL_MS', '10000'), 10) },
+      createRegimeAdaptiveMomentumTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'liquidation-cascade', name: 'Liquidation Cascade', type: 'liquidation-cascade', enabled: false, params: {}, intervalMs: parseInt(env('LIQUIDATION_CASCADE_INTERVAL_MS', '5000'), 10) },
+      createLiquidationCascadeTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'order-flow-toxicity', name: 'Order Flow Toxicity', type: 'order-flow-toxicity', enabled: false, params: {}, intervalMs: parseInt(env('ORDER_FLOW_TOXICITY_INTERVAL_MS', '8000'), 10) },
+      createOrderFlowToxicityTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'gamma-scalping', name: 'Gamma Scalping', type: 'gamma-scalping', enabled: false, params: {}, intervalMs: parseInt(env('GAMMA_SCALPING_INTERVAL_MS', '10000'), 10) },
+      createGammaScalpingTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
   }
 
