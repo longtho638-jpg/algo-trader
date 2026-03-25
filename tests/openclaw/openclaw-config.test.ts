@@ -4,7 +4,7 @@ import { loadOpenClawConfig } from '../../src/openclaw/openclaw-config.js';
 describe('loadOpenClawConfig', () => {
   const savedEnv: Record<string, string | undefined> = {};
   const envKeys = [
-    'OPENCLAW_GATEWAY_URL', 'OPENCLAW_API_KEY',
+    'OPENCLAW_GATEWAY_URL', 'OPENCLAW_SCANNER_URL', 'OPENCLAW_API_KEY',
     'OPENCLAW_MODEL_SIMPLE', 'OPENCLAW_MODEL_STANDARD', 'OPENCLAW_MODEL_COMPLEX',
     'OPENCLAW_TIMEOUT_MS',
   ];
@@ -25,8 +25,9 @@ describe('loadOpenClawConfig', () => {
 
   it('should return defaults when no env vars set', () => {
     const cfg = loadOpenClawConfig();
-    expect(cfg.gatewayUrl).toBe('http://localhost:11435/v1');
-    expect(cfg.routing.simple).toBe('mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit');
+    expect(cfg.gatewayUrl).toBe('http://192.168.11.111:11435/v1');
+    expect(cfg.scannerUrl).toBe('http://192.168.11.111:11436/v1');
+    expect(cfg.routing.simple).toBe('mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit');
     expect(cfg.routing.standard).toBe('mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit');
     expect(cfg.routing.complex).toBe('mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit');
     expect(cfg.timeout).toBe(120_000);
@@ -67,7 +68,7 @@ describe('loadOpenClawConfig', () => {
     process.env['OPENCLAW_MODEL_COMPLEX'] = 'claude-opus-4-6';
     const cfg = loadOpenClawConfig();
     expect(cfg.routing.complex).toBe('claude-opus-4-6');
-    expect(cfg.routing.simple).toBe('mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit'); // default
+    expect(cfg.routing.simple).toBe('mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit'); // default
     expect(cfg.routing.standard).toBe('mlx-community/DeepSeek-R1-Distill-Qwen-32B-4bit'); // default
   });
 });

@@ -72,10 +72,16 @@ export class AiRouter {
     return 'standard';
   }
 
-  /** Send a chat completion request to the OpenClaw gateway */
+  /** Resolve base URL: simple tasks → scanner (Nemotron), standard/complex → gateway (DeepSeek) */
+  private getBaseUrl(complexity: TaskComplexity): string {
+    return complexity === 'simple' ? this.config.scannerUrl : this.config.gatewayUrl;
+  }
+
+  /** Send a chat completion request to the appropriate MLX endpoint */
   async chat(request: AiRequest): Promise<AiResponse> {
     const model = this.getModel(request.complexity);
-    const url = `${this.config.gatewayUrl}/chat/completions`;
+    const baseUrl = this.getBaseUrl(request.complexity);
+    const url = `${baseUrl}/chat/completions`;
 
     const messages: ChatCompletionRequest['messages'] = [];
     if (request.systemPrompt) {

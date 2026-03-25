@@ -1,5 +1,5 @@
 /**
- * LLM Router — Routes requests: MLX (fast) → Ollama (fallback) → Claude (complex)
+ * LLM Router — Routes requests: Nemotron (fast) → DeepSeek (fallback) → Claude (complex)
  * OpenAI-compatible /v1/chat/completions for all providers
  */
 
