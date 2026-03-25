@@ -144,13 +144,7 @@ export class ClobClient {
 
   /** GET /markets — list active prediction markets */
   async getMarkets(): Promise<MarketInfo[]> {
-    if (this.paperMode) {
-      return paperMarkets().map(m => ({
-        id: m.condition_id, symbol: m.description.substring(0, 60),
-        type: 'polymarket' as const, exchange: 'polymarket',
-        baseCurrency: 'YES', quoteCurrency: 'USDC', active: m.active,
-      }));
-    }
+    // Always fetch real market data — paper mode only blocks order execution
     const raw = await this.request<{ data: RawMarket[] } | RawMarket[]>('/markets');
     const list = Array.isArray(raw) ? raw : (raw as { data: RawMarket[] }).data;
     return list.filter(m => m.active).map(m => ({
@@ -162,13 +156,13 @@ export class ClobClient {
 
   /** GET /book?token_id={id} — orderbook snapshot */
   async getOrderBook(tokenId: string): Promise<RawOrderBook> {
-    if (this.paperMode) return paperOrderBook(tokenId);
+    // Always fetch real orderbook — paper mode only blocks order execution
     return this.request<RawOrderBook>(`/book?token_id=${tokenId}`);
   }
 
   /** GET /price?token_id={id} — mid/bid/ask */
   async getPrice(tokenId: string): Promise<RawPrice> {
-    if (this.paperMode) return paperPrice(tokenId);
+    // Always fetch real prices — paper mode only blocks order execution
     return this.request<RawPrice>(`/price?token_id=${tokenId}`);
   }
 

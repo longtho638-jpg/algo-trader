@@ -32,14 +32,13 @@ export interface RankedSignal extends PredictionSignal {
   noTokenId: string;
 }
 
-// Long-tail event-only defaults: exclude price markets where LLM has no edge
-// Research-backed: 7-30d resolution = sweet spot for info arrival + LLM edge
-// Volume <$100K = less arb-saturated (HFT report finding)
+// Scan defaults: broad enough to find markets, LLM decides which have edge
+// Relaxed from original long-tail ($1K-$100K) after finding Polymarket top markets are $1M+
 const DEFAULT_SCAN_OPTIONS: ScanOptions = {
-  minVolume: 1_000,
-  maxVolume: 100_000,
-  minResolutionDays: 7,
-  maxResolutionDays: 30,
+  minVolume: 5_000,
+  maxVolume: 50_000_000,
+  minResolutionDays: 3,
+  maxResolutionDays: 90,
   limit: 50,
   excludePriceMarkets: true,
 };
