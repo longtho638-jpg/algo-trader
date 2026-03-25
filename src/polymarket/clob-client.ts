@@ -160,10 +160,14 @@ export class ClobClient {
     return this.request<RawOrderBook>(`/book?token_id=${tokenId}`);
   }
 
-  /** GET /price?token_id={id} — mid/bid/ask */
+  /** Fetch mid/bid/ask from CLOB — combines /midpoint and /price endpoints */
   async getPrice(tokenId: string): Promise<RawPrice> {
-    // Always fetch real prices — paper mode only blocks order execution
-    return this.request<RawPrice>(`/price?token_id=${tokenId}`);
+    const [midRes, bidRes, askRes] = await Promise.all([
+      this.request<{ mid: string }>(`/midpoint?token_id=${tokenId}`),
+      this.request<{ price: string }>(`/price?token_id=${tokenId}&side=buy`).catch(() => ({ price: '0' })),
+      this.request<{ price: string }>(`/price?token_id=${tokenId}&side=sell`).catch(() => ({ price: '0' })),
+    ]);
+    return { mid: midRes.mid ?? '0.5', bid: bidRes.price ?? '0', ask: askRes.price ?? '0' };
   }
 
   /** POST /order — ECDSA-signed limit order */
