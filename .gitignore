@@ -7,3 +7,4 @@ dist/
 bun.lockb
 repomix-output.xml
 .claude/worktrees/
+cf-pages/
