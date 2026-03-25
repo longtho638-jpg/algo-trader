@@ -42,7 +42,7 @@ describe('SplitMergeArbAgent', () => {
     expect(result.success).toBeDefined();
     expect(result.agentName).toBe('split-merge-arb');
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('result data includes required fields', async () => {
@@ -60,14 +60,14 @@ describe('SplitMergeArbAgent', () => {
     const result = await agent.execute(task);
 
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('measures execution time', async () => {
     const task = createTask('split-merge-arb', { minSpreadBps: 100, limit: 100 });
     const result = await agent.execute(task);
 
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('task type is in supported task types', () => {

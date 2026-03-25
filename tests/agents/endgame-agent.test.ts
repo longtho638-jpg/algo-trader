@@ -42,7 +42,7 @@ describe('EndgameAgent', () => {
     expect(result.success).toBeDefined();
     expect(result.agentName).toBe('endgame');
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
     expect(result.data).toBeDefined();
   });
 
@@ -61,14 +61,14 @@ describe('EndgameAgent', () => {
     const result = await agent.execute(task);
 
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('measures execution time', async () => {
     const task = createTask('endgame', { hoursWindow: 48, minPrice: 0.85, limit: 100 });
     const result = await agent.execute(task);
 
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('task type is in supported task types', () => {

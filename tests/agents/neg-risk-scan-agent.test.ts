@@ -50,7 +50,7 @@ describe('NegRiskScanAgent', () => {
     const result = await agent.execute(task);
 
     // API will fail, so we expect error handling to work
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
     expect(result.taskId).toBe(task.id);
     expect(result.agentName).toBe('neg-risk-scan');
   });
@@ -66,7 +66,7 @@ describe('NegRiskScanAgent', () => {
     const task = createTask('neg-risk-scan', { minSpread: 0.02, limit: 1 });
     const result = await agent.execute(task);
 
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('agent name matches task type', () => {

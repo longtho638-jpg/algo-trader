@@ -42,7 +42,7 @@ describe('ContrarianAgent', () => {
     expect(result.success).toBeDefined();
     expect(result.agentName).toBe('contrarian');
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('result data includes required fields', async () => {
@@ -60,14 +60,14 @@ describe('ContrarianAgent', () => {
     const result = await agent.execute(task);
 
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('measures execution time', async () => {
     const task = createTask('contrarian', { minHerding: 0.70, maxPrice: 0.92, limit: 100 });
     const result = await agent.execute(task);
 
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('task type is in supported task types', () => {

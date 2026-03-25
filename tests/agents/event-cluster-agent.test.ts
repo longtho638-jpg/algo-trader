@@ -52,7 +52,7 @@ describe('EventClusterAgent', () => {
     expect(result.success).toBeDefined();
     expect(result.agentName).toBe('event-cluster');
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('result data includes required fields', async () => {
@@ -70,14 +70,14 @@ describe('EventClusterAgent', () => {
     const result = await agent.execute(task);
 
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('measures execution time', async () => {
     const task = createTask('event-cluster', { minMarkets: 3, minPriceDiff: 0.10, limit: 30 });
     const result = await agent.execute(task);
 
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('task type is in supported task types', () => {

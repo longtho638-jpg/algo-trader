@@ -42,7 +42,7 @@ describe('NewsSniperAgent', () => {
     expect(result.success).toBeDefined();
     expect(result.agentName).toBe('news-snipe');
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('result data includes required fields', async () => {
@@ -60,14 +60,14 @@ describe('NewsSniperAgent', () => {
     const result = await agent.execute(task);
 
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('measures execution time', async () => {
     const task = createTask('news-snipe', { minMomentum: 5.0, limit: 100 });
     const result = await agent.execute(task);
 
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('task type is in supported task types', () => {

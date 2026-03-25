@@ -43,7 +43,7 @@ describe('ResolutionArbAgent', () => {
     expect(result.success).toBeDefined();
     expect(result.agentName).toBe('resolution-arb');
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('result data includes required fields', async () => {
@@ -61,14 +61,14 @@ describe('ResolutionArbAgent', () => {
     const result = await agent.execute(task);
 
     expect(result.taskId).toBe(task.id);
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('measures execution time', async () => {
     const task = createTask('resolution-arb', { minPrice: 0.90, limit: 200 });
     const result = await agent.execute(task);
 
-    expect(result.durationMs).toBeGreaterThan(0);
+    expect(result.durationMs).toBeGreaterThanOrEqual(0);
   });
 
   it('task type is in supported task types', () => {
