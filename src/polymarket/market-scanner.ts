@@ -1,6 +1,8 @@
 // Scan Polymarket markets for arbitrage and spread opportunities
 // Binary markets: YES + NO token prices should sum to ~1.0 (USDC)
+// Uses Gamma API for market discovery (current data), CLOB for price/orderbook
 import type { ClobClient, RawMarket } from './clob-client.js';
+import { GammaClient, type GammaMarket } from './gamma-client.js';
 import { logger } from '../core/logger.js';
 import { safeParseFloat } from '../core/utils.js';
 
@@ -52,7 +54,11 @@ export interface ScanOptions {
 }
 
 export class MarketScanner {
-  constructor(private client: ClobClient) {}
+  private gamma: GammaClient;
+
+  constructor(private client: ClobClient) {
+    this.gamma = new GammaClient();
+  }
 
   /** Scan all active markets and return ranked opportunities */
   async scan(options: ScanOptions = {}): Promise<ScanResult> {
@@ -72,8 +78,7 @@ export class MarketScanner {
     if (options.minResolutionDays !== undefined || options.maxResolutionDays !== undefined) {
       const now = Date.now();
       active = active.filter(m => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const endDate = (m as any).end_date_iso as string | undefined;
+        const endDate = m.end_date_iso;
         if (!endDate) return true; // keep if no date field
         const daysToClose = (new Date(endDate).getTime() - now) / 86_400_000;
         const minDays = options.minResolutionDays ?? 0;
@@ -86,8 +91,7 @@ export class MarketScanner {
     if (options.excludeCategories?.length) {
       const excludeSet = new Set(options.excludeCategories.map(c => c.toLowerCase()));
       active = active.filter(m => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cat = ((m as any).category as string | undefined)?.toLowerCase() ?? '';
+        const cat = m.category?.toLowerCase() ?? '';
         return !excludeSet.has(cat);
       });
     }
@@ -149,12 +153,8 @@ export class MarketScanner {
   // ── Private ─────────────────────────────────────────────────────────────────
 
   private async fetchRawMarkets(): Promise<RawMarket[]> {
-    // In paper mode the client returns simulated markets; real mode hits CLOB API
+    // Paper mode: return simulated market
     if (this.client.isPaperMode) {
-      // Delegate to client's internal paper markets via getMarkets side-channel
-      const res = await fetch('data:application/json,[{"condition_id":"paper-condition-1","question_id":"paper-q-1","tokens":[{"token_id":"paper-yes-1","outcome":"Yes"},{"token_id":"paper-no-1","outcome":"No"}],"minimum_order_size":"5","minimum_tick_size":"0.01","description":"[PAPER] Will BTC exceed $100K?","active":true,"volume":"50000"}]').catch(() => null);
-      if (res?.ok) return res.json() as Promise<RawMarket[]>;
-      // Fallback: return minimal paper market inline
       return [{
         condition_id: 'paper-condition-1',
         question_id: 'paper-q-1',
@@ -170,12 +170,42 @@ export class MarketScanner {
       }];
     }
 
-    const res = await fetch('https://clob.polymarket.com/markets', {
-      headers: { Accept: 'application/json' },
-    });
-    if (!res.ok) throw new Error(`Failed to fetch markets: ${res.status}`);
-    const data = await res.json() as { data?: RawMarket[] } | RawMarket[];
-    return Array.isArray(data) ? data : (data.data ?? []);
+    // Use Gamma API for market discovery (CLOB /markets returns stale 2023 data)
+    // Gamma API returns current, active markets sorted by volume
+    try {
+      const gammaMarkets = await this.gamma.getTrending(200);
+      return gammaMarkets
+        .filter(m => !m.closed && !m.resolved && m.yesTokenId)
+        .map(m => this.gammaToRaw(m));
+    } catch (err) {
+      logger.warn('Gamma API failed, falling back to CLOB API', 'MarketScanner', { err: String(err) });
+      // Fallback to CLOB API (may return stale data)
+      const res = await fetch('https://clob.polymarket.com/markets', {
+        headers: { Accept: 'application/json' },
+      });
+      if (!res.ok) throw new Error(`Failed to fetch markets: ${res.status}`);
+      const data = await res.json() as { data?: RawMarket[] } | RawMarket[];
+      return Array.isArray(data) ? data : (data.data ?? []);
+    }
+  }
+
+  /** Convert GammaMarket to RawMarket format for compatibility */
+  private gammaToRaw(m: GammaMarket): RawMarket {
+    return {
+      condition_id: m.conditionId,
+      question_id: m.id,
+      tokens: [
+        { token_id: m.yesTokenId, outcome: 'Yes' },
+        { token_id: m.noTokenId ?? '', outcome: 'No' },
+      ],
+      minimum_order_size: '5',
+      minimum_tick_size: '0.01',
+      description: m.question,
+      active: m.active,
+      volume: String(m.volume),
+      end_date_iso: m.endDate,
+      category: '',
+    };
   }
 
   private async analyzeMarket(market: RawMarket): Promise<MarketOpportunity | null> {

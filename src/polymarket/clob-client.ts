@@ -23,6 +23,8 @@ export interface RawMarket {
   description: string;
   active: boolean;
   volume: string;
+  end_date_iso?: string;
+  category?: string;
 }
 
 export interface OrderBookLevel {

@@ -10,6 +10,28 @@ import type { ClobClient, RawMarket, RawPrice } from '../../src/polymarket/clob-
 /** Build a minimal RawMarket; end_date_iso is an extension field not in base type */
 type ExtendedMarket = RawMarket & { end_date_iso?: string };
 
+/** Build a Gamma API market object that GammaClient.getTrending() would return */
+function makeGammaMarket(overrides: Partial<ExtendedMarket> & { condition_id: string; volume: string }): Record<string, unknown> {
+  const cid = overrides.condition_id;
+  return {
+    id: cid + '-q',
+    question: overrides.description ?? `Market ${cid}`,
+    slug: cid,
+    conditionId: cid,
+    clobTokenIds: JSON.stringify([cid + '-yes', cid + '-no']),
+    outcomePrices: JSON.stringify(['0.5', '0.5']),
+    volume: overrides.volume,
+    volume24hr: '0',
+    liquidity: '10000',
+    endDate: overrides.end_date_iso ?? '',
+    active: overrides.active ?? true,
+    closed: false,
+    resolved: false,
+    outcome: null,
+    category: (overrides as Record<string, unknown>).category ?? '',
+  };
+}
+
 function makeMarket(overrides: Partial<ExtendedMarket> & { condition_id: string; volume: string }): ExtendedMarket {
   return {
     question_id: overrides.condition_id + '-q',
@@ -34,10 +56,13 @@ const DEFAULT_PRICE: RawPrice = { mid: '0.5', bid: '0.48', ask: '0.52' };
  *  - mock ClobClient in live mode (isPaperMode=false) so analyzeMarket uses getPrice
  */
 function buildScanner(markets: ExtendedMarket[]): MarketScanner {
-  // Stub global fetch used by fetchRawMarkets (live path)
+  // Convert to Gamma API format (scanner now uses GammaClient.getTrending)
+  const gammaMarkets = markets.map(m => makeGammaMarket(m));
+
+  // Stub global fetch — GammaClient calls fetch internally
   vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
     ok: true,
-    json: () => Promise.resolve(markets),
+    json: () => Promise.resolve(gammaMarkets),
   }));
 
   const mockClient: Partial<ClobClient> = {
