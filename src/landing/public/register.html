@@ -3,152 +3,161 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Create Account — algo-trade</title>
+  <title>Create Account — CashClaw</title>
+  <link rel="stylesheet" href="/ui/design-system/tokens.css" />
+  <link rel="stylesheet" href="/ui/design-system/components.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      background: #0a0a1a;
-      color: #e2e8f0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
+      padding: var(--space-4);
     }
 
-    .card {
-      background: #0f0f2a;
-      border: 1px solid #1e1e40;
-      border-radius: 12px;
-      padding: 2.5rem;
+    .auth-card {
       width: 100%;
       max-width: 420px;
     }
 
-    .logo {
+    .auth-logo {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: var(--space-8);
     }
-    .logo h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #00d4aa;
+
+    .auth-logo h1 {
+      font-family: var(--font-data);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      color: var(--color-accent);
       letter-spacing: -0.5px;
     }
-    .logo p {
-      font-size: 0.85rem;
-      color: #64748b;
-      margin-top: 0.25rem;
+
+    .auth-logo p {
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+      margin-top: var(--space-1);
     }
 
     .form-group {
-      margin-bottom: 1.25rem;
+      margin-bottom: var(--space-4);
     }
-    label {
-      display: block;
-      font-size: 0.85rem;
-      color: #94a3b8;
-      margin-bottom: 0.4rem;
-      font-weight: 500;
-    }
-    input {
-      width: 100%;
-      background: #0a0a1a;
-      border: 1px solid #1e1e40;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      color: #e2e8f0;
-      font-size: 0.95rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    input:focus { border-color: #00d4aa; }
-    input::placeholder { color: #334155; }
-
-    .btn {
-      width: 100%;
-      background: #00d4aa;
-      color: #0a0a1a;
-      border: none;
-      border-radius: 8px;
-      padding: 0.85rem;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 0.5rem;
-      transition: background 0.2s, opacity 0.2s;
-    }
-    .btn:hover { background: #00b894; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .error-msg {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      font-size: 0.875rem;
-      margin-bottom: 1rem;
+      background: rgba(255, 71, 87, 0.1);
+      border: 1px solid rgba(255, 71, 87, 0.3);
+      color: var(--color-loss);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-4);
       display: none;
     }
+
     .error-msg.visible { display: block; }
 
-    .footer-link {
-      text-align: center;
-      margin-top: 1.5rem;
-      font-size: 0.875rem;
-      color: #64748b;
+    .auth-submit {
+      width: 100%;
+      margin-top: var(--space-2);
     }
-    .footer-link a {
-      color: #00d4aa;
-      text-decoration: none;
-      font-weight: 500;
-    }
-    .footer-link a:hover { text-decoration: underline; }
 
     .api-key-box {
-      background: #0a0a1a;
-      border: 1px solid #00d4aa;
-      border-radius: 8px;
-      padding: 1rem;
-      margin-top: 1.5rem;
+      background: var(--bg-primary);
+      border: 1px solid var(--color-accent);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-top: var(--space-6);
       display: none;
     }
+
     .api-key-box.visible { display: block; }
-    .api-key-box p { font-size: 0.8rem; color: #94a3b8; margin-bottom: 0.5rem; }
+
+    .api-key-box p {
+      font-size: var(--text-xs);
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+    }
+
     .api-key-box code {
-      font-family: 'Courier New', monospace;
-      font-size: 0.75rem;
-      color: #00d4aa;
+      font-family: var(--font-data);
+      font-size: var(--text-xs);
+      color: var(--color-accent);
       word-break: break-all;
+    }
+
+    .auth-footer {
+      text-align: center;
+      margin-top: var(--space-6);
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+    }
+
+    .auth-footer a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: var(--weight-medium);
+    }
+
+    .auth-footer a:hover { text-decoration: underline; }
+
+    .auth-back {
+      text-align: center;
+      margin-top: var(--space-4);
+      font-size: var(--text-xs);
+    }
+
+    .auth-back a {
+      color: var(--text-tertiary);
+      text-decoration: none;
+    }
+
+    .auth-back a:hover { color: var(--text-secondary); }
+
+    .quickstart {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      margin-top: var(--space-4);
+      display: none;
+      font-size: var(--text-xs);
+      color: var(--text-secondary);
+      line-height: var(--leading-relaxed);
+    }
+
+    .quickstart.visible { display: block; }
+
+    .quickstart p { margin-bottom: var(--space-1); }
+
+    .quickstart a {
+      color: var(--color-accent);
+      text-decoration: none;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">
-      <h1>algo-trade</h1>
-      <p>Algorithmic Trading as a Service</p>
+  <div class="cc-card auth-card">
+    <div class="auth-logo">
+      <h1>CashClaw</h1>
+      <p>Create your trading account</p>
     </div>
 
     <div class="error-msg" id="errorMsg"></div>
 
     <form id="registerForm">
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
+        <label class="cc-input-label" for="email">Email</label>
+        <input class="cc-input" type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
       </div>
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" />
+        <label class="cc-input-label" for="password">Password</label>
+        <input class="cc-input" type="password" id="password" name="password" placeholder="Minimum 8 characters" required autocomplete="new-password" />
       </div>
       <div class="form-group">
-        <label for="confirmPassword">Confirm Password</label>
-        <input type="password" id="confirmPassword" name="confirmPassword" placeholder="Repeat your password" required autocomplete="new-password" />
+        <label class="cc-input-label" for="confirmPassword">Confirm Password</label>
+        <input class="cc-input" type="password" id="confirmPassword" name="confirmPassword" placeholder="Repeat your password" required autocomplete="new-password" />
       </div>
-      <button type="submit" class="btn" id="submitBtn">Create Account</button>
+      <button type="submit" class="cc-button cc-button--primary cc-button--lg auth-submit" id="submitBtn">Create Account</button>
     </form>
 
     <div class="api-key-box" id="apiKeyBox">
@@ -156,17 +165,33 @@
       <code id="apiKeyValue"></code>
     </div>
 
-    <div class="footer-link">
+    <div class="quickstart" id="quickstart">
+      <p style="font-weight:600;margin-bottom:var(--space-2)">Quick Start:</p>
+      <p>1. Your API key is above — save it securely</p>
+      <p>2. Paper trading is ON by default (no risk)</p>
+      <p>3. Click "Go to Dashboard" to start a strategy</p>
+      <p style="margin-top:var(--space-2)">
+        API docs: <a href="/api/docs">/api/docs</a> |
+        Quickstart: <a href="/api/onboarding/quickstart">/api/onboarding/quickstart</a>
+      </p>
+    </div>
+
+    <div class="auth-footer">
       Already have an account? <a href="/login.html">Sign in</a>
+    </div>
+
+    <div class="auth-back">
+      <a href="/">&larr; Back to CashClaw</a>
     </div>
   </div>
 
   <script>
-    const form = document.getElementById('registerForm');
-    const errorMsg = document.getElementById('errorMsg');
-    const submitBtn = document.getElementById('submitBtn');
-    const apiKeyBox = document.getElementById('apiKeyBox');
-    const apiKeyValue = document.getElementById('apiKeyValue');
+    var form = document.getElementById('registerForm');
+    var errorMsg = document.getElementById('errorMsg');
+    var submitBtn = document.getElementById('submitBtn');
+    var apiKeyBox = document.getElementById('apiKeyBox');
+    var apiKeyValue = document.getElementById('apiKeyValue');
+    var quickstart = document.getElementById('quickstart');
 
     function showError(msg) {
       errorMsg.textContent = msg;
@@ -176,13 +201,13 @@
       errorMsg.classList.remove('visible');
     }
 
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async function (e) {
       e.preventDefault();
       hideError();
 
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const confirmPassword = document.getElementById('confirmPassword').value;
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
+      var confirmPassword = document.getElementById('confirmPassword').value;
 
       if (password !== confirmPassword) {
         showError('Passwords do not match');
@@ -197,46 +222,31 @@
       submitBtn.textContent = 'Creating account...';
 
       try {
-        const res = await fetch('/api/auth/register', {
+        var res = await fetch('/api/auth/register', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password, confirmPassword }),
+          body: JSON.stringify({ email: email, password: password, confirmPassword: confirmPassword }),
         });
-        const data = await res.json();
+        var data = await res.json();
 
         if (!res.ok) {
           showError(data.error || 'Registration failed');
           return;
         }
 
-        // Store JWT for subsequent requests
         localStorage.setItem('algo_token', data.token);
 
-        // Show API key + quickstart before redirect
-        if (data.user?.apiKey) {
+        if (data.user && data.user.apiKey) {
           apiKeyValue.textContent = data.user.apiKey;
           apiKeyBox.classList.add('visible');
-          submitBtn.textContent = 'Go to Dashboard →';
+          quickstart.classList.add('visible');
+          submitBtn.textContent = 'Go to Dashboard \u2192';
           submitBtn.disabled = false;
-          submitBtn.onclick = () => { window.location.href = '/dashboard'; };
-          // Show quickstart tips
-          const tips = document.createElement('div');
-          tips.className = 'api-key-box visible';
-          tips.style.marginTop = '1rem';
-          tips.innerHTML = `
-            <p style="font-weight:600;margin-bottom:0.5rem">Quick Start:</p>
-            <p>1. Your API key is above — save it securely</p>
-            <p>2. Paper trading is ON by default (no risk)</p>
-            <p>3. Click "Go to Dashboard" to start a strategy</p>
-            <p style="margin-top:0.5rem;font-size:0.8rem;color:#64748b">
-              API docs: <a href="/api/docs" style="color:#00d4aa">/api/docs</a> |
-              Quickstart: <a href="/api/onboarding/quickstart" style="color:#00d4aa">/api/onboarding/quickstart</a>
-            </p>`;
-          apiKeyBox.parentNode.insertBefore(tips, apiKeyBox.nextSibling);
+          submitBtn.onclick = function () { window.location.href = '/dashboard'; };
         } else {
           window.location.href = '/dashboard';
         }
-      } catch {
+      } catch (err) {
         showError('Network error — please try again');
       } finally {
         submitBtn.disabled = false;

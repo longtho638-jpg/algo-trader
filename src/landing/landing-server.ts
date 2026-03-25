@@ -19,6 +19,7 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 const PUBLIC_DIR = join(fileURLToPath(import.meta.url), '..', 'public');
+const UI_DIR = join(fileURLToPath(import.meta.url), '..', '..', 'ui');
 
 /** Serve a static file from public/ directory; 404 on missing */
 async function serveStatic(res: ServerResponse, filePath: string): Promise<void> {
@@ -72,6 +73,13 @@ export function createLandingServer(port: number): Server {
       // Map root path to index.html; strip query strings
       const urlPath = url.split('?')[0] ?? '/';
       const staticPath = urlPath === '/' ? '/index.html' : urlPath;
+
+      // Serve design system files from src/ui/ for /ui/* paths
+      if (staticPath.startsWith('/ui/')) {
+        const uiPath = join(UI_DIR, staticPath.slice(4).replace(/\.\./g, ''));
+        await serveStatic(res, uiPath);
+        return;
+      }
 
       // Prevent directory traversal attacks
       const safePath = join(PUBLIC_DIR, staticPath.replace(/\.\./g, ''));
