@@ -35,6 +35,11 @@ import { createEntropyScorerTick } from '../strategies/polymarket/entropy-scorer
 import { createAdverseSelectionFilterTick } from '../strategies/polymarket/adverse-selection-filter.js';
 import { createMomentumExhaustionTick } from '../strategies/polymarket/momentum-exhaustion.js';
 import { createCrossPlatformBasisTick } from '../strategies/polymarket/cross-platform-basis.js';
+import { createBayesianProbUpdaterTick } from '../strategies/polymarket/bayesian-prob-updater.js';
+import { createSpreadCompressionArbTick } from '../strategies/polymarket/spread-compression-arb.js';
+import { createTickMomentumBurstTick } from '../strategies/polymarket/tick-momentum-burst.js';
+import { createConsensusDriftTick } from '../strategies/polymarket/consensus-drift.js';
+import { createVolumeProfileAnomalyTick } from '../strategies/polymarket/volume-profile-anomaly.js';
 import type { MarketScanner } from '../polymarket/market-scanner.js';
 import type { OrderManager } from '../polymarket/order-manager.js';
 import type { OrderExecutor } from '../cex/order-executor.js';
@@ -241,6 +246,26 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
     orc.register(
       { id: 'cross-platform-basis', name: 'Cross-Platform Basis', type: 'cross-platform-basis', enabled: false, params: {}, intervalMs: parseInt(env('CROSS_PLATFORM_BASIS_INTERVAL_MS', '15000'), 10) },
       createCrossPlatformBasisTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+    orc.register(
+      { id: 'bayesian-prob-updater', name: 'Bayesian Prob Updater', type: 'bayesian-prob-updater', enabled: false, params: {}, intervalMs: parseInt(env('BAYESIAN_PROB_INTERVAL_MS', '10000'), 10) },
+      createBayesianProbUpdaterTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+    orc.register(
+      { id: 'spread-compression-arb', name: 'Spread Compression Arb', type: 'spread-compression-arb', enabled: false, params: {}, intervalMs: parseInt(env('SPREAD_COMPRESSION_INTERVAL_MS', '5000'), 10) },
+      createSpreadCompressionArbTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+    orc.register(
+      { id: 'tick-momentum-burst', name: 'Tick Momentum Burst', type: 'tick-momentum-burst', enabled: false, params: {}, intervalMs: parseInt(env('TICK_MOMENTUM_INTERVAL_MS', '3000'), 10) },
+      createTickMomentumBurstTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+    orc.register(
+      { id: 'consensus-drift', name: 'Consensus Drift', type: 'consensus-drift', enabled: false, params: {}, intervalMs: parseInt(env('CONSENSUS_DRIFT_INTERVAL_MS', '15000'), 10) },
+      createConsensusDriftTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+    orc.register(
+      { id: 'volume-profile-anomaly', name: 'Volume Profile Anomaly', type: 'volume-profile-anomaly', enabled: false, params: {}, intervalMs: parseInt(env('VOLUME_PROFILE_INTERVAL_MS', '10000'), 10) },
+      createVolumeProfileAnomalyTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
   }
 

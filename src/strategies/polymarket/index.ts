@@ -97,3 +97,18 @@ export type { MomentumExhaustionConfig, MomentumExhaustionDeps } from './momentu
 
 export { createCrossPlatformBasisTick } from './cross-platform-basis.js';
 export type { CrossPlatformBasisConfig, CrossPlatformBasisDeps } from './cross-platform-basis.js';
+
+export { createBayesianProbUpdaterTick } from './bayesian-prob-updater.js';
+export type { BayesianProbUpdaterConfig, BayesianProbUpdaterDeps } from './bayesian-prob-updater.js';
+
+export { createSpreadCompressionArbTick } from './spread-compression-arb.js';
+export type { SpreadCompressionArbConfig, SpreadCompressionArbDeps } from './spread-compression-arb.js';
+
+export { createTickMomentumBurstTick } from './tick-momentum-burst.js';
+export type { TickMomentumBurstConfig, TickMomentumBurstDeps } from './tick-momentum-burst.js';
+
+export { createConsensusDriftTick } from './consensus-drift.js';
+export type { ConsensusDriftConfig, ConsensusDriftDeps } from './consensus-drift.js';
+
+export { createVolumeProfileAnomalyTick } from './volume-profile-anomaly.js';
+export type { VolumeProfileAnomalyConfig, VolumeProfileAnomalyDeps } from './volume-profile-anomaly.js';
