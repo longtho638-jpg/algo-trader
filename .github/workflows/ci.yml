@@ -24,11 +24,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22.x'
+          cache: pnpm
 
-      - name: Install dependencies and build native modules
-        run: pnpm install --config.ignore-scripts=false
-        env:
-          npm_config_build_from_source: true
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
       - name: Type check
         run: npx tsc --noEmit
