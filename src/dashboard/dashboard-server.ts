@@ -33,6 +33,7 @@ const MIME_TYPES: Record<string, string> = {
 };
 
 const PUBLIC_DIR = join(fileURLToPath(import.meta.url), '..', 'public');
+const UI_DIR = join(fileURLToPath(import.meta.url), '..', '..', 'ui');
 
 // ── Paper trading status (Sprint 45) ─────────────────────────────────────────
 
@@ -508,6 +509,14 @@ export function createDashboardServer(port: number, dataProvider: DashboardDataP
 
       // Static file serving — map / to index.html
       const staticPath = url === '/' ? '/index.html' : url;
+
+      // Serve design system files from src/ui/ for /ui/* paths
+      if (staticPath.startsWith('/ui/')) {
+        const uiPath = join(UI_DIR, staticPath.slice(4).replace(/\.\./g, ''));
+        await serveStatic(res, uiPath);
+        return;
+      }
+
       // Prevent directory traversal
       const safePath = join(PUBLIC_DIR, staticPath.replace(/\.\./g, ''));
       await serveStatic(res, safePath);

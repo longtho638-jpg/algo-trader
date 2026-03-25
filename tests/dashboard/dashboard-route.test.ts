@@ -37,13 +37,13 @@ describe('Dashboard Route', () => {
     expect(res._headers['Content-Type']).toBe('text/html');
   });
 
-  it('response contains "Algo Trader Dashboard"', () => {
+  it('response contains "CashClaw Dashboard"', () => {
     const req = createMockReq();
     const res = createMockRes();
 
     handleDashboard(req, res);
 
-    expect(res._body).toContain('Algo Trader Dashboard');
+    expect(res._body).toContain('CashClaw Dashboard');
   });
 
   it('response contains strategy health fetch code', () => {
@@ -86,12 +86,11 @@ describe('Dashboard Route', () => {
 
     handleDashboard(req, res);
 
-    expect(res._body).toContain('#1a1a2e');
-    expect(res._body).toContain('#16213e');
-    expect(res._body).toContain('#0f3460');
-    expect(res._body).toContain('#00b4d8');
-    expect(res._body).toContain('#e63946');
-    expect(res._body).toContain('#f4a261');
+    expect(res._body).toContain('#0B0E11');
+    expect(res._body).toContain('#141820');
+    expect(res._body).toContain('#00D4AA');
+    expect(res._body).toContain('#FF4757');
+    expect(res._body).toContain('#FFB020');
   });
 
   it('caches HTML on second call', () => {

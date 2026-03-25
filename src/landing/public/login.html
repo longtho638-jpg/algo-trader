@@ -3,116 +3,97 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign In — algo-trade</title>
+  <title>Sign In — CashClaw</title>
+  <link rel="stylesheet" href="/ui/design-system/tokens.css" />
+  <link rel="stylesheet" href="/ui/design-system/components.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
-      background: #0a0a1a;
-      color: #e2e8f0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 1rem;
+      padding: var(--space-4);
     }
 
-    .card {
-      background: #0f0f2a;
-      border: 1px solid #1e1e40;
-      border-radius: 12px;
-      padding: 2.5rem;
+    .auth-card {
       width: 100%;
       max-width: 420px;
     }
 
-    .logo {
+    .auth-logo {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: var(--space-8);
     }
-    .logo h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #00d4aa;
+
+    .auth-logo h1 {
+      font-family: var(--font-data);
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      color: var(--color-accent);
       letter-spacing: -0.5px;
     }
-    .logo p {
-      font-size: 0.85rem;
-      color: #64748b;
-      margin-top: 0.25rem;
+
+    .auth-logo p {
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
+      margin-top: var(--space-1);
     }
 
     .form-group {
-      margin-bottom: 1.25rem;
+      margin-bottom: var(--space-4);
     }
-    label {
-      display: block;
-      font-size: 0.85rem;
-      color: #94a3b8;
-      margin-bottom: 0.4rem;
-      font-weight: 500;
-    }
-    input {
-      width: 100%;
-      background: #0a0a1a;
-      border: 1px solid #1e1e40;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      color: #e2e8f0;
-      font-size: 0.95rem;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    input:focus { border-color: #00d4aa; }
-    input::placeholder { color: #334155; }
-
-    .btn {
-      width: 100%;
-      background: #00d4aa;
-      color: #0a0a1a;
-      border: none;
-      border-radius: 8px;
-      padding: 0.85rem;
-      font-size: 1rem;
-      font-weight: 700;
-      cursor: pointer;
-      margin-top: 0.5rem;
-      transition: background 0.2s, opacity 0.2s;
-    }
-    .btn:hover { background: #00b894; }
-    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .error-msg {
-      background: rgba(239, 68, 68, 0.1);
-      border: 1px solid rgba(239, 68, 68, 0.3);
-      color: #f87171;
-      border-radius: 8px;
-      padding: 0.75rem 1rem;
-      font-size: 0.875rem;
-      margin-bottom: 1rem;
+      background: rgba(255, 71, 87, 0.1);
+      border: 1px solid rgba(255, 71, 87, 0.3);
+      color: var(--color-loss);
+      border-radius: var(--radius-md);
+      padding: var(--space-3) var(--space-4);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-4);
       display: none;
     }
+
     .error-msg.visible { display: block; }
 
-    .footer-link {
+    .auth-submit {
+      width: 100%;
+      margin-top: var(--space-2);
+    }
+
+    .auth-footer {
       text-align: center;
-      margin-top: 1.5rem;
-      font-size: 0.875rem;
-      color: #64748b;
+      margin-top: var(--space-6);
+      font-size: var(--text-sm);
+      color: var(--text-tertiary);
     }
-    .footer-link a {
-      color: #00d4aa;
+
+    .auth-footer a {
+      color: var(--color-accent);
       text-decoration: none;
-      font-weight: 500;
+      font-weight: var(--weight-medium);
     }
-    .footer-link a:hover { text-decoration: underline; }
+
+    .auth-footer a:hover { text-decoration: underline; }
+
+    .auth-back {
+      text-align: center;
+      margin-top: var(--space-4);
+      font-size: var(--text-xs);
+    }
+
+    .auth-back a {
+      color: var(--text-tertiary);
+      text-decoration: none;
+    }
+
+    .auth-back a:hover { color: var(--text-secondary); }
   </style>
 </head>
 <body>
-  <div class="card">
-    <div class="logo">
-      <h1>algo-trade</h1>
+  <div class="cc-card auth-card">
+    <div class="auth-logo">
+      <h1>CashClaw</h1>
       <p>Welcome back</p>
     </div>
 
@@ -120,25 +101,29 @@
 
     <form id="loginForm">
       <div class="form-group">
-        <label for="email">Email</label>
-        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
+        <label class="cc-input-label" for="email">Email</label>
+        <input class="cc-input" type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="email" />
       </div>
       <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" name="password" placeholder="Your password" required autocomplete="current-password" />
+        <label class="cc-input-label" for="password">Password</label>
+        <input class="cc-input" type="password" id="password" name="password" placeholder="Your password" required autocomplete="current-password" />
       </div>
-      <button type="submit" class="btn" id="submitBtn">Sign In</button>
+      <button type="submit" class="cc-button cc-button--primary cc-button--lg auth-submit" id="submitBtn">Sign In</button>
     </form>
 
-    <div class="footer-link">
+    <div class="auth-footer">
       No account yet? <a href="/register.html">Create one</a>
+    </div>
+
+    <div class="auth-back">
+      <a href="/">&larr; Back to CashClaw</a>
     </div>
   </div>
 
   <script>
-    const form = document.getElementById('loginForm');
-    const errorMsg = document.getElementById('errorMsg');
-    const submitBtn = document.getElementById('submitBtn');
+    var form = document.getElementById('loginForm');
+    var errorMsg = document.getElementById('errorMsg');
+    var submitBtn = document.getElementById('submitBtn');
 
     function showError(msg) {
       errorMsg.textContent = msg;
@@ -148,23 +133,23 @@
       errorMsg.classList.remove('visible');
     }
 
-    form.addEventListener('submit', async (e) => {
+    form.addEventListener('submit', async function (e) {
       e.preventDefault();
       hideError();
 
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value;
 
       submitBtn.disabled = true;
       submitBtn.textContent = 'Signing in...';
 
       try {
-        const res = await fetch('/api/auth/login', {
+        var res = await fetch('/api/auth/login', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, password }),
+          body: JSON.stringify({ email: email, password: password }),
         });
-        const data = await res.json();
+        var data = await res.json();
 
         if (!res.ok) {
           showError(data.error || 'Login failed');
@@ -173,7 +158,7 @@
 
         localStorage.setItem('algo_token', data.token);
         window.location.href = '/dashboard';
-      } catch {
+      } catch (err) {
         showError('Network error — please try again');
       } finally {
         submitBtn.disabled = false;
