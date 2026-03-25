@@ -153,39 +153,30 @@ export class MarketScanner {
   // ── Private ─────────────────────────────────────────────────────────────────
 
   private async fetchRawMarkets(): Promise<RawMarket[]> {
-    // Paper mode: return simulated market
-    if (this.client.isPaperMode) {
-      return [{
-        condition_id: 'paper-condition-1',
-        question_id: 'paper-q-1',
-        tokens: [
-          { token_id: 'paper-yes-1', outcome: 'Yes' },
-          { token_id: 'paper-no-1', outcome: 'No' },
-        ],
-        minimum_order_size: '5',
-        minimum_tick_size: '0.01',
-        description: '[PAPER] Will BTC exceed $100K?',
-        active: true,
-        volume: '50000',
-      }];
-    }
-
+    // Always fetch REAL market data — paper mode only skips order execution, not scanning
     // Use Gamma API for market discovery (CLOB /markets returns stale 2023 data)
-    // Gamma API returns current, active markets sorted by volume
     try {
       const gammaMarkets = await this.gamma.getTrending(200);
-      return gammaMarkets
+      const markets = gammaMarkets
         .filter(m => !m.closed && !m.resolved && m.yesTokenId)
         .map(m => this.gammaToRaw(m));
+      if (markets.length > 0) return markets;
+      logger.warn('Gamma API returned 0 active markets, trying CLOB fallback', 'MarketScanner');
     } catch (err) {
       logger.warn('Gamma API failed, falling back to CLOB API', 'MarketScanner', { err: String(err) });
-      // Fallback to CLOB API (may return stale data)
+    }
+
+    // Fallback to CLOB API
+    try {
       const res = await fetch('https://clob.polymarket.com/markets', {
         headers: { Accept: 'application/json' },
       });
       if (!res.ok) throw new Error(`Failed to fetch markets: ${res.status}`);
       const data = await res.json() as { data?: RawMarket[] } | RawMarket[];
       return Array.isArray(data) ? data : (data.data ?? []);
+    } catch (err) {
+      logger.error('Both Gamma and CLOB APIs failed', 'MarketScanner', { err: String(err) });
+      return [];
     }
   }
 
