@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url';
 import type { DashboardDataProvider } from './dashboard-data.js';
 import { logger } from '../core/logger.js';
 import type { UserStore } from '../users/user-store.js';
+import { verifyJwt } from '../api/auth-middleware.js';
+import { handleRegister, handleLogin } from '../api/auth-routes.js';
 import { AdminAnalytics } from '../admin/admin-analytics.js';
 import type { AiSignalGenerator } from '../openclaw/ai-signal-generator.js';
 import type { TradeObserver } from '../openclaw/trade-observer.js';
@@ -253,17 +255,53 @@ async function serveStatic(res: ServerResponse, filePath: string): Promise<void>
  */
 export function createDashboardServer(port: number, dataProvider: DashboardDataProvider, userStore?: UserStore, deps: DashboardDeps = {}): Server {
   const analytics = userStore ? new AdminAnalytics(userStore) : null;
+  const jwtSecret = process.env['JWT_SECRET'] ?? '';
+
+  /** Verify JWT from Authorization: Bearer <token> header */
+  function authenticateRequest(req: IncomingMessage, res: ServerResponse): boolean {
+    // Skip auth if no JWT_SECRET configured (single-operator mode)
+    if (!jwtSecret) return true;
+    const authHeader = req.headers['authorization'];
+    if (!authHeader?.startsWith('Bearer ')) {
+      sendJson(res, 401, { error: 'Unauthorized', message: 'Missing Authorization: Bearer <token>' });
+      return false;
+    }
+    const payload = verifyJwt(authHeader.slice(7), jwtSecret);
+    if (!payload) {
+      sendJson(res, 401, { error: 'Unauthorized', message: 'Invalid or expired token' });
+      return false;
+    }
+    return true;
+  }
+
   const server = createHttpServer(async (req: IncomingMessage, res: ServerResponse) => {
     const url = req.url ?? '/';
     const method = req.method ?? 'GET';
 
-    // Only handle GET requests
+    // CORS for cross-origin dashboard (cashclaw.cc → local backend)
+    res.setHeader('Access-Control-Allow-Origin', req.headers['origin'] ?? '*');
+    res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    if (method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
+
+    // Auth endpoints (POST) — proxy on dashboard port so no cross-port issues
+    if (method === 'POST' && userStore) {
+      if (url === '/api/auth/register') { await handleRegister(req, res, userStore); return; }
+      if (url === '/api/auth/login') { await handleLogin(req, res, userStore); return; }
+    }
+
+    // Only GET for everything else
     if (method !== 'GET') {
       sendJson(res, 405, { error: 'Method Not Allowed' });
       return;
     }
 
     try {
+      // Protect API routes with JWT auth (skip for static files)
+      if (url.startsWith('/dashboard/api/')) {
+        if (!authenticateRequest(req, res)) return;
+      }
+
       // API routes
       if (url === '/dashboard/api/summary') {
         sendJson(res, 200, dataProvider.getSummary());
