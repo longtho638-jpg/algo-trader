@@ -22,3 +22,21 @@ export type { SessionVolSniperConfig, SessionVolSniperDeps } from './session-vol
 
 export { createRegimeAdaptiveMomentumTick } from './regime-adaptive-momentum.js';
 export type { RegimeAdaptiveConfig, RegimeAdaptiveDeps } from './regime-adaptive-momentum.js';
+
+export { createOrderbookDepthRatioTick } from './orderbook-depth-ratio.js';
+export type { OrderbookDepthConfig, OrderbookDepthDeps } from './orderbook-depth-ratio.js';
+
+export { createCrossEventDriftTick } from './cross-event-drift.js';
+export type { CrossEventDriftConfig, CrossEventDriftDeps } from './cross-event-drift.js';
+
+export { createVolCompressionBreakoutTick } from './vol-compression-breakout.js';
+export type { VolCompressionConfig, VolCompressionDeps } from './vol-compression-breakout.js';
+
+export { createWhaleTrackerTick } from './whale-tracker.js';
+export type { WhaleTrackerConfig, WhaleTrackerDeps } from './whale-tracker.js';
+
+export { createResolutionFrontrunnerTick } from './resolution-frontrunner.js';
+export type { ResolutionFrontrunnerConfig, ResolutionFrontrunnerDeps } from './resolution-frontrunner.js';
+
+export { createMultiLegHedgeTick } from './multi-leg-hedge.js';
+export type { MultiLegHedgeConfig, MultiLegHedgeDeps } from './multi-leg-hedge.js';

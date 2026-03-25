@@ -10,6 +10,12 @@ import { createVwapDeviationSniperTick } from '../strategies/polymarket/vwap-dev
 import { createPairsStatArbTick } from '../strategies/polymarket/pairs-stat-arb.js';
 import { createSessionVolSniperTick } from '../strategies/polymarket/session-vol-sniper.js';
 import { createRegimeAdaptiveMomentumTick } from '../strategies/polymarket/regime-adaptive-momentum.js';
+import { createOrderbookDepthRatioTick } from '../strategies/polymarket/orderbook-depth-ratio.js';
+import { createCrossEventDriftTick } from '../strategies/polymarket/cross-event-drift.js';
+import { createVolCompressionBreakoutTick } from '../strategies/polymarket/vol-compression-breakout.js';
+import { createWhaleTrackerTick } from '../strategies/polymarket/whale-tracker.js';
+import { createResolutionFrontrunnerTick } from '../strategies/polymarket/resolution-frontrunner.js';
+import { createMultiLegHedgeTick } from '../strategies/polymarket/multi-leg-hedge.js';
 import type { MarketScanner } from '../polymarket/market-scanner.js';
 import type { OrderManager } from '../polymarket/order-manager.js';
 import type { OrderExecutor } from '../cex/order-executor.js';
@@ -86,6 +92,48 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
     orc.register(
       { id: 'regime-momentum', name: 'Regime-Adaptive Momentum', type: 'regime-momentum', enabled: false, params: {}, intervalMs: parseInt(env('REGIME_MOMENTUM_INTERVAL_MS', '15000'), 10) },
       createRegimeAdaptiveMomentumTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'orderbook-depth', name: 'Orderbook Depth Ratio', type: 'orderbook-depth', enabled: false, params: {}, intervalMs: parseInt(env('ORDERBOOK_DEPTH_INTERVAL_MS', '10000'), 10) },
+      createOrderbookDepthRatioTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'cross-event-drift', name: 'Cross-Event Drift Catcher', type: 'cross-event-drift', enabled: false, params: {}, intervalMs: parseInt(env('CROSS_EVENT_DRIFT_INTERVAL_MS', '15000'), 10) },
+      createCrossEventDriftTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'vol-compression', name: 'Volatility Compression Breakout', type: 'vol-compression', enabled: false, params: {}, intervalMs: parseInt(env('VOL_COMPRESSION_INTERVAL_MS', '8000'), 10) },
+      createVolCompressionBreakoutTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'whale-tracker', name: 'Whale Tracker', type: 'whale-tracker', enabled: false, params: {}, intervalMs: parseInt(env('WHALE_TRACKER_INTERVAL_MS', '10000'), 10) },
+      createWhaleTrackerTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'resolution-frontrunner', name: 'Resolution Frontrunner', type: 'resolution-frontrunner', enabled: false, params: {}, intervalMs: parseInt(env('RESOLUTION_FRONTRUNNER_INTERVAL_MS', '30000'), 10) },
+      createResolutionFrontrunnerTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
+    );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
+    orc.register(
+      { id: 'multi-leg-hedge', name: 'Multi-Leg Hedge', type: 'multi-leg-hedge', enabled: false, params: {}, intervalMs: parseInt(env('MULTI_LEG_HEDGE_INTERVAL_MS', '20000'), 10) },
+      createMultiLegHedgeTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
   }
 
