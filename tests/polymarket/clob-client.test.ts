@@ -7,6 +7,21 @@ import { MarketScanner } from '../../src/polymarket/market-scanner.js';
 import { OrderManager } from '../../src/polymarket/order-manager.js';
 import { PositionTracker } from '../../src/polymarket/position-tracker.js';
 
+// Mock GammaClient so MarketScanner tests don't hit real APIs
+vi.mock('../../src/polymarket/gamma-client.js', () => ({
+  GammaClient: class {
+    async getTrending(_limit?: number) {
+      return [
+        { id: 'm1', question: 'Will X happen by June?', slug: 'will-x', conditionId: 'c1', yesTokenId: 't1', noTokenId: 't2', yesPrice: 0.65, noPrice: 0.35, volume: 50000, volume24h: 5000, liquidity: 10000, endDate: '2026-06-01T00:00:00Z', active: true, closed: false, resolved: false, outcome: null },
+        { id: 'm2', question: 'Will Y happen by July?', slug: 'will-y', conditionId: 'c2', yesTokenId: 't3', noTokenId: 't4', yesPrice: 0.80, noPrice: 0.20, volume: 30000, volume24h: 3000, liquidity: 8000, endDate: '2026-07-01T00:00:00Z', active: true, closed: false, resolved: false, outcome: null },
+      ];
+    }
+    async search() { return []; }
+    async getMarket() { return null; }
+    async getEvent() { return null; }
+  },
+}));
+
 describe('ClobClient', () => {
   let client: ClobClient;
 
@@ -104,6 +119,8 @@ describe('MarketScanner', () => {
       paperMode: true,
     };
     client = new ClobClient(config);
+    // Mock getPrice to avoid real CLOB API calls in tests
+    vi.spyOn(client, 'getPrice').mockResolvedValue({ mid: '0.65', bid: '0.63', ask: '0.67' });
     scanner = new MarketScanner(client);
   });
 
