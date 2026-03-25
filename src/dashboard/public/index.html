@@ -831,6 +831,23 @@ function prependTrade(t) {
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────
 (function init() {
+  // If hosted on CF Pages (no local backend), require backend URL before auth
+  const isExternalHost = !API_BASE && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1';
+  if (isExternalHost) {
+    // Show setup modal instead of auth overlay
+    document.getElementById('auth-overlay').style.display = 'none';
+    showSettings();
+    // Override save to continue to auth after URL is set
+    const origSave = window.saveSettings;
+    window.saveSettings = function() {
+      const val = document.getElementById('settings-api-base').value.replace(/\/+$/, '');
+      if (!val) { alert('Backend URL is required when using cashclaw.cc. Enter your bot URL (e.g. http://localhost:3001)'); return; }
+      localStorage.setItem('cc_api_base', val);
+      location.reload();
+    };
+    return;
+  }
+
   applyAuthState();
   if (localStorage.getItem('cc_token')) {
     fetchAll();
