@@ -1,6 +1,11 @@
 /**
- * LLM Router — Routes requests: MLX (fast) → Ollama (fallback) → Claude (complex)
- * OpenAI-compatible /v1/chat/completions for all providers
+ * LLM Router — Routes requests to bare-metal MLX servers on M1 Max host.
+ *
+ * Two routing modes:
+ *   chat()     — DeepSeek R1 (deep reasoning) → Ollama → Claude cloud
+ *   fastChat() — Nemotron Nano (fast triage) → DeepSeek R1 → Ollama → Claude
+ *
+ * OpenAI-compatible /v1/chat/completions for all providers.
  */
 
 import { EventEmitter } from 'events';
@@ -43,12 +48,13 @@ export class LlmRouter extends EventEmitter {
     this.config = { ...loadLlmConfig(), ...config };
   }
 
+  /** Deep reasoning route: DeepSeek R1 → Ollama → Claude cloud */
   async chat(request: RouterRequest): Promise<RouterResponse> {
     if (request.forceCloud && this.config.cloud) {
       return this.callEndpoint(this.config.cloud, request, 'cloud');
     }
 
-    // Try primary (MLX)
+    // Try primary (DeepSeek R1 — deep reasoning, ~10 tok/s)
     if (this.isHealthy(this.config.primary.url)) {
       try {
         return await this.callEndpoint(this.config.primary, request, 'mlx');
@@ -72,6 +78,20 @@ export class LlmRouter extends EventEmitter {
     }
 
     throw new Error('All LLM endpoints unavailable');
+  }
+
+  /** Fast triage route: Nemotron Nano (~45 tok/s) → falls back to chat() chain */
+  async fastChat(request: RouterRequest): Promise<RouterResponse> {
+    if (this.isHealthy(this.config.fastTriage.url)) {
+      try {
+        return await this.callEndpoint(this.config.fastTriage, request, 'mlx');
+      } catch {
+        this.markUnhealthy(this.config.fastTriage.url);
+        this.emit('failover', { from: 'mlx-fast', to: 'mlx-primary' });
+      }
+    }
+    // Fall through to regular chain
+    return this.chat(request);
   }
 
   private async callEndpoint(

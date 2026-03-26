@@ -1,6 +1,12 @@
 /**
  * LLM Configuration for M1 Max 64GB
- * MLX primary (17.4 tok/s) -> Ollama fallback (12 tok/s) -> Claude cloud
+ *
+ * Dual bare-metal MLX servers (mlx_lm.server, NOT Ollama):
+ *   DeepSeek R1 :11435 — deep reasoning (~10 tok/s, 90s timeout)
+ *   Nemotron Nano :11436 — fast triage (~45 tok/s, 10s timeout)
+ *
+ * Fallback chain: MLX primary → Ollama → Claude cloud
+ * Fast triage: Nemotron → MLX primary → Ollama → Claude cloud
  */
 
 export interface LlmEndpoint {
@@ -13,6 +19,7 @@ export interface LlmEndpoint {
 
 export interface LlmConfig {
   primary: LlmEndpoint;
+  fastTriage: LlmEndpoint;
   fallback: LlmEndpoint;
   cloud?: LlmEndpoint;
   healthCheckIntervalMs: number;
@@ -27,6 +34,13 @@ export function loadLlmConfig(): LlmConfig {
       priority: 1,
       maxTokens: 2048,
       timeoutMs: 90000,
+    },
+    fastTriage: {
+      url: process.env.LLM_FAST_TRIAGE_URL || 'http://127.0.0.1:11436/v1',
+      model: process.env.LLM_FAST_TRIAGE_MODEL || 'mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit',
+      priority: 1,
+      maxTokens: 512,
+      timeoutMs: 10000,
     },
     fallback: {
       url: process.env.LLM_FALLBACK_URL || 'http://127.0.0.1:11434/v1',
