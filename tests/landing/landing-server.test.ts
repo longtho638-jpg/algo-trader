@@ -38,7 +38,7 @@ describe('Landing Server', () => {
     });
 
     it('accepts port parameter', async () => {
-      server = createLandingServer(3002);
+      server = createLandingServer(0);
       expect(server).toBeDefined();
     });
 
