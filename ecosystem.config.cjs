@@ -4,13 +4,14 @@ module.exports = {
     {
       name: 'algo-trade',
       script: 'src/app.ts',
-      interpreter: 'node_modules/.bin/tsx',
+      interpreter: '/opt/homebrew/bin/tsx',
       cwd: __dirname,
       exec_mode: 'fork',
       env: {
         NODE_ENV: 'development',
         LOG_LEVEL: 'debug',
         DB_PATH: './data/algo-trade.db',
+        PATH: '/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin',
       },
       env_production: {
         NODE_ENV: 'production',
@@ -21,6 +22,7 @@ module.exports = {
         LANDING_PORT: '3002',
         WS_PORT: '3003',
         WEBHOOK_PORT: '3004',
+        PATH: '/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin',
       },
       instances: 1,
       autorestart: true,
