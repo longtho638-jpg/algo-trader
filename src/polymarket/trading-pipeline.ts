@@ -112,6 +112,17 @@ export class TradingPipeline extends EventEmitter {
     await this.strategyRunner.stopAll().catch(err =>
       logger.error('Error stopping strategies', 'TradingPipeline', { err: String(err) }),
     );
+
+    // Cancel ALL open GTC orders before disconnecting — prevents stale fills after shutdown
+    try {
+      const cancelled = await this.orderManager.cancelAllOpen();
+      if (cancelled > 0) {
+        logger.info(`Cancelled ${cancelled} open orders during shutdown`, 'TradingPipeline');
+      }
+    } catch (err) {
+      logger.error('Failed to cancel orders during shutdown', 'TradingPipeline', { err: String(err) });
+    }
+
     this.orderManager.stopStalePoll();
     this.orderbookStream.disconnect();
 

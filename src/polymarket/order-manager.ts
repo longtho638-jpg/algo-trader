@@ -72,6 +72,24 @@ export class OrderManager {
     return cancelled;
   }
 
+  /** Cancel ALL open orders across all markets (used during graceful shutdown) */
+  async cancelAllOpen(): Promise<number> {
+    const open = this.getOpenOrders();
+    if (open.length === 0) return 0;
+    logger.info(`Cancelling ${open.length} open orders`, 'OrderManager');
+    let cancelled = 0;
+    for (const order of open) {
+      try {
+        if (await this.cancelOrder(order.id)) cancelled++;
+      } catch (err) {
+        logger.error('Failed to cancel order during shutdown', 'OrderManager', {
+          orderId: order.id, err: String(err),
+        });
+      }
+    }
+    return cancelled;
+  }
+
   // ── Status updates ────────────────────────────────────────────────────────
 
   /** Update order status (e.g. from WebSocket fill events) */
