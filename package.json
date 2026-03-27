@@ -83,7 +83,6 @@
     "ollama": "^0.5.0",
     "pg": "^8.19.0",
     "prom-client": "^15.1.0",
-    "stripe": "^17.7.0",
     "technicalindicators": "^3.1.0",
     "twilio": "^5.4.0",
     "winston": "^3.19.0",
