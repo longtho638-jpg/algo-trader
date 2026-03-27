@@ -222,7 +222,7 @@ export function createInventorySkewRebalancerTick(
         eventBus.emit('trade.executed', {
           trade: {
             orderId: `rebal-${now}-${tradesPlaced}`,
-            marketId: pos.marketId ?? pos.tokenId,
+            marketId: pos.marketId,
             side: 'sell',
             fillPrice: String(pos.currentPrice),
             fillSize: String(trimSize),
@@ -328,7 +328,7 @@ export function createInventorySkewRebalancerTick(
         eventBus.emit('trade.executed', {
           trade: {
             orderId: `conc-${now}-${tradesPlaced}`,
-            marketId: pos.marketId ?? pos.tokenId,
+            marketId: pos.marketId,
             side: 'sell',
             fillPrice: String(pos.currentPrice),
             fillSize: String(trimSize),
