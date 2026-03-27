@@ -121,6 +121,9 @@ export class ApiServer {
     // Webhook routes (no rate limit — external provider callbacks)
     this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);
 
+    // Webhook routes (no rate limit — external provider callbacks)
+    this.app.use('/api/webhooks/nowpayments', nowpaymentsWebhookRouter);
+
     // 404 handler
     this.app.use((_req, res) => {
       res.status(404).json({ error: 'Not found' });

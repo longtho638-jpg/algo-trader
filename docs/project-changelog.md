@@ -30,6 +30,7 @@
 - Updated `docs/deployment-guide.md` — CashClaw Dashboard deployment + coupon API auth section
 - Updated `docs/project-changelog.md` — current session entries
 
+
 ## [1.1.1] - 2026-03-27
 
 ### Changed - Payment Provider Migration
