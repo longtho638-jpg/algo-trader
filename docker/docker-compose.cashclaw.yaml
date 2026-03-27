@@ -32,6 +32,9 @@ services:
       - LLM_FAST_TRIAGE_MODEL=mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit
       - LLM_FALLBACK_URL=http://host.docker.internal:11434/v1
 
+      # ── AlphaEar Intelligence Sidecar (bare metal, :8100) ──
+      - ALPHAEAR_SIDECAR_URL=http://host.docker.internal:8100
+
       # ── Trading config ──
       - PAPER_TRADING=true          # DRY_RUN default — set false for LIVE
       - CAPITAL_USDC=200

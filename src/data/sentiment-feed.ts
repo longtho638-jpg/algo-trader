@@ -1,6 +1,8 @@
-// Sentiment feed - STUB implementation
-// Interfaces + placeholder functions for Twitter/X, NewsAPI, CoinGecko
-// Real API calls are no-ops when env keys are missing
+// Sentiment feed — multi-source sentiment aggregation
+// Sources: NewsAPI, CoinGecko, Twitter/X, AlphaEar FinBERT (sidecar)
+// AlphaEar provides deep FinBERT analysis when sidecar is available
+
+import { alphaear } from '../intelligence/alphaear-client.js';
 
 export type SentimentScore = 'positive' | 'negative' | 'neutral';
 
@@ -141,6 +143,46 @@ export async function fetchTwitterSignals(keyword: string): Promise<SentimentSig
 // Aggregator
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// AlphaEar FinBERT (deep sentiment via sidecar at :8100)
+// Falls back gracefully if sidecar unavailable
+// ---------------------------------------------------------------------------
+
+export async function getFinBERTSentiment(text: string): Promise<SentimentSignal | null> {
+  const result = await alphaear.analyzeSentiment(text);
+  if (!result) return null;
+  const score: SentimentScore =
+    result.label === 'positive' ? 'positive' :
+    result.label === 'negative' ? 'negative' : 'neutral';
+  return {
+    source: 'newsapi',  // closest existing source type
+    keyword: text.slice(0, 50),
+    score,
+    numericScore: result.score,
+    timestamp: Date.now(),
+  };
+}
+
+export async function batchFinBERTSentiment(texts: string[]): Promise<SentimentSignal[]> {
+  const results = await alphaear.batchSentiment(texts);
+  return results.map((r, i) => {
+    const score: SentimentScore =
+      r.label === 'positive' ? 'positive' :
+      r.label === 'negative' ? 'negative' : 'neutral';
+    return {
+      source: 'newsapi' as const,
+      keyword: texts[i]!.slice(0, 50),
+      score,
+      numericScore: r.score,
+      timestamp: Date.now(),
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Aggregator
+// ---------------------------------------------------------------------------
+
 export async function getSentimentSummary(keyword: string): Promise<SentimentSummary> {
   const [news, tweets, trending] = await Promise.all([
     fetchNewsSignals(keyword),
@@ -149,6 +191,14 @@ export async function getSentimentSummary(keyword: string): Promise<SentimentSum
   ]);
   const relevant = trending.filter(s => s.keyword.includes(keyword.toLowerCase()));
   const signals = [...news, ...tweets, ...relevant];
+
+  // Enhance with FinBERT if sidecar available and we have news headlines
+  const headlines = signals.filter(s => s.headline).map(s => s.headline!);
+  if (headlines.length > 0) {
+    const finbert = await batchFinBERTSentiment(headlines);
+    signals.push(...finbert);
+  }
+
   const avg = signals.length
     ? signals.reduce((s, sig) => s + sig.numericScore, 0) / signals.length
     : 0;
