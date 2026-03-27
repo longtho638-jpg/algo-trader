@@ -29,6 +29,7 @@
     "**/*.test.ts",
     "src/api/routes/monitoring-routes.ts",
     "src/api/routes/monitoring-routes-extension.ts",
+    "src/workers/**/*",
     "dist"
   ]
 }
