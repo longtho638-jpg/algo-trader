@@ -15,6 +15,7 @@ import { SignupPage } from './pages/signup-page';
 import { DocsPage } from './pages/docs-page';
 import { GuidePage } from './pages/guide-page';
 import { AccountPage } from './pages/account-page';
+import { CouponAdminPage } from './pages/coupon-admin-page';
 
 /**
  * Handle uncaught errors in the app.
@@ -45,6 +46,7 @@ export function App() {
         <Route path="/app/settings" element={<AuthGuard><LayoutShell><SettingsPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/guide" element={<AuthGuard><LayoutShell><GuidePage /></LayoutShell></AuthGuard>} />
         <Route path="/app/account" element={<AuthGuard><LayoutShell><AccountPage /></LayoutShell></AuthGuard>} />
+        <Route path="/app/coupons" element={<AuthGuard><LayoutShell><CouponAdminPage /></LayoutShell></AuthGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
