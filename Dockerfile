@@ -9,6 +9,7 @@ WORKDIR /app
 # Copy manifests first for layer caching
 COPY package.json pnpm-lock.yaml* ./
 
+COPY scripts ./scripts
 RUN pnpm install --frozen-lockfile
 
 COPY tsconfig.json ./
