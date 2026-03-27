@@ -1,29 +1,35 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
+    "module": "commonjs",
+    "outDir": "./dist",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
+    "jsx": "react",
+    "types": ["node"],
+    "isolatedModules": false,
+    "typeRoots": ["./node_modules/@types"],
+    "incremental": true,
+    "composite": false,
     "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "downlevelIteration": true,
+    "lib": ["ES2023"],
     "baseUrl": ".",
-    "paths": {
-      "@core/*": ["src/core/*"],
-      "@polymarket/*": ["src/polymarket/*"],
-      "@cex/*": ["src/cex/*"],
-      "@dex/*": ["src/dex/*"],
-      "@strategies/*": ["src/strategies/*"],
-      "@data/*": ["src/data/*"],
-      "@cli/*": ["src/cli/*"]
-    }
+    "rootDir": "./src"
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "tests"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "node_modules/.cache",
+    "**/*.test.ts",
+    "src/api/routes/monitoring-routes.ts",
+    "src/api/routes/monitoring-routes-extension.ts",
+    "src/workers/**/*",
+    "dist"
+  ]
 }
