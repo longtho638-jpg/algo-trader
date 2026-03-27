@@ -1,0 +1,31 @@
+# Cloudflare Workers Configuration
+# This worker acts as edge proxy for the algo-trade API
+# Main app runs on VPS (Docker), CF provides CDN + DDoS protection
+
+name = "algo-trader"
+main = "src/workers/edge-proxy.ts"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Production (default)
+[vars]
+ENVIRONMENT = "production"
+
+# KV namespace for edge caching
+[[kv_namespaces]]
+binding = "CACHE"
+id = "6c7199c0259b42db943aa13b200d8ea1"
+preview_id = "ca8f3f11882e426e952e322963077f73"
+
+# Staging
+[env.staging]
+name = "algo-trader-staging"
+[env.staging.vars]
+ENVIRONMENT = "staging"
+
+# Build config
+[build]
+command = "npx tsc -p tsconfig.worker.json"
+
+# Custom domain (configure in CF dashboard)
+# routes = [{ pattern = "api.yourdomain.com/*", zone_name = "yourdomain.com" }]

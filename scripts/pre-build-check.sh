@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Pre-build check for algo-trader
 # Checks disk space and basic requirements
 
@@ -18,7 +18,7 @@ fi
 echo "Disk space OK: $(($AVAILABLE_DISK / 1024))MB available"
 
 # Check Node.js
-if ! command -v node &> /dev/null; then
+if ! command -v node >/dev/null 2>&1; then
   echo "ERROR: Node.js is not installed"
   exit 1
 fi
@@ -27,7 +27,7 @@ NODE_VERSION=$(node -v)
 echo "Node.js version: $NODE_VERSION"
 
 # Check pnpm
-if ! command -v pnpm &> /dev/null; then
+if ! command -v pnpm >/dev/null 2>&1; then
   echo "ERROR: pnpm is not installed"
   exit 1
 fi

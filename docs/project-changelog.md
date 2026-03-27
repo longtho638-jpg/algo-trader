@@ -1,5 +1,54 @@
 # Project Changelog - Algo Trader
 
+## [1.1.2] - 2026-03-27
+
+### Added - CashClaw Integration & Server Bootstrap
+- **Server bootstrap**: `src/app.ts` — Fastify server with dotenv config, graceful shutdown (50 lines)
+- **CashClaw landing page**: Coupon code input added to pricing section on cashclaw.cc
+- **CashClaw admin dashboard**: React dashboard deployed to `https://cashclaw-dashboard.pages.dev` (CF Pages auto-deploy)
+- **Coupon system**: API endpoints `/api/coupons/validate` (check code + discount), `/api/coupons/:code/use` (record use)
+- **Admin routes**: `/api/admin/coupons` POST (create), GET (list) — require `X-API-Key` header authentication
+
+### Security Fixes
+- **Admin API authentication**: Coupon admin routes require `X-API-Key` header (case-sensitive)
+- **Coupon use-count atomicity**: Separated validation from use-count increment via dedicated `recordUse()` method
+- **Race condition prevention**: Atomic operations guard against double-counting coupon uses
+- **XSS prevention**: Landing page coupon input uses DOM construction, no innerHTML
+
+### Fixed
+- Coupon validation no longer increments use-count during check
+- Typo: "USDT.." → "USDT."
+
+### Changed
+- Total tests: 269 passing (100% pass rate)
+- Type checking: Clean (0 errors)
+- Frontend deployment: Landing page + dashboard on CF Pages (cashclaw.cc, cashclaw-dashboard.pages.dev)
+- Backend: `src/app.ts` entry point for PM2/M1 Max deployment
+
+### Documentation Updates
+- Updated `docs/system-architecture.md` — Server Bootstrap section + Coupon System details
+- Updated `docs/deployment-guide.md` — CashClaw Dashboard deployment + coupon API auth section
+- Updated `docs/project-changelog.md` — current session entries
+
+
+## [1.1.1] - 2026-03-27
+
+### Changed - Payment Provider Migration
+- **Billing provider**: Polar.sh → NOWPayments (USDT TRC20 crypto)
+- **Env vars**: Replaced `POLAR_API_KEY`/`POLAR_WEBHOOK_SECRET` with `NOWPAYMENTS_API_KEY`/`NOWPAYMENTS_IPN_SECRET`
+- **New env vars**: `USDT_TRC20_WALLET`, `NOWPAYMENTS_INVOICE_PRO`, `NOWPAYMENTS_INVOICE_ENTERPRISE`
+- **SDK change**: Removed `@polar-sh/sdk`, using native fetch + Web Crypto for HMAC-SHA512
+- **Webhook**: Updated signature header from `polar-signature` → `x-nowpayments-sig`, algorithm HMAC-SHA256 → HMAC-SHA512
+- **Webhook endpoint**: `/api/webhooks/nowpayments` (was `/api/webhooks/polar`)
+- **Pricing**: PRO $49/month, ENTERPRISE $299/month (both in USDT)
+
+### Documentation Updates
+- Updated `docs/deployment-guide.md` — env vars section
+- Updated `docs/api-subscription.md` — checkout, webhook integration
+- Updated `docs/license-management.md` — webhook events, configuration
+- Updated `docs/system-architecture.md` — billing section
+- Updated `docs/project-overview-pdr.md` — tech stack
+
 ## [1.1.0] - 2026-03-22
 
 ### Added - Phase 18: Redis Cluster Implementation
