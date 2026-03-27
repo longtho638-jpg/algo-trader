@@ -84,9 +84,17 @@ export class CouponService {
     }
 
     const discountedPrice = Math.max(0, originalPrice * (1 - coupon.discountPercent / 100));
-    coupon.currentUses++;
 
     return { valid: true, discountedPrice: Math.round(discountedPrice * 100) / 100, discountPercent: coupon.discountPercent };
+  }
+
+  /** Record a coupon use after payment is confirmed */
+  recordUse(code: string): void {
+    const coupon = this.coupons.get(code.toUpperCase().trim());
+    if (coupon) {
+      coupon.currentUses++;
+      logger.info(`[Coupon] Use recorded: ${coupon.code} (${coupon.currentUses}/${coupon.maxUses || '∞'})`);
+    }
   }
 
   /** Admin: list all coupons */

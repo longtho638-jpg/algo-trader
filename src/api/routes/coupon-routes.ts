@@ -6,7 +6,7 @@
  * DELETE /api/coupons/:code  — Admin: deactivate coupon
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { CouponService } from '../../billing/coupon-service';
 import { logger } from '../../utils/logger';
 
@@ -18,11 +18,27 @@ const TIER_PRICES: Record<string, { price: number; invoiceId: string }> = {
 
 const NOWPAYMENTS_API_KEY = process.env.NOWPAYMENTS_API_KEY || '';
 
+// Express admin auth middleware — validates X-API-Key header
+function requireAdmin(req: Request, res: Response, next: NextFunction): void {
+  const adminKeys = new Set(
+    (process.env.ADMIN_API_KEYS || '').split(',').filter(Boolean)
+  );
+  const defaultKey = process.env.ADMIN_API_KEY;
+  if (defaultKey) adminKeys.add(defaultKey);
+
+  const apiKey = req.headers['x-api-key'] as string | undefined;
+  if (!apiKey || !adminKeys.has(apiKey)) {
+    res.status(401).json({ error: 'Unauthorized — valid X-API-Key required' });
+    return;
+  }
+  next();
+}
+
 export const couponRouter: Router = Router();
 const couponService = CouponService.getInstance();
 
-// Admin: create coupon
-couponRouter.post('/', async (req: Request, res: Response) => {
+// Admin: create coupon (auth required)
+couponRouter.post('/', requireAdmin, async (req: Request, res: Response) => {
   try {
     const coupon = couponService.createCoupon(req.body);
     return res.json({ success: true, coupon });
@@ -31,13 +47,13 @@ couponRouter.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// Admin: list coupons
-couponRouter.get('/', (_req: Request, res: Response) => {
+// Admin: list coupons (auth required)
+couponRouter.get('/', requireAdmin, (_req: Request, res: Response) => {
   return res.json({ coupons: couponService.listCoupons() });
 });
 
-// Admin: deactivate coupon
-couponRouter.delete('/:code', (req: Request, res: Response) => {
+// Admin: deactivate coupon (auth required)
+couponRouter.delete('/:code', requireAdmin, (req: Request, res: Response) => {
   const ok = couponService.deactivateCoupon(req.params.code as string);
   return res.json({ success: ok });
 });
