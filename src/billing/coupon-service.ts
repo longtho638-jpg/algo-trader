@@ -1,9 +1,10 @@
 /**
  * Coupon Service
- * Manages discount codes for CashClaw subscriptions
- * Admin creates coupons → customer applies at checkout → NOWPayments invoice with reduced price
+ * Manages discount codes — persisted to JSON file so coupons survive PM2 restarts.
  */
 
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join } from 'path';
 import { logger } from '../utils/logger';
 
 export interface Coupon {
@@ -17,15 +18,47 @@ export interface Coupon {
   active: boolean;
 }
 
+const DATA_FILE = join(process.cwd(), 'data', 'coupons.json');
+
 export class CouponService {
   private static instance: CouponService;
   private coupons: Map<string, Coupon> = new Map();
 
-  private constructor() {}
+  private constructor() {
+    this.load();
+  }
 
   static getInstance(): CouponService {
     if (!CouponService.instance) CouponService.instance = new CouponService();
     return CouponService.instance;
+  }
+
+  /** Load coupons from disk */
+  private load(): void {
+    try {
+      if (existsSync(DATA_FILE)) {
+        const raw = readFileSync(DATA_FILE, 'utf-8');
+        const arr: Coupon[] = JSON.parse(raw);
+        for (const c of arr) this.coupons.set(c.code, c);
+        logger.info(`[Coupon] Loaded ${arr.length} coupons from disk`);
+      }
+    } catch (err) {
+      logger.error('[Coupon] Failed to load coupons file', err);
+    }
+  }
+
+  /** Save coupons to disk */
+  private save(): void {
+    try {
+      const dir = join(process.cwd(), 'data');
+      if (!existsSync(dir)) {
+        const { mkdirSync } = require('fs');
+        mkdirSync(dir, { recursive: true });
+      }
+      writeFileSync(DATA_FILE, JSON.stringify(this.listCoupons(), null, 2));
+    } catch (err) {
+      logger.error('[Coupon] Failed to save coupons file', err);
+    }
   }
 
   /** Admin: create a coupon */
@@ -54,6 +87,7 @@ export class CouponService {
     };
 
     this.coupons.set(code, coupon);
+    this.save();
     logger.info(`[Coupon] Created: ${code} (${input.discountPercent}% off)`);
     return coupon;
   }
@@ -93,6 +127,7 @@ export class CouponService {
     const coupon = this.coupons.get(code.toUpperCase().trim());
     if (coupon) {
       coupon.currentUses++;
+      this.save();
       logger.info(`[Coupon] Use recorded: ${coupon.code} (${coupon.currentUses}/${coupon.maxUses || '∞'})`);
     }
   }
@@ -107,6 +142,7 @@ export class CouponService {
     const coupon = this.coupons.get(code.toUpperCase().trim());
     if (!coupon) return false;
     coupon.active = false;
+    this.save();
     return true;
   }
 }
