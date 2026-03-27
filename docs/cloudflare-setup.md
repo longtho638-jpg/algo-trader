@@ -40,13 +40,13 @@ Sau khi deploy lần đầu, set secrets:
 npx wrangler secret put DATABASE_URL
 npx wrangler secret put EXCHANGE_API_KEY
 npx wrangler secret put EXCHANGE_SECRET
-npx wrangler secret put POLAR_WEBHOOK_SECRET
+npx wrangler secret put NOWPAYMENTS_IPN_SECRET
 
 # Staging
 npx wrangler secret put DATABASE_URL --env staging
 npx wrangler secret put EXCHANGE_API_KEY --env staging
 npx wrangler secret put EXCHANGE_SECRET --env staging
-npx wrangler secret put POLAR_WEBHOOK_SECRET --env staging
+npx wrangler secret put NOWPAYMENTS_IPN_SECRET --env staging
 ```
 
 ### 3. GitHub Secrets Required
