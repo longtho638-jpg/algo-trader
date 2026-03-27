@@ -1,5 +1,35 @@
 # Project Changelog - Algo Trader
 
+## [1.1.2] - 2026-03-27
+
+### Added - CashClaw Integration & Server Bootstrap
+- **Server bootstrap**: `src/app.ts` — Fastify server with dotenv config, graceful shutdown (50 lines)
+- **CashClaw landing page**: Coupon code input added to pricing section on cashclaw.cc
+- **CashClaw admin dashboard**: React dashboard deployed to `https://cashclaw-dashboard.pages.dev` (CF Pages auto-deploy)
+- **Coupon system**: API endpoints `/api/coupons/validate` (check code + discount), `/api/coupons/:code/use` (record use)
+- **Admin routes**: `/api/admin/coupons` POST (create), GET (list) — require `X-API-Key` header authentication
+
+### Security Fixes
+- **Admin API authentication**: Coupon admin routes require `X-API-Key` header (case-sensitive)
+- **Coupon use-count atomicity**: Separated validation from use-count increment via dedicated `recordUse()` method
+- **Race condition prevention**: Atomic operations guard against double-counting coupon uses
+- **XSS prevention**: Landing page coupon input uses DOM construction, no innerHTML
+
+### Fixed
+- Coupon validation no longer increments use-count during check
+- Typo: "USDT.." → "USDT."
+
+### Changed
+- Total tests: 269 passing (100% pass rate)
+- Type checking: Clean (0 errors)
+- Frontend deployment: Landing page + dashboard on CF Pages (cashclaw.cc, cashclaw-dashboard.pages.dev)
+- Backend: `src/app.ts` entry point for PM2/M1 Max deployment
+
+### Documentation Updates
+- Updated `docs/system-architecture.md` — Server Bootstrap section + Coupon System details
+- Updated `docs/deployment-guide.md` — CashClaw Dashboard deployment + coupon API auth section
+- Updated `docs/project-changelog.md` — current session entries
+
 ## [1.1.1] - 2026-03-27
 
 ### Changed - Payment Provider Migration

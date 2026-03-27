@@ -137,9 +137,24 @@ graph TD
 
 **Billing** (`src/billing/`):
 - NOWPayments USDT TRC20 — 3 tiers (FREE $0, PRO $49, ENTERPRISE $299), HMAC-SHA512 webhook verification.
+- **Coupon System** (`src/billing/coupon-system.ts`):
+  - Admin routes: `POST /api/admin/coupons` (create), `GET /api/admin/coupons` (list) — require `X-API-Key` header auth
+  - Validation route: `POST /api/coupons/validate` — checks code, discount, applies without incrementing use-count
+  - Record use: `POST /api/coupons/:code/use` — atomically increments use-count, guards against race conditions
+  - Dashboard integration: CashClaw dashboard on CF Pages displays coupon input, integrates with pricing section
 
 **Monitoring** (`docker-compose.yml`):
 - Prometheus (:9090) + Grafana (:3001).
+
+### Server Bootstrap (Phase 18+)
+**Location**: `src/app.ts` (50 lines)
+
+Fastify server initialization with:
+- dotenv config loading (`.env` parsing)
+- CORS + security headers
+- Graceful shutdown handling (SIGTERM, SIGINT)
+- Health check endpoint (`/health`)
+- Ready for PM2/M1 Max deployment with proper error handling
 
 ## Data Flow: Full AGI Arbitrage Pipeline
 
@@ -203,7 +218,7 @@ All Opportunities →
 - **0 TODO/FIXME** (zero tech debt)
 - **Binh Phap 6/6 fronts passing**
 
-Updated: 2026-03-03
+Updated: 2026-03-27
 
 ---
 

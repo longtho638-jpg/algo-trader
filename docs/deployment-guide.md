@@ -46,6 +46,26 @@ open http://localhost:3002           # Grafana (admin/admin)
 | alert-webhook | 5001 | SMS/Telegram webhook |
 | grafana | 3002 | Monitoring dashboards |
 
+## Dashboard Deployment
+
+### CashClaw Dashboard (Cloudflare Pages)
+
+**URL**: `https://cashclaw-dashboard.pages.dev`
+
+**Deploy**:
+```bash
+# From dashboard/ directory
+wrangler pages deploy dist/ --project-name cashclaw-dashboard
+```
+
+**Configuration**:
+- React SPA (Vite build)
+- Deployed to Cloudflare Pages (auto-deploy on git push to `main`)
+- Landing page includes coupon code input in pricing section
+- Coupon validation via POST `/api/coupons/validate` (backend API)
+
+**Entry Point**: `src/app.ts` (Fastify server on port 3000)
+
 ## Environment Variables
 
 ### Required
@@ -371,6 +391,8 @@ resources:
 | DB connection refused | Check `DATABASE_URL`, ensure postgres is healthy |
 | Redis timeout | Check `REDIS_URL`, verify redis container |
 | 401 on API calls | Verify API key in `x-api-key` header |
+| 401 on coupon admin routes | Ensure `X-API-Key` header is set (case-sensitive) for `/api/admin/coupons` endpoints |
+| Coupon use-count not incrementing | Use dedicated `POST /api/coupons/:code/use` endpoint, not validation endpoint |
 | Circuit breaker tripped | Check `/metrics` for `algo_trader_circuit_breaker_state` |
 | High memory | Check `algo_trader_heap_used_bytes` in Grafana |
 | Prometheus not scraping | Verify `http://localhost:3000/metrics` responds |
@@ -404,4 +426,4 @@ Before deploying to production:
 
 ---
 
-Updated: 2026-03-20
+Updated: 2026-03-27
