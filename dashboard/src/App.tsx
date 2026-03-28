@@ -16,6 +16,7 @@ import { DocsPage } from './pages/docs-page';
 import { GuidePage } from './pages/guide-page';
 import { AccountPage } from './pages/account-page';
 import { CouponAdminPage } from './pages/coupon-admin-page';
+import { SetupGuidePage } from './pages/setup-guide-page';
 import { TermsPage } from './pages/terms-page';
 import { PrivacyPage } from './pages/privacy-page';
 
@@ -51,6 +52,7 @@ export function App() {
         <Route path="/app/guide" element={<AuthGuard><LayoutShell><GuidePage /></LayoutShell></AuthGuard>} />
         <Route path="/app/account" element={<AuthGuard><LayoutShell><AccountPage /></LayoutShell></AuthGuard>} />
         <Route path="/app/coupons" element={<AuthGuard><LayoutShell><CouponAdminPage /></LayoutShell></AuthGuard>} />
+        <Route path="/app/setup" element={<AuthGuard><LayoutShell><SetupGuidePage /></LayoutShell></AuthGuard>} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
