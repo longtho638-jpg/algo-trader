@@ -3,12 +3,19 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as os from 'os';
+import * as path from 'path';
 import { ImmutableTradeAudit } from '../immutable-trade-audit';
+
+/** Use a temp path so tests don't touch ~/.cashclaw */
+function tmpLogPath(): string {
+  return path.join(os.tmpdir(), `audit-test-${Date.now()}-${Math.random().toString(36).slice(2)}.jsonl`);
+}
 
 describe('ImmutableTradeAudit', () => {
   describe('append-only logging', () => {
     it('should append entries with incrementing sequence', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       const e1 = audit.append('trade_decision', 'Buy BTC');
       const e2 = audit.append('trade_executed', 'Order filled');
 
@@ -18,7 +25,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should log trade decisions with full context', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       const entry = audit.logTradeDecision(
         'BTC-YES', 'buy', 'momentum_signal',
         2500, 2000, 'own-capital', 'Strong bullish signal'
@@ -32,7 +39,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should log circuit breaker events', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       const entry = audit.logCircuitBreaker('Loss streak: 3 consecutive', { streak: 3 });
 
       expect(entry.eventType).toBe('circuit_breaker');
@@ -40,7 +47,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should log drawdown tier changes', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       const entry = audit.logDrawdownTierChange('ALERT', 0.05, 95000);
 
       expect(entry.eventType).toBe('drawdown_tier_change');
@@ -50,7 +57,7 @@ describe('ImmutableTradeAudit', () => {
 
   describe('SHA-256 hash chain', () => {
     it('should set genesis entry previousHash to 0', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       const entry = audit.append('trade_decision', 'First trade');
       expect(entry.previousHash).toBe('0');
       expect(entry.hash).toBeTruthy();
@@ -58,7 +65,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should chain hashes: each entry references previous hash', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       const e1 = audit.append('trade_decision', 'Trade 1');
       const e2 = audit.append('trade_executed', 'Trade 2');
       const e3 = audit.append('circuit_breaker', 'Breaker tripped');
@@ -68,7 +75,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should produce different hashes for different entries', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       const e1 = audit.append('trade_decision', 'Buy');
       const e2 = audit.append('trade_decision', 'Sell');
       expect(e1.hash).not.toBe(e2.hash);
@@ -77,7 +84,7 @@ describe('ImmutableTradeAudit', () => {
 
   describe('chain integrity verification', () => {
     it('should verify intact chain', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       audit.append('trade_decision', 'Trade 1');
       audit.append('trade_executed', 'Trade 2');
       audit.append('circuit_breaker', 'Event 3');
@@ -87,7 +94,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should protect internal state from external tampering', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       audit.append('trade_decision', 'Trade 1');
       audit.append('trade_executed', 'Trade 2');
 
@@ -101,14 +108,14 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should return valid for empty log', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       expect(audit.verifyChainIntegrity().valid).toBe(true);
     });
   });
 
   describe('query interface', () => {
     it('should filter by walletLabel', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       audit.logTradeDecision('BTC', 'buy', 'sig', 100, 100, 'own-capital', 'Own trade');
       audit.logTradeDecision('ETH', 'sell', 'sig', 200, 200, 'managed-client1', 'Managed trade');
 
@@ -118,7 +125,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should filter by eventType', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       audit.append('trade_decision', 'Decision');
       audit.append('circuit_breaker', 'Breaker');
       audit.append('trade_decision', 'Decision 2');
@@ -128,7 +135,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should filter by date range', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       audit.append('trade_decision', 'Entry 1');
       audit.append('trade_decision', 'Entry 2');
 
@@ -141,7 +148,7 @@ describe('ImmutableTradeAudit', () => {
     });
 
     it('should respect limit', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       for (let i = 0; i < 10; i++) {
         audit.append('trade_decision', `Entry ${i}`);
       }
@@ -153,16 +160,32 @@ describe('ImmutableTradeAudit', () => {
 
   describe('latest entry', () => {
     it('should return undefined for empty log', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       expect(audit.getLatestEntry()).toBeUndefined();
     });
 
     it('should return the most recent entry', () => {
-      const audit = new ImmutableTradeAudit();
+      const audit = new ImmutableTradeAudit(tmpLogPath());
       audit.append('trade_decision', 'First');
       audit.append('trade_executed', 'Last');
 
       expect(audit.getLatestEntry()?.reason).toBe('Last');
+    });
+  });
+
+  describe('persistence', () => {
+    it('should restore entries after reload (simulates PM2 restart)', () => {
+      const logPath = tmpLogPath();
+      const audit1 = new ImmutableTradeAudit(logPath);
+      audit1.append('trade_decision', 'Trade 1');
+      audit1.append('trade_executed', 'Trade 2');
+
+      // New instance on same path = simulates PM2 restart
+      const audit2 = new ImmutableTradeAudit(logPath);
+      expect(audit2.getEntryCount()).toBe(2);
+      // Sequence counter should resume from last sequence
+      const e3 = audit2.append('circuit_breaker', 'Trade 3');
+      expect(e3.sequenceNumber).toBe(3);
     });
   });
 });

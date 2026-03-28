@@ -3,7 +3,14 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import * as os from 'os';
+import * as path from 'path';
 import { TieredDrawdownBreaker, DrawdownEvent } from '../tiered-drawdown-breaker';
+
+/** Use a temp path so tests don't touch ~/.cashclaw */
+function tmpStatePath(): string {
+  return path.join(os.tmpdir(), `dd-test-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+}
 
 describe('TieredDrawdownBreaker', () => {
   let breaker: TieredDrawdownBreaker;
@@ -11,7 +18,7 @@ describe('TieredDrawdownBreaker', () => {
 
   beforeEach(() => {
     events = [];
-    breaker = new TieredDrawdownBreaker(100000, undefined, (e) => events.push(e));
+    breaker = new TieredDrawdownBreaker(100000, undefined, (e) => events.push(e), tmpStatePath());
   });
 
   describe('NORMAL state', () => {

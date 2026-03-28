@@ -12,6 +12,7 @@
  */
 
 import { logger } from '../utils/logger';
+import { writeJsonState, readJsonState, cashclawPath } from '../persistence/file-store';
 
 export type DrawdownTier = 'NORMAL' | 'ALERT' | 'REDUCE' | 'HALT' | 'HARD_STOP' | 'DAILY_PAUSE';
 
@@ -73,6 +74,18 @@ const DEFAULT_CONFIG: TieredDrawdownConfig = {
   reduceSizingReduction: 0.50,
 };
 
+/** Persisted shape: HWM, tier, halt timers — enough to restore after PM2 restart */
+interface DrawdownPersistedState {
+  highWaterMark: number;
+  currentValue: number;
+  tier: DrawdownTier;
+  haltedUntil: number | null;
+  dailyPausedUntil: number | null;
+  dailyStartValue: number;
+  dailyPnl: number;
+  events: DrawdownEvent[];
+}
+
 export class TieredDrawdownBreaker {
   private config: TieredDrawdownConfig;
   private highWaterMark: number;
@@ -84,17 +97,21 @@ export class TieredDrawdownBreaker {
   private dailyPnl: number = 0;
   private events: DrawdownEvent[] = [];
   private onEvent?: (event: DrawdownEvent) => void;
+  private readonly statePath: string;
 
   constructor(
     initialPortfolioValue: number,
     config?: Partial<TieredDrawdownConfig>,
-    onEvent?: (event: DrawdownEvent) => void
+    onEvent?: (event: DrawdownEvent) => void,
+    statePath?: string
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config };
     this.highWaterMark = initialPortfolioValue;
     this.currentValue = initialPortfolioValue;
     this.dailyStartValue = initialPortfolioValue;
     this.onEvent = onEvent;
+    this.statePath = statePath ?? cashclawPath('drawdown-state.json');
+    this.loadState(initialPortfolioValue);
   }
 
   /** Update portfolio value and evaluate drawdown tiers */
@@ -209,6 +226,7 @@ export class TieredDrawdownBreaker {
     if (this.tier === 'DAILY_PAUSE') {
       this.tier = 'NORMAL';
     }
+    this.saveState();
   }
 
   /** Manual restart after HARD_STOP (requires explicit action) */
@@ -220,6 +238,7 @@ export class TieredDrawdownBreaker {
     this.tier = 'NORMAL';
     this.haltedUntil = null;
     this.dailyPausedUntil = null;
+    this.saveState();
     logger.info(`[TieredDrawdown] Manual restart at $${newPortfolioValue.toFixed(2)}`);
   }
 
@@ -262,10 +281,40 @@ export class TieredDrawdownBreaker {
     this.events.push(event);
     if (this.events.length > 100) this.events.shift();
 
+    this.saveState();
     logger.warn(`[TieredDrawdown] ${tier}: ${action} (drawdown ${(drawdownPercent * 100).toFixed(2)}%, portfolio $${this.currentValue.toFixed(2)})`);
 
     if (this.onEvent) {
       this.onEvent(event);
     }
+  }
+
+  private saveState(): void {
+    const state: DrawdownPersistedState = {
+      highWaterMark: this.highWaterMark,
+      currentValue: this.currentValue,
+      tier: this.tier,
+      haltedUntil: this.haltedUntil,
+      dailyPausedUntil: this.dailyPausedUntil,
+      dailyStartValue: this.dailyStartValue,
+      dailyPnl: this.dailyPnl,
+      events: this.events,
+    };
+    writeJsonState(this.statePath, state);
+  }
+
+  private loadState(initialPortfolioValue: number): void {
+    const state = readJsonState<DrawdownPersistedState>(this.statePath);
+    if (!state) return;
+    // Restore critical fields; keep initialPortfolioValue as fallback for currentValue
+    this.highWaterMark = state.highWaterMark;
+    this.currentValue = state.currentValue ?? initialPortfolioValue;
+    this.tier = state.tier ?? 'NORMAL';
+    this.haltedUntil = state.haltedUntil;
+    this.dailyPausedUntil = state.dailyPausedUntil;
+    this.dailyStartValue = state.dailyStartValue ?? initialPortfolioValue;
+    this.dailyPnl = state.dailyPnl ?? 0;
+    this.events = state.events ?? [];
+    logger.info(`[TieredDrawdown] Restored state from disk: tier=${this.tier}, HWM=$${this.highWaterMark.toFixed(2)}`);
   }
 }

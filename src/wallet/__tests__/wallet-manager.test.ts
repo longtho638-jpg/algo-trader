@@ -2,13 +2,20 @@
  * Wallet Manager Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
+import * as os from 'os';
+import * as path from 'path';
 import { WalletManager, type WalletLabel } from '../wallet-manager';
+
+/** Use a temp path so tests don't touch ~/.cashclaw */
+function tmpStatePath(): string {
+  return path.join(os.tmpdir(), `wm-test-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+}
 
 describe('WalletManager', () => {
   describe('registration', () => {
     it('should register a wallet', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       const wallet = wm.registerWallet('0xabc', 'own-capital', 50000);
       expect(wallet.label).toBe('own-capital');
       expect(wallet.capitalAllocation).toBe(50000);
@@ -16,13 +23,13 @@ describe('WalletManager', () => {
     });
 
     it('should reject duplicate labels', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
       expect(() => wm.registerWallet('0xdef', 'own-capital', 30000)).toThrow('already registered');
     });
 
     it('should register managed wallets', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'managed-client1', 100000);
       const wallet = wm.getWallet('managed-client1');
       expect(wallet?.label).toBe('managed-client1');
@@ -30,25 +37,36 @@ describe('WalletManager', () => {
   });
 
   describe('fund isolation', () => {
-    it('should allow own-capital trade on own wallet', () => {
-      const wm = new WalletManager();
+    it('should allow own-capital trade when executing wallet matches', () => {
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
       expect(() => wm.recordTrade({
         walletLabel: 'own-capital', marketId: 'BTC', side: 'buy',
         sizeUsd: 1000, price: 50000, pnl: 50, timestamp: Date.now(),
-      })).not.toThrow();
+      }, 'own-capital')).not.toThrow();
+    });
+
+    it('should throw when executingWalletLabel differs from trade.walletLabel', () => {
+      const wm = new WalletManager(tmpStatePath());
+      wm.registerWallet('0xabc', 'own-capital', 50000);
+      wm.registerWallet('0xdef', 'managed-client1', 100000);
+      // Trying to execute a managed trade using own-capital wallet = isolation violation
+      expect(() => wm.recordTrade({
+        walletLabel: 'managed-client1', marketId: 'BTC', side: 'buy',
+        sizeUsd: 1000, price: 50000, pnl: 50, timestamp: Date.now(),
+      }, 'own-capital')).toThrow('isolation violation');
     });
 
     it('should reject trade on non-existent wallet', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       expect(() => wm.recordTrade({
         walletLabel: 'own-capital', marketId: 'BTC', side: 'buy',
         sizeUsd: 1000, price: 50000, pnl: 50, timestamp: Date.now(),
-      })).toThrow('not found');
+      }, 'own-capital')).toThrow('not found');
     });
 
     it('should validate own-capital trades go to own wallet', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
       wm.registerWallet('0xdef', 'managed-client1', 100000);
 
@@ -57,7 +75,7 @@ describe('WalletManager', () => {
     });
 
     it('should validate managed trades go to managed wallet', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
       wm.registerWallet('0xdef', 'managed-client1', 100000);
 
@@ -68,7 +86,7 @@ describe('WalletManager', () => {
 
   describe('per-wallet capital', () => {
     it('should return allocated capital per wallet for Kelly sizing', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
       wm.registerWallet('0xdef', 'managed-client1', 100000);
 
@@ -77,17 +95,17 @@ describe('WalletManager', () => {
     });
 
     it('should return 0 for unknown wallet', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       expect(wm.getAllocatedCapital('managed-unknown' as WalletLabel)).toBe(0);
     });
 
     it('should track isolated PnL per wallet', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
       wm.registerWallet('0xdef', 'managed-client1', 100000);
 
-      wm.recordTrade({ walletLabel: 'own-capital', marketId: 'BTC', side: 'buy', sizeUsd: 1000, price: 50000, pnl: 200, timestamp: Date.now() });
-      wm.recordTrade({ walletLabel: 'managed-client1', marketId: 'ETH', side: 'sell', sizeUsd: 500, price: 3000, pnl: -50, timestamp: Date.now() });
+      wm.recordTrade({ walletLabel: 'own-capital', marketId: 'BTC', side: 'buy', sizeUsd: 1000, price: 50000, pnl: 200, timestamp: Date.now() }, 'own-capital');
+      wm.recordTrade({ walletLabel: 'managed-client1', marketId: 'ETH', side: 'sell', sizeUsd: 500, price: 3000, pnl: -50, timestamp: Date.now() }, 'managed-client1');
 
       expect(wm.getWallet('own-capital')!.isolatedPnl).toBe(200);
       expect(wm.getWallet('managed-client1')!.isolatedPnl).toBe(-50);
@@ -98,7 +116,7 @@ describe('WalletManager', () => {
 
   describe('summary', () => {
     it('should return correct summary across all wallets', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
       wm.registerWallet('0xdef', 'managed-client1', 100000);
       wm.registerWallet('0xghi', 'managed-client2', 75000);
@@ -113,15 +131,29 @@ describe('WalletManager', () => {
 
   describe('trade history', () => {
     it('should track trades per wallet', () => {
-      const wm = new WalletManager();
+      const wm = new WalletManager(tmpStatePath());
       wm.registerWallet('0xabc', 'own-capital', 50000);
 
-      wm.recordTrade({ walletLabel: 'own-capital', marketId: 'BTC', side: 'buy', sizeUsd: 1000, price: 50000, pnl: 100, timestamp: 1 });
-      wm.recordTrade({ walletLabel: 'own-capital', marketId: 'ETH', side: 'sell', sizeUsd: 500, price: 3000, pnl: -20, timestamp: 2 });
+      wm.recordTrade({ walletLabel: 'own-capital', marketId: 'BTC', side: 'buy', sizeUsd: 1000, price: 50000, pnl: 100, timestamp: 1 }, 'own-capital');
+      wm.recordTrade({ walletLabel: 'own-capital', marketId: 'ETH', side: 'sell', sizeUsd: 500, price: 3000, pnl: -20, timestamp: 2 }, 'own-capital');
 
       const history = wm.getTradeHistory('own-capital');
       expect(history.length).toBe(2);
       expect(history[0].marketId).toBe('BTC');
+    });
+  });
+
+  describe('persistence', () => {
+    it('should restore wallet state after reload', () => {
+      const statePath = tmpStatePath();
+      const wm1 = new WalletManager(statePath);
+      wm1.registerWallet('0xabc', 'own-capital', 50000);
+      wm1.recordTrade({ walletLabel: 'own-capital', marketId: 'BTC', side: 'buy', sizeUsd: 1000, price: 50000, pnl: 300, timestamp: 1 }, 'own-capital');
+
+      // New instance loading from same path = simulates PM2 restart
+      const wm2 = new WalletManager(statePath);
+      expect(wm2.getWallet('own-capital')?.currentBalance).toBe(50300);
+      expect(wm2.getWallet('own-capital')?.isolatedPnl).toBe(300);
     });
   });
 });

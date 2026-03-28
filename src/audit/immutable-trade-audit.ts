@@ -6,6 +6,7 @@
 
 import { createHash } from 'crypto';
 import { logger } from '../utils/logger';
+import { appendJsonl, readJsonl, cashclawPath } from '../persistence/file-store';
 
 export type TradeAuditEventType =
   | 'trade_decision'
@@ -49,6 +50,18 @@ export interface AuditTrailQuery {
 export class ImmutableTradeAudit {
   private entries: TradeAuditEntry[] = [];
   private sequenceCounter: number = 0;
+  private readonly logPath: string;
+
+  constructor(logPath?: string) {
+    this.logPath = logPath ?? cashclawPath('audit-log.jsonl');
+    // Reload existing entries from disk to restore sequence counter
+    const existing = readJsonl<TradeAuditEntry>(this.logPath);
+    if (existing.length > 0) {
+      this.entries = existing;
+      this.sequenceCounter = existing[existing.length - 1].sequenceNumber;
+      logger.info(`[TradeAudit] Restored ${existing.length} entries from ${this.logPath}`);
+    }
+  }
 
   /** Append a new entry to the immutable log */
   append(
@@ -78,6 +91,9 @@ export class ImmutableTradeAudit {
     const finalEntry = entry as TradeAuditEntry;
 
     this.entries.push(finalEntry);
+
+    // Persist to append-only JSONL file (immutable audit semantics)
+    appendJsonl(this.logPath, finalEntry);
 
     logger.info(`[TradeAudit] #${finalEntry.sequenceNumber} ${eventType}: ${reason}`);
     return finalEntry;

@@ -28,8 +28,9 @@ module.exports = {
       exp_backoff_restart_delay: 100,
       max_restarts: 10,
       min_uptime: '10s',
-      // Graceful shutdown: SIGTERM → cancel orders → save state → exit
-      kill_timeout: 15000,
+      // Graceful shutdown: SIGTERM → cancel TWAP orders → save state → exit
+      // 180s allows TWAP completion (up to 150s) + graceful order cancellation
+      kill_timeout: 180000,
       shutdown_with_message: true,
       error_file: './logs/error.log',
       out_file: './logs/out.log',
