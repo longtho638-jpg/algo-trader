@@ -1,0 +1,13 @@
+/**
+ * Kelly Criterion Position Sizer — type definitions for strategy consumption.
+ */
+
+export interface KellyPositionSizer {
+  calculateSize(params: {
+    probability: number;
+    odds: number;
+    bankroll: number;
+    maxFraction?: number;
+  }): number;
+  getOptimalFraction(winRate: number, avgWin: number, avgLoss: number): number;
+}
