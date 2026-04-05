@@ -9,10 +9,11 @@ WORKDIR /app
 # Copy manifests first for layer caching
 COPY package.json pnpm-lock.yaml* ./
 
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
 COPY tsconfig.json ./
 COPY src ./src
+COPY scripts ./scripts
 
 RUN pnpm run build
 
@@ -28,8 +29,8 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup
 
 COPY package.json pnpm-lock.yaml* ./
 
-# Production deps only
-RUN pnpm install --frozen-lockfile --prod
+# Production deps only (ignore scripts — no build tools in runner)
+RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 COPY --from=builder /app/dist ./dist
 

@@ -97,3 +97,93 @@ export type { MomentumExhaustionConfig, MomentumExhaustionDeps } from './momentu
 
 export { createCrossPlatformBasisTick } from './cross-platform-basis.js';
 export type { CrossPlatformBasisConfig, CrossPlatformBasisDeps } from './cross-platform-basis.js';
+
+export { createBayesianProbUpdaterTick } from './bayesian-prob-updater.js';
+export type { BayesianProbUpdaterConfig, BayesianProbUpdaterDeps } from './bayesian-prob-updater.js';
+
+export { createSpreadCompressionArbTick } from './spread-compression-arb.js';
+export type { SpreadCompressionArbConfig, SpreadCompressionArbDeps } from './spread-compression-arb.js';
+
+export { createTickMomentumBurstTick } from './tick-momentum-burst.js';
+export type { TickMomentumBurstConfig, TickMomentumBurstDeps } from './tick-momentum-burst.js';
+
+export { createConsensusDriftTick } from './consensus-drift.js';
+export type { ConsensusDriftConfig, ConsensusDriftDeps } from './consensus-drift.js';
+
+export { createVolumeProfileAnomalyTick } from './volume-profile-anomaly.js';
+export type { VolumeProfileAnomalyConfig, VolumeProfileAnomalyDeps } from './volume-profile-anomaly.js';
+
+export { createBollingerSqueezeTick } from './bollinger-squeeze.js';
+export type { BollingerSqueezeConfig, BollingerSqueezeDeps } from './bollinger-squeeze.js';
+
+export { createRelativeStrengthRotationTick } from './relative-strength-rotation.js';
+export type { RelativeStrengthRotationConfig, RelativeStrengthRotationDeps } from './relative-strength-rotation.js';
+
+export { createTimeWeightedMeanReversionTick } from './time-weighted-mean-reversion.js';
+export type { TimeWeightedMeanReversionConfig, TimeWeightedMeanReversionDeps } from './time-weighted-mean-reversion.js';
+
+export { createStaleQuoteSniperTick } from './stale-quote-sniper.js';
+export type { StaleQuoteSniperConfig, StaleQuoteSniperDeps } from './stale-quote-sniper.js';
+
+export { createMomentumCascadeTick } from './momentum-cascade.js';
+export type { MomentumCascadeConfig, MomentumCascadeDeps } from './momentum-cascade.js';
+
+export { createPriceImpactEstimatorTick } from './price-impact-estimator.js';
+export type { PriceImpactEstimatorConfig, PriceImpactEstimatorDeps } from './price-impact-estimator.js';
+
+export { createDecayRateMomentumTick } from './decay-rate-momentum.js';
+export type { DecayRateMomentumConfig, DecayRateMomentumDeps } from './decay-rate-momentum.js';
+
+export { createClusterBreakoutTick } from './cluster-breakout.js';
+export type { ClusterBreakoutConfig, ClusterBreakoutDeps } from './cluster-breakout.js';
+
+export { createGapFillReversionTick } from './gap-fill-reversion.js';
+export type { GapFillReversionConfig, GapFillReversionDeps } from './gap-fill-reversion.js';
+
+export { createRecencyBiasExploiterTick } from './recency-bias-exploiter.js';
+export type { RecencyBiasExploiterConfig, RecencyBiasExploiterDeps } from './recency-bias-exploiter.js';
+
+export { createWeightedSentimentAggregatorTick } from './weighted-sentiment-aggregator.js';
+export type { WeightedSentimentAggregatorConfig, WeightedSentimentAggregatorDeps } from './weighted-sentiment-aggregator.js';
+
+export { createOrderArrivalRateTick } from './order-arrival-rate.js';
+export type { OrderArrivalRateConfig, OrderArrivalRateDeps } from './order-arrival-rate.js';
+
+export { createRegimeSwitchDetectorTick } from './regime-switch-detector.js';
+export type { RegimeSwitchDetectorConfig, RegimeSwitchDetectorDeps } from './regime-switch-detector.js';
+
+export { createEventDeadlineScalperTick } from './event-deadline-scalper.js';
+export type { EventDeadlineScalperConfig, EventDeadlineScalperDeps } from './event-deadline-scalper.js';
+
+export { createCrossCorrelationLagTick } from './cross-correlation-lag.js';
+export type { CrossCorrelationLagConfig, CrossCorrelationLagDeps } from './cross-correlation-lag.js';
+
+export { createHerdBehaviorDetectorTick } from './herd-behavior-detector.js';
+export type { HerdBehaviorDetectorConfig, HerdBehaviorDetectorDeps } from './herd-behavior-detector.js';
+
+export { createInfoAsymmetryScannerTick } from './info-asymmetry-scanner.js';
+export type { InfoAsymmetryScannerConfig, InfoAsymmetryScannerDeps } from './info-asymmetry-scanner.js';
+
+export { createMeanVarianceOptimizerTick } from './mean-variance-optimizer.js';
+export type { MeanVarianceOptimizerConfig, MeanVarianceOptimizerDeps } from './mean-variance-optimizer.js';
+
+export { createPivotPointBounceTick } from './pivot-point-bounce.js';
+export type { PivotPointBounceConfig, PivotPointBounceDeps } from './pivot-point-bounce.js';
+
+export { createTailRiskHarvesterTick } from './tail-risk-harvester.js';
+export type { TailRiskHarvesterConfig, TailRiskHarvesterDeps } from './tail-risk-harvester.js';
+
+export { createMarkovChainPredictorTick } from './markov-chain-predictor.js';
+export type { MarkovChainPredictorConfig, MarkovChainPredictorDeps } from './markov-chain-predictor.js';
+
+export { createLiquidityMigrationTick } from './liquidity-migration.js';
+export type { LiquidityMigrationConfig, LiquidityMigrationDeps } from './liquidity-migration.js';
+
+export { createPriceAccelerationTick } from './price-acceleration.js';
+export type { PriceAccelerationConfig, PriceAccelerationDeps } from './price-acceleration.js';
+
+export { createSpreadMeanReversionTick } from './spread-mean-reversion.js';
+export type { SpreadMeanReversionConfig, SpreadMeanReversionDeps } from './spread-mean-reversion.js';
+
+export { createVolatilityTargetingTick } from './volatility-targeting.js';
+export type { VolatilityTargetingConfig, VolatilityTargetingDeps } from './volatility-targeting.js';

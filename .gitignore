@@ -10,3 +10,6 @@ repomix-output.xml
 .claude/hooks/.logs/
 cf-pages/
 Users/
+.env.production
+.env.local
+.env.*.local

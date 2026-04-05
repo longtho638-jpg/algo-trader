@@ -9,13 +9,13 @@ import { createBookImbalanceReversalTick } from '../strategies/polymarket/book-i
 import { createVwapDeviationSniperTick } from '../strategies/polymarket/vwap-deviation-sniper.js';
 import { createPairsStatArbTick } from '../strategies/polymarket/pairs-stat-arb.js';
 import { createSessionVolSniperTick } from '../strategies/polymarket/session-vol-sniper.js';
-import { createRegimeAdaptiveMomentumTick } from '../strategies/polymarket/regime-adaptive-momentum.js';
 import { createOrderbookDepthRatioTick } from '../strategies/polymarket/orderbook-depth-ratio.js';
 import { createCrossEventDriftTick } from '../strategies/polymarket/cross-event-drift.js';
 import { createVolCompressionBreakoutTick } from '../strategies/polymarket/vol-compression-breakout.js';
 import { createWhaleTrackerTick } from '../strategies/polymarket/whale-tracker.js';
 import { createResolutionFrontrunnerTick } from '../strategies/polymarket/resolution-frontrunner.js';
 import { createMultiLegHedgeTick } from '../strategies/polymarket/multi-leg-hedge.js';
+import { createRegimeAdaptiveMomentumTick } from '../strategies/polymarket/regime-adaptive-momentum.js';
 import { createLiquidationCascadeTick } from '../strategies/polymarket/liquidation-cascade.js';
 import { createOrderFlowToxicityTick } from '../strategies/polymarket/order-flow-toxicity.js';
 import { createGammaScalpingTick } from '../strategies/polymarket/gamma-scalping.js';
@@ -182,62 +182,107 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
       { id: 'funding-rate-arb', name: 'Funding Rate Arbitrage', type: 'funding-rate-arb', enabled: false, params: {}, intervalMs: parseInt(env('FUNDING_RATE_ARB_INTERVAL_MS', '15000'), 10) },
       createFundingRateArbTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'expiry-theta-decay', name: 'Expiry Theta Decay', type: 'expiry-theta-decay', enabled: false, params: {}, intervalMs: parseInt(env('EXPIRY_THETA_DECAY_INTERVAL_MS', '20000'), 10) },
       createExpiryThetaDecayTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'microstructure-alpha', name: 'Microstructure Alpha', type: 'microstructure-alpha', enabled: false, params: {}, intervalMs: parseInt(env('MICROSTRUCTURE_ALPHA_INTERVAL_MS', '3000'), 10) },
       createMicrostructureAlphaTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'sentiment-momentum', name: 'Sentiment Momentum', type: 'sentiment-momentum', enabled: false, params: {}, intervalMs: parseInt(env('SENTIMENT_MOMENTUM_INTERVAL_MS', '10000'), 10) },
       createSentimentMomentumTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'smart-money-divergence', name: 'Smart Money Divergence', type: 'smart-money-divergence', enabled: false, params: {}, intervalMs: parseInt(env('SMART_MONEY_DIVERGENCE_INTERVAL_MS', '10000'), 10) },
       createSmartMoneyDivergenceTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'volatility-surface-arb', name: 'Volatility Surface Arb', type: 'volatility-surface-arb', enabled: false, params: {}, intervalMs: parseInt(env('VOLATILITY_SURFACE_ARB_INTERVAL_MS', '15000'), 10) },
       createVolatilitySurfaceArbTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'news-catalyst-fade', name: 'News Catalyst Fade', type: 'news-catalyst-fade', enabled: false, params: {}, intervalMs: parseInt(env('NEWS_CATALYST_FADE_INTERVAL_MS', '10000'), 10) },
       createNewsCatalystFadeTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'inventory-skew-rebalancer', name: 'Inventory Skew Rebalancer', type: 'inventory-skew-rebalancer', enabled: false, params: {}, intervalMs: parseInt(env('INVENTORY_SKEW_INTERVAL_MS', '30000'), 10) },
       createInventorySkewRebalancerTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'kalman-filter-tracker', name: 'Kalman Filter Tracker', type: 'kalman-filter-tracker', enabled: false, params: {}, intervalMs: parseInt(env('KALMAN_FILTER_INTERVAL_MS', '8000'), 10) },
       createKalmanFilterTrackerTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'liquidity-vacuum', name: 'Liquidity Vacuum', type: 'liquidity-vacuum', enabled: false, params: {}, intervalMs: parseInt(env('LIQUIDITY_VACUUM_INTERVAL_MS', '5000'), 10) },
       createLiquidityVacuumTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'twap-accumulator', name: 'TWAP Accumulator', type: 'twap-accumulator', enabled: false, params: {}, intervalMs: parseInt(env('TWAP_ACCUMULATOR_INTERVAL_MS', '30000'), 10) },
       createTwapAccumulatorTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'correlation-breakdown', name: 'Correlation Breakdown', type: 'correlation-breakdown', enabled: false, params: {}, intervalMs: parseInt(env('CORRELATION_BREAKDOWN_INTERVAL_MS', '15000'), 10) },
       createCorrelationBreakdownTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'entropy-scorer', name: 'Entropy Scorer', type: 'entropy-scorer', enabled: false, params: {}, intervalMs: parseInt(env('ENTROPY_SCORER_INTERVAL_MS', '10000'), 10) },
       createEntropyScorerTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'adverse-selection-filter', name: 'Adverse Selection Filter', type: 'adverse-selection-filter', enabled: false, params: {}, intervalMs: parseInt(env('ADVERSE_SELECTION_INTERVAL_MS', '10000'), 10) },
       createAdverseSelectionFilterTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'momentum-exhaustion', name: 'Momentum Exhaustion', type: 'momentum-exhaustion', enabled: false, params: {}, intervalMs: parseInt(env('MOMENTUM_EXHAUSTION_INTERVAL_MS', '10000'), 10) },
       createMomentumExhaustionTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),
     );
+  }
+
+  if (clobClient && orderManager && gammaClient) {
     orc.register(
       { id: 'cross-platform-basis', name: 'Cross-Platform Basis', type: 'cross-platform-basis', enabled: false, params: {}, intervalMs: parseInt(env('CROSS_PLATFORM_BASIS_INTERVAL_MS', '15000'), 10) },
       createCrossPlatformBasisTick({ clob: clobClient, orderManager, eventBus, gamma: gammaClient }),

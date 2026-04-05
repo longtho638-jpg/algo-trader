@@ -29,8 +29,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Create data directory for SQLite tests
+        run: mkdir -p data
+
       - name: Type check
         run: npx tsc --noEmit
 
       - name: Run tests
         run: npx vitest run
+

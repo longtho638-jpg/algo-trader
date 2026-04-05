@@ -1,10 +1,80 @@
-# CashClaw — AI-Powered Prediction Market Trading
+# Algo-Trade RaaS Platform
 
 [![CI](https://github.com/longtho638-jpg/algo-trader/actions/workflows/ci.yml/badge.svg)](https://github.com/longtho638-jpg/algo-trader/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-4233%20passing-brightgreen.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](package.json)
 
-Polymarket market-making bot with dual-LLM fair value estimation, Kelly Criterion sizing, and 40+ trading strategies.
+Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (20%).
+
+---
+
+## Features
+
+- **43 Polymarket trading strategies** with real-time execution and backtesting
+- Polymarket CLOB integration with ECDSA signing and WebSocket orderbook streaming
+- Cross-market arbitrage and market-making strategies
+- CEX support via CCXT (Binance, Bybit, and more)
+- DEX support via ethers.js (Ethereum, Polygon, Arbitrum) and Jupiter (Solana)
+- Kelly Criterion risk manager with drawdown protection and position sizing
+- Backtesting engine with historical data replay
+- Paper trading mode for strategy validation
+- SQLite-backed trade history and analytics
+- Billing, metering, referral, and webhook modules for RaaS monetization
+- CLI interface with 25+ commands via Mekong-style AgentDispatcher
+- 19 specialist agents including 9 dark edge agents + HFT loop for 24/7 solo operation
+- **Dual-model AI prediction ensemble**: Nemotron-3 Nano (fast scanner, 35-50 t/s) + DeepSeek R1 (deep reasoner) with consensus voting
+- 4477+ automated tests for reliability and code quality
+
+---
+
+## CLI Commands
+
+### Core Commands
+```bash
+algo start              # Start trading bot
+algo status             # Bot status
+algo paper              # Run paper trading (risk-free validation)
+algo backtest           # Run backtests
+algo config             # View/edit configuration
+algo hedge-scan         # Scan hedge opportunities
+```
+
+### Agent Commands (AgentDispatcher)
+```bash
+algo scan               # Scan markets for opportunities
+algo monitor            # Monitor active strategies
+algo estimate <question># AI probability estimation
+algo risk               # Risk exposure report
+algo calibrate          # Calibrate model parameters
+algo report             # P&L and performance report
+algo doctor             # System health check
+algo agents             # List all registered agents
+```
+
+### Dark Edge Commands (Polymarket Alpha)
+```bash
+# P1 — Highest Edge
+algo neg-risk-scan      # Scan multi-outcome events for YES sum arb
+algo endgame            # Find resolving-soon markets (near-certain outcomes)
+algo resolution-arb     # Detect UMA oracle challenge window opportunities
+algo whale-watch        # Monitor Polygon CTF for whale movements
+
+# P2 — Good Edge
+algo event-cluster      # Cross-market correlation within events
+algo volume-alert       # Volume/liquidity anomaly detection
+algo split-merge-arb    # YES+NO vs $1.00 split/merge arb
+
+# P3 — Momentum/Sentiment
+algo news-snipe         # News-driven momentum detection
+algo contrarian         # Herding behavior contrarian opportunities
+```
+
+### OpenClaw HFT Commands (24/7 Solo Operation)
+```bash
+algo seed-admin         # Register/promote admin user (--email --password)
+algo warm-model         # Pre-heat DeepSeek R1 (eliminate cold-start latency)
+algo hft-loop           # Continuous HFT chain: warm→scan→estimate→risk→calibrate→report (24/7)
+```
 
 ---
 
@@ -12,186 +82,117 @@ Polymarket market-making bot with dual-LLM fair value estimation, Kelly Criterio
 
 ```bash
 git clone https://github.com/longtho638-jpg/algo-trader.git
-cd algo-trader
-bash scripts/dev-setup.sh    # install deps, create .env, verify build
+cd algo-trade
+pnpm install
+cp .env.example .env   # fill in your keys
+pnpm start
 ```
 
-The setup script handles everything: pnpm install, .env creation, TypeScript check, test run.
+---
 
-After setup, edit `.env` with your Polymarket API keys, then:
+## Dual-Model LLM Pipeline
+
+The platform uses a high-performance dual-model architecture for AI predictions:
+
+### Model Configuration
+
+| Model | Purpose | Speed | Port | Endpoint |
+|---|---|---|---|---|
+| **Nemotron-3 Nano 30B** | Fast market scanner & real-time alerts | 35-50 tokens/s | 11436 | `/v1/chat/completions` |
+| **DeepSeek R1 Distill 32B** | Deep reasoning & complex analysis | 8-15 tokens/s | 11435 | `/v1/chat/completions` |
+
+### Inference Pipeline
+
+1. **Scanner Phase** (Nemotron): Rapid scan of all markets, identify top opportunities
+2. **Estimation Phase** (DeepSeek R1): Deep analysis of top candidates, ensemble voting on probabilities
+3. **Consensus**: Both models vote on final probability — triggers trade if agreement threshold met
+4. **Fallback**: If primary model timeout, use fallback model for guaranteed responsiveness
+
+### Configuration
 
 ```bash
-pnpm start                   # Start bot (paper trading by default)
+# Set your M1 Max gateway IP (or localhost for local development)
+export OPENCLAW_GATEWAY_URL=http://192.168.11.111:11435/v1
+export OPENCLAW_SCANNER_URL=http://192.168.11.111:11436/v1
 ```
+
+See `.env.example` for full dual-model configuration.
 
 ---
 
 ## Architecture
 
 ```
-M1 Max bare metal (64GB macOS)
-├── mlx_lm.server :11435      DeepSeek R1 32B   (deep reasoning, ~10 tok/s)
-├── mlx_lm.server :11436      Nemotron Nano 30B (fast triage, ~45 tok/s)
-├── alphaear-sidecar :8100     FinBERT + Kronos  (sentiment + forecasting)
-│
-├── Docker: cashclaw-bot       Trading engine    (no ports, outbound only)
-│   ├── → host.docker.internal:11435  (DeepSeek R1)
-│   ├── → host.docker.internal:11436  (Nemotron Nano)
-│   └── → host.docker.internal:8100   (AlphaEar sidecar)
-│
-└── API/Dashboard/Landing      :3000 / :3001 / :3002
-```
-
-### LLM Routing
-
-| Model | Port | Role | Speed | Timeout |
-|-------|------|------|-------|---------|
-| DeepSeek R1 32B | :11435 | Deep reasoning before large trades | ~10 tok/s | 90s |
-| Nemotron Nano 30B | :11436 | Fast fair value estimation | ~45 tok/s | 10s |
-| Ollama (fallback) | :11434 | Backup if MLX servers down | ~12 tok/s | 30s |
-| Claude API (last resort) | cloud | Complex analysis | varies | 60s |
-
-### Intelligence Sidecar (Optional)
-
-AlphaEar wraps [Awesome-finance-skills](https://github.com/RKiding/Awesome-finance-skills) into a FastAPI server:
-
-| Endpoint | Capability |
-|----------|------------|
-| `/sentiment/analyze` | FinBERT deep financial sentiment |
-| `/predict/forecast` | Kronos time-series forecasting (MPS) |
-| `/news/hot` | 14-source news aggregation |
-| `/signal/track` | Signal evolution tracking |
-
-Setup: `cd intelligence && bash setup.sh && python server.py`
-
----
-
-## Development
-
-### Prerequisites
-
-- **Node.js** v20+ (v22 recommended)
-- **pnpm** (auto-installed via corepack)
-- **Python 3.12** (only for intelligence sidecar, optional)
-
-### Commands
-
-```bash
-pnpm start              # Start trading bot (paper mode)
-pnpm test               # Run test suite (4233 tests)
-pnpm run check          # TypeScript type check
-pnpm run build          # Compile to dist/
-```
-
-### CLI Commands
-
-```bash
-# Core
-algo start              # Start trading bot
-algo status             # Bot status
-algo backtest           # Run backtests
-algo config             # View/edit configuration
-
-# AI Estimation
-algo estimate <question># AI probability estimation
-algo calibrate          # Calibrate model parameters
-algo warm-model         # Pre-heat DeepSeek R1
-algo hft-loop           # Continuous 24/7 trading loop
-
-# Dark Edge (Polymarket Alpha)
-algo neg-risk-scan      # Multi-outcome YES sum arbitrage
-algo endgame            # Near-certain resolving markets
-algo resolution-arb     # UMA oracle challenge windows
-algo whale-watch        # Polygon CTF whale movements
-algo news-snipe         # News-driven momentum detection
-```
-
-### Project Structure
-
-```
-src/
-├── api/                 REST API endpoints + auth middleware
-├── agents/              19 specialist agents (scan, estimate, risk...)
-├── config/              LLM config, env-driven settings
-├── core/                Types, config, logger, risk manager
-├── data/                SQLite database, sentiment feed, price feeds
-├── dashboard/           Dashboard server + PWA frontend
-├── engine/              Strategy runner, trade executor
-├── intelligence/        AlphaEar client + Kronos fair value
-├── landing/             Landing page server + auth pages
-├── lib/                 LLM router (MLX → Ollama → Cloud)
-├── polymarket/          CLOB client, order manager, pipeline, fees
-├── strategies/          40+ trading strategies
-├── notifications/       Telegram, Discord, Slack, Email, Webhook
-├── copy-trading/        Copy trading + fee collection
-├── growth/              UTM tracking, badges, PnL share cards
-└── ui/                  Shared design system (tokens.css, components.css)
-
-intelligence/            Python FastAPI sidecar (FinBERT, Kronos)
-docker/                  Docker compose for M1 Max deployment
-tests/                   Vitest test suite (226 files, 4233 tests)
+┌─────────────────────────────────────────────────────────────┐
+│                   CLI (25 commands)                          │
+│  Commander.js → AgentDispatcher → 19 Specialist Agents      │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────┐
+│              AgentDispatcher (Mekong-style)                  │
+│  ┌─────────────┐ ┌─────────────┐ ┌──────────────────────┐  │
+│  │ Core Agents │ │ Dark Edge   │ │ Dark Edge P2+P3      │  │
+│  │ scan,monitor│ │ P1: neg-risk│ │ event-cluster,volume  │  │
+│  │ estimate,   │ │ endgame,    │ │ split-merge,news-snipe│  │
+│  │ risk,report │ │ whale-watch │ │ contrarian            │  │
+│  └──────┬──────┘ └──────┬──────┘ └──────────┬───────────┘  │
+└─────────┼───────────────┼───────────────────┼──────────────┘
+                           │
+┌──────────────────────────▼──────────────────────────────────┐
+│                   Strategy Engine                            │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
+│  │ PM Arb       │  │ PM MM        │  │ Grid/DCA/Funding  │  │
+│  │ (cross-mkt)  │  │ (bid/ask)    │  │ (CEX strategies)  │  │
+│  └──────┬───────┘  └──────┬───────┘  └────────┬──────────┘  │
+└─────────┼─────────────────┼───────────────────┼─────────────┘
+          │                 │                   │
+┌─────────▼─────────────────▼───────────────────▼─────────────┐
+│                   Client Layer                               │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐  │
+│  │ Polymarket   │  │ CEX (CCXT)   │  │ DEX (ethers.js)   │  │
+│  │ CLOB Client  │  │ Binance/Bybit│  │ Uniswap/Jupiter   │  │
+│  └──────────────┘  └──────────────┘  └───────────────────┘  │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
+│                   Core Layer                                 │
+│  Types │ Config │ Logger │ Risk Manager │ Utils              │
+└─────────────────────────┬───────────────────────────────────┘
+                          │
+┌─────────────────────────▼───────────────────────────────────┐
+│                   Data Layer                                 │
+│  SQLite DB │ Price Feeds │ Sentiment │ Trade History         │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Environment Variables
+## Configuration
 
-All env vars are documented in `.env.example`. Key groups:
-
-| Group | Variables | Required |
-|-------|-----------|----------|
-| **Polymarket** | `POLYMARKET_PRIVATE_KEY`, `POLYMARKET_API_KEY`, `POLYMARKET_PASSPHRASE` | Yes (for trading) |
-| **Trading** | `PAPER_TRADING=true`, `CAPITAL_USDC=200` | Defaults safe |
-| **LLM Primary** | `LLM_PRIMARY_URL`, `LLM_PRIMARY_MODEL` | Defaults to :11435 |
-| **LLM Fast** | `LLM_FAST_TRIAGE_URL`, `LLM_FAST_TRIAGE_MODEL` | Defaults to :11436 |
-| **Intelligence** | `ALPHAEAR_SIDECAR_URL` | Optional (:8100) |
-| **Ports** | `API_PORT=3000`, `DASHBOARD_PORT=3001`, `LANDING_PORT=3002` | Defaults work |
-| **Notifications** | `TELEGRAM_BOT_TOKEN`, `SMTP_*`, etc. | Optional |
-
----
-
-## Docker Deployment
-
-### CashClaw Bot (M1 Max)
+Copy `.env.example` and fill in your credentials:
 
 ```bash
-# Build and start (paper trading by default)
-docker compose -f docker/docker-compose.cashclaw.yaml up -d
-
-# View logs
-docker compose -f docker/docker-compose.cashclaw.yaml logs -f
-
-# Stop (cancels all open GTC orders first)
-docker compose -f docker/docker-compose.cashclaw.yaml down
+cp .env.example .env
 ```
 
-Container connects to bare-metal LLM servers via `host.docker.internal`. SQLite data stored in Docker named volume (NOT bind mount — VirtioFS corruption risk).
+Key variables:
 
-See `docker/DOCKER-SAFETY.md` for auto-update protection and coexistence with other containers.
-
-### Generic Docker (non-M1 Max)
-
-```bash
-docker compose up -d            # Uses root docker-compose.yml
-docker compose --profile postgres up -d  # With PostgreSQL
-```
-
----
-
-## Pricing
-
-| Tier | Price | Description |
-|------|-------|-------------|
-| Starter | $49/mo | Daily signal digest, Kelly sizing recommendations |
-| Pro | $149/mo | Real-time signals, auto-execution, REST API |
-| Elite | $499/mo | Custom market focus, personal dashboard, founder support |
+| Variable | Description |
+|---|---|
+| `POLYMARKET_API_KEY` | Polymarket CLOB API key |
+| `POLYMARKET_PRIVATE_KEY` | Wallet private key for signing |
+| `BINANCE_API_KEY` | Binance API key |
+| `BINANCE_SECRET` | Binance secret |
+| `ETH_RPC_URL` | Ethereum RPC endpoint |
+| `SOLANA_RPC_URL` | Solana RPC endpoint |
+| `NODE_ENV` | `development` or `production` |
 
 ---
 
 ## API Endpoints
 
 | Method | Path | Description |
-|--------|------|-------------|
+|---|---|---|
 | GET | `/api/health` | Health check |
 | GET | `/api/status` | Engine status and active strategies |
 | POST | `/api/strategies/start` | Start a strategy |
@@ -203,15 +204,47 @@ docker compose --profile postgres up -d  # With PostgreSQL
 
 ---
 
+## Pricing Tiers
+
+| Tier | Price | Strategies | Markets |
+|---|---|---|---|
+| Starter | $49/mo | 1 | Polymarket only |
+| Pro | $149/mo | 5 | Polymarket + 1 CEX |
+| Growth | $399/mo | 20 | All markets |
+| Enterprise | Custom | Unlimited | All + dedicated support |
+
+---
+
+## Docker Deployment
+
+```bash
+# Single container
+docker run -d \
+  --env-file .env \
+  -p 3000:3000 -p 3001:3001 -p 3002:3002 \
+  longtho638-jpg/algo-trader:latest
+
+# Docker Compose (recommended)
+docker compose up -d
+
+# With PostgreSQL
+docker compose --profile postgres up -d
+```
+
+Ports:
+- `3000` — REST API
+- `3001` — Dashboard
+- `3002` — Webhooks
+
+---
+
 ## Contributing
 
 1. Fork the repository
-2. Run `bash scripts/dev-setup.sh` to set up dev environment
-3. Create a feature branch: `git checkout -b feat/your-feature`
-4. Write tests for new code
-5. Ensure `pnpm run check && pnpm test` passes (4233+ tests)
-6. Commit using conventional commits: `feat: add grid trading strategy`
-7. Push and open a pull request against `main`
+2. Create a feature branch: `git checkout -b feat/your-feature`
+3. Commit using conventional commits: `feat: add grid trading strategy`
+4. Push and open a pull request against `main`
+5. Ensure CI passes before requesting review
 
 ---
 

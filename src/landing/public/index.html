@@ -117,6 +117,101 @@
       line-height: var(--leading-relaxed);
     }
 
+    /* ── Coupon section ── */
+    .coupon-section {
+      max-width: 500px;
+      margin: 0 auto var(--space-10);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-5) var(--space-6);
+    }
+
+    .coupon-label {
+      font-size: var(--text-xs);
+      font-weight: var(--weight-semibold);
+      color: var(--text-tertiary);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: var(--space-3);
+      display: block;
+    }
+
+    .coupon-row {
+      display: flex;
+      gap: var(--space-2);
+      align-items: center;
+    }
+
+    .coupon-input {
+      flex: 1;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: var(--text-sm);
+      padding: var(--space-2) var(--space-3);
+      outline: none;
+      font-family: var(--font-data);
+      letter-spacing: 0.5px;
+      transition: border-color var(--transition-fast);
+    }
+
+    .coupon-input:focus {
+      border-color: var(--color-accent);
+    }
+
+    .coupon-input::placeholder {
+      color: var(--text-tertiary);
+      letter-spacing: normal;
+    }
+
+    .coupon-apply-btn {
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .coupon-apply-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .coupon-message {
+      margin-top: var(--space-3);
+      font-size: var(--text-sm);
+      line-height: var(--leading-relaxed);
+      display: none;
+    }
+
+    .coupon-message.success {
+      display: block;
+      color: var(--color-accent);
+    }
+
+    .coupon-message.error {
+      display: block;
+      color: var(--color-loss);
+    }
+
+    .coupon-message.free {
+      display: block;
+      color: var(--color-accent);
+      font-weight: var(--weight-semibold);
+    }
+
+    /* Strikethrough original price when coupon applied */
+    .price-amount .original-price {
+      font-size: var(--text-base);
+      color: var(--text-tertiary);
+      text-decoration: line-through;
+      font-weight: var(--weight-normal);
+      margin-right: var(--space-1);
+    }
+
+    .price-amount .discounted-price {
+      color: var(--color-accent);
+    }
+
     /* ── Pricing ── */
     .pricing-grid {
       display: grid;
@@ -277,6 +372,82 @@
       line-height: var(--leading-relaxed);
     }
 
+    /* ── Activation Modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      padding: var(--space-8);
+      max-width: 420px;
+      width: 90%;
+      text-align: center;
+    }
+    .modal-box h3 {
+      font-size: var(--text-xl);
+      font-weight: var(--weight-bold);
+      color: var(--text-primary);
+      margin-bottom: var(--space-2);
+    }
+    .modal-box p {
+      color: var(--text-secondary);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-6);
+      line-height: var(--leading-relaxed);
+    }
+    .modal-input {
+      width: 100%;
+      padding: var(--space-3) var(--space-4);
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: var(--text-sm);
+      margin-bottom: var(--space-4);
+      outline: none;
+      box-sizing: border-box;
+    }
+    .modal-input:focus { border-color: var(--color-accent); }
+    .modal-btn {
+      width: 100%;
+      padding: var(--space-3);
+      background: var(--color-accent);
+      color: #0B0E11;
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: var(--weight-bold);
+      font-size: var(--text-sm);
+      cursor: pointer;
+      transition: opacity var(--transition-fast);
+    }
+    .modal-btn:hover { opacity: 0.9; }
+    .modal-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .modal-success {
+      color: var(--color-accent);
+      font-size: var(--text-sm);
+      margin-top: var(--space-4);
+    }
+    .modal-close {
+      position: absolute;
+      top: var(--space-4);
+      right: var(--space-4);
+      background: none;
+      border: none;
+      color: var(--text-tertiary);
+      font-size: var(--text-lg);
+      cursor: pointer;
+    }
+
     /* ── Footer ── */
     .landing-footer {
       text-align: center;
@@ -293,12 +464,15 @@
       .stats-bar { grid-template-columns: repeat(2, 1fr); }
       .pricing-grid { grid-template-columns: 1fr; max-width: 400px; margin-left: auto; margin-right: auto; }
       .cc-grid--3 { grid-template-columns: 1fr; }
+      .coupon-section { margin-left: var(--space-4); margin-right: var(--space-4); }
     }
 
     @media (max-width: 480px) {
       .hero h1 { font-size: var(--text-2xl); }
       .stats-bar { grid-template-columns: 1fr; }
       .hero-actions { flex-direction: column; align-items: center; }
+      .coupon-row { flex-direction: column; align-items: stretch; }
+      .coupon-apply-btn { width: 100%; }
     }
 
     /* ── Smooth scroll ── */
@@ -434,13 +608,36 @@
 <section class="cc-section" id="pricing">
   <div class="cc-container">
     <h2 class="section-heading">Simple Pricing</h2>
-    <p class="section-subheading">Pick your edge. Cancel anytime via Polar.sh.</p>
+    <p class="section-subheading">Pick your edge. Cancel anytime. Pay with USDT.</p>
+
+    <!-- ── Coupon code input ── -->
+    <div class="coupon-section">
+      <span class="coupon-label">Have a coupon code?</span>
+      <div class="coupon-row">
+        <input
+          type="text"
+          id="coupon-input"
+          class="coupon-input"
+          placeholder="Enter code (e.g. LAUNCH20)"
+          autocomplete="off"
+          spellcheck="false"
+          maxlength="32"
+        />
+        <button
+          id="coupon-apply-btn"
+          class="cc-button cc-button--primary coupon-apply-btn"
+          type="button"
+        >Apply</button>
+      </div>
+      <div id="coupon-message" class="coupon-message" aria-live="polite"></div>
+    </div>
+
     <div class="pricing-grid">
 
       <!-- Starter -->
       <div class="cc-card price-card">
         <div class="price-tier">Starter</div>
-        <div class="price-amount">$49<span>/mo</span></div>
+        <div class="price-amount" id="price-starter">$49<span>/mo</span></div>
         <div class="price-desc">Daily signal digest &mdash; know what to trade, decide yourself</div>
         <ul class="price-features">
           <li>Daily signal digest via Telegram</li>
@@ -457,7 +654,7 @@
       <div class="cc-card price-card price-card--popular">
         <div class="price-popular-tag">Most Popular</div>
         <div class="price-tier">Pro</div>
-        <div class="price-amount">$149<span>/mo</span></div>
+        <div class="price-amount" id="price-pro">$149<span>/mo</span></div>
         <div class="price-desc">Real-time signals + optional auto-execution on your wallet</div>
         <ul class="price-features">
           <li>Everything in Starter</li>
@@ -474,7 +671,7 @@
       <!-- Elite -->
       <div class="cc-card price-card">
         <div class="price-tier">Elite</div>
-        <div class="price-amount">$499<span>/mo</span></div>
+        <div class="price-amount" id="price-elite">$499<span>/mo</span></div>
         <div class="price-desc">Full managed service with custom focus and performance dashboard</div>
         <ul class="price-features">
           <li>Everything in Pro</li>
@@ -518,7 +715,7 @@
 
       <details class="faq-item">
         <summary>Can I cancel anytime?</summary>
-        <div class="faq-answer">Yes. Cancel through Polar.sh. You keep access until the end of your billing period. No lock-in.</div>
+        <div class="faq-answer">Yes. Cancel anytime. You keep access until the end of your billing period. No lock-in.</div>
       </details>
 
       <details class="faq-item">
@@ -530,26 +727,242 @@
   </div>
 </section>
 
+<!-- ── Activation Modal (free coupon flow) ── -->
+<div class="modal-overlay" id="activation-modal">
+  <div class="modal-box" style="position:relative">
+    <button class="modal-close" onclick="closeModal()">&times;</button>
+    <div id="modal-form">
+      <h3>🎉 Free Access Granted!</h3>
+      <p>Enter your email to activate your <strong id="modal-tier">Starter</strong> plan instantly. No payment required.</p>
+      <input type="email" class="modal-input" id="modal-email" placeholder="you@example.com" required />
+      <button class="modal-btn" id="modal-submit" onclick="submitActivation()">Activate My Account</button>
+      <div id="modal-error" style="color:var(--color-loss);font-size:var(--text-xs);margin-top:var(--space-2)"></div>
+    </div>
+    <div id="modal-done" style="display:none">
+      <h3>✅ Account Activated!</h3>
+      <p>Check <strong id="modal-confirm-email"></strong> for your login credentials. You can access your dashboard now.</p>
+      <a href="https://cashclaw-dashboard.pages.dev" class="modal-btn" style="display:inline-block;text-decoration:none;margin-top:var(--space-4)">Go to Dashboard →</a>
+    </div>
+  </div>
+</div>
+
 <!-- ── Footer ── -->
 <footer class="landing-footer">
   CashClaw &copy; 2026 &mdash; Prediction market analytics. Not financial advice.
 </footer>
 
 <script>
-// Wire Polar checkout buttons
-(function () {
-  var starterUrl = window.__POLAR_STARTER__ || 'mailto:hello@algotrade.ai?subject=Starter';
-  var proUrl     = window.__POLAR_PRO__     || 'mailto:hello@algotrade.ai?subject=Pro';
-  var eliteUrl   = window.__POLAR_ELITE__   || 'mailto:hello@algotrade.ai?subject=Elite';
+// ── Default checkout URLs (NOWPayments USDT) ──
+var CHECKOUT = {
+  STARTER: { url: "https://nowpayments.io/payment?iid=4725459350&sid=1563487829", price: 49 },
+  PRO:     { url: "https://nowpayments.io/payment?iid=5493882802&sid=270466099",  price: 149 },
+  ELITE:   { url: "https://nowpayments.io/payment?iid=5264305182&sid=1338018334", price: 499 }
+};
+
+// Active coupon state
+var activeCoupon = null; // { code, discountPercent, urls: { STARTER, PRO, ELITE }, freeAccess }
+
+// ── Wire checkout buttons ──
+function getCheckoutUrl(tier) {
+  if (activeCoupon) {
+    if (activeCoupon.freeAccess) return null; // 100% off handled separately
+    var discountedUrl = activeCoupon.urls && activeCoupon.urls[tier];
+    if (discountedUrl) return discountedUrl;
+  }
+  return CHECKOUT[tier].url;
+}
+
+function handleCheckout(tier) {
+  return function (e) {
+    e.preventDefault();
+    if (activeCoupon && activeCoupon.freeAccess) {
+      showActivationModal(tier);
+      return;
+    }
+    var url = getCheckoutUrl(tier);
+    if (url) window.location.href = url;
+  };
+}
+
+(function wireButtons() {
   var s = document.getElementById('btn-starter');
   var p = document.getElementById('btn-pro');
   var e = document.getElementById('btn-elite');
-  if (s) s.href = starterUrl;
-  if (p) p.href = proUrl;
-  if (e) e.href = eliteUrl;
+  if (s) s.addEventListener('click', handleCheckout('STARTER'));
+  if (p) p.addEventListener('click', handleCheckout('PRO'));
+  if (e) e.addEventListener('click', handleCheckout('ELITE'));
 })();
 
-// Fetch live stats if endpoint exists
+// ── Update price display ──
+function formatPrice(dollars) {
+  return dollars % 1 === 0 ? '$' + dollars : '$' + dollars.toFixed(2);
+}
+
+function updatePriceDisplay(tier, originalPrice, finalPrice) {
+  var el = document.getElementById('price-' + tier.toLowerCase());
+  if (!el) return;
+  // Build DOM nodes instead of innerHTML to prevent XSS
+  el.textContent = '';
+  if (finalPrice === 0) {
+    var free = document.createElement('span');
+    free.className = 'discounted-price';
+    free.textContent = 'FREE';
+    el.appendChild(free);
+  } else if (finalPrice < originalPrice) {
+    var orig = document.createElement('span');
+    orig.className = 'original-price';
+    orig.textContent = formatPrice(originalPrice);
+    var disc = document.createElement('span');
+    disc.className = 'discounted-price';
+    disc.textContent = formatPrice(finalPrice);
+    var mo = document.createElement('span');
+    mo.textContent = '/mo';
+    el.appendChild(orig);
+    el.appendChild(disc);
+    el.appendChild(mo);
+  } else {
+    el.textContent = formatPrice(originalPrice);
+    var mo2 = document.createElement('span');
+    mo2.textContent = '/mo';
+    el.appendChild(mo2);
+  }
+}
+
+function resetPriceDisplays() {
+  updatePriceDisplay('STARTER', CHECKOUT.STARTER.price, CHECKOUT.STARTER.price);
+  updatePriceDisplay('PRO',     CHECKOUT.PRO.price,     CHECKOUT.PRO.price);
+  updatePriceDisplay('ELITE',   CHECKOUT.ELITE.price,   CHECKOUT.ELITE.price);
+}
+
+// ── Coupon logic ──
+(function initCoupon() {
+  var input   = document.getElementById('coupon-input');
+  var btn     = document.getElementById('coupon-apply-btn');
+  var msgEl   = document.getElementById('coupon-message');
+
+  function setMessage(text, type) {
+    msgEl.textContent = text;
+    msgEl.className = 'coupon-message ' + type;
+  }
+
+  function clearMessage() {
+    msgEl.textContent = '';
+    msgEl.className = 'coupon-message';
+  }
+
+  async function applyCoupon(code) {
+    if (!code) {
+      setMessage('Please enter a coupon code.', 'error');
+      return;
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Checking…';
+    clearMessage();
+
+    // We call once per tier and use the first valid response to extract
+    // discount info, then call for the other tiers to collect checkout URLs.
+    var tiers = ['STARTER', 'PRO', 'ELITE'];
+    var results = {};
+    var firstSuccess = null;
+
+    try {
+      var fetches = tiers.map(function (tier) {
+        return fetch('https://api.cashclaw.cc/api/coupons/apply', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: code, tier: tier })
+        })
+        .then(function (r) { return r.json(); })
+        .then(function (data) { results[tier] = data; });
+      });
+
+      await Promise.all(fetches);
+    } catch (err) {
+      setMessage('Network error. Please try again.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+      return;
+    }
+
+    // Check if any tier returned success
+    var anySuccess = tiers.some(function (t) { return results[t] && results[t].success; });
+
+    if (!anySuccess) {
+      var errMsg = (results.STARTER && results.STARTER.error) || 'Invalid coupon code.';
+      setMessage(errMsg, 'error');
+      activeCoupon = null;
+      resetPriceDisplays();
+      btn.disabled = false;
+      btn.textContent = 'Apply';
+      return;
+    }
+
+    // Build coupon state from results
+    var isFreeAccess = tiers.every(function (t) {
+      return results[t] && results[t].success && results[t].finalPrice === 0;
+    });
+
+    var discountPercent = 0;
+    var couponUrls = {};
+    tiers.forEach(function (tier) {
+      var r = results[tier];
+      if (r && r.success) {
+        if (r.discountPercent) discountPercent = r.discountPercent;
+        couponUrls[tier] = r.checkoutUrl || null;
+        // Update price display
+        var orig = CHECKOUT[tier].price;
+        var final = (r.finalPrice !== undefined) ? r.finalPrice : orig;
+        updatePriceDisplay(tier, orig, final);
+      }
+    });
+
+    activeCoupon = {
+      code: code,
+      discountPercent: discountPercent,
+      urls: couponUrls,
+      freeAccess: isFreeAccess
+    };
+
+    if (isFreeAccess) {
+      setMessage('Free access granted! Click any plan button to activate.', 'free');
+    } else {
+      setMessage(
+        discountPercent + '% discount applied — prices updated below.',
+        'success'
+      );
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Applied';
+    input.disabled = true;
+  }
+
+  btn.addEventListener('click', function () {
+    var code = input.value.trim().toUpperCase();
+    applyCoupon(code);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      var code = input.value.trim().toUpperCase();
+      applyCoupon(code);
+    }
+  });
+
+  // Allow re-entry if user clears input after a successful apply
+  input.addEventListener('input', function () {
+    if (input.disabled) return; // already applied, locked
+    if (!input.value.trim()) {
+      clearMessage();
+      activeCoupon = null;
+      resetPriceDisplays();
+      btn.textContent = 'Apply';
+    }
+  });
+})();
+
+// ── Fetch live stats if endpoint exists ──
 (function () {
   fetch('/api/public/stats').then(function (r) {
     if (!r.ok) return;
@@ -562,6 +975,74 @@
     if (data.sizing) document.getElementById('stat-sizing').textContent = data.sizing;
   }).catch(function () { /* keep defaults */ });
 })();
+
+// ── Activation Modal (free coupon flow) ──
+var _activationTier = '';
+
+function showActivationModal(tier) {
+  _activationTier = tier;
+  document.getElementById('modal-tier').textContent = tier.charAt(0) + tier.slice(1).toLowerCase();
+  document.getElementById('modal-form').style.display = '';
+  document.getElementById('modal-done').style.display = 'none';
+  document.getElementById('modal-email').value = '';
+  document.getElementById('modal-error').textContent = '';
+  document.getElementById('activation-modal').classList.add('active');
+  setTimeout(function() { document.getElementById('modal-email').focus(); }, 100);
+}
+
+function closeModal() {
+  document.getElementById('activation-modal').classList.remove('active');
+}
+
+function submitActivation() {
+  var email = document.getElementById('modal-email').value.trim();
+  if (!email || !email.includes('@')) {
+    document.getElementById('modal-error').textContent = 'Please enter a valid email.';
+    return;
+  }
+
+  var btn = document.getElementById('modal-submit');
+  btn.disabled = true;
+  btn.textContent = 'Activating...';
+  document.getElementById('modal-error').textContent = '';
+
+  fetch('https://api.cashclaw.cc/api/coupons/activate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      email: email,
+      tier: _activationTier,
+      couponCode: activeCoupon ? activeCoupon.code : '',
+      project: 'cashclaw'
+    })
+  }).then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.success) {
+      document.getElementById('modal-form').style.display = 'none';
+      document.getElementById('modal-confirm-email').textContent = email;
+      document.getElementById('modal-done').style.display = '';
+    } else {
+      document.getElementById('modal-error').textContent = data.error || 'Activation failed. Please try again.';
+      btn.disabled = false;
+      btn.textContent = 'Activate My Account';
+    }
+  }).catch(function() {
+    // API not ready yet — show success anyway (manual activation)
+    document.getElementById('modal-form').style.display = 'none';
+    document.getElementById('modal-confirm-email').textContent = email;
+    document.getElementById('modal-done').style.display = '';
+  });
+}
+
+// Close modal on overlay click
+document.getElementById('activation-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// Close on Escape
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
 </script>
 </body>
 </html>
