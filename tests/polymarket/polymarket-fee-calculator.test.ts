@@ -69,9 +69,17 @@ describe('Polymarket Fee Calculator', () => {
   });
 
   describe('netProfitMaker', () => {
-    it('adds rebate from estimated taker volume', () => {
+    it('adds rebate from estimated taker volume at given probability', () => {
+      // At p=0.5 (default), finance fee = minTakerFee = 0.002
+      // rebate = 10000 * 0.002 * 0.50 (rebatePct) = 10
       const profit = netProfitMaker(100, 'finance', 10000);
-      // rebate = 10000 * 0.010 (maxTaker) * 0.50 (rebatePct) = 50
+      expect(profit).toBe(110);
+    });
+
+    it('uses maxTakerFee at extreme probability', () => {
+      // At p=0.0, finance fee = maxTakerFee = 0.010
+      // rebate = 10000 * 0.010 * 0.50 = 50
+      const profit = netProfitMaker(100, 'finance', 10000, 0.0);
       expect(profit).toBe(150);
     });
   });
