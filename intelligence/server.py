@@ -297,7 +297,7 @@ async def track_signal(req: SignalTrackRequest):
 if __name__ == "__main__":
     uvicorn.run(
         "server:app",
-        host="0.0.0.0",
+        host="127.0.0.1",
         port=int(os.getenv("SIDECAR_PORT", "8100")),
         reload=False,
         log_level="info",

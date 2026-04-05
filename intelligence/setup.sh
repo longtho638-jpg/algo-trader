@@ -50,9 +50,12 @@ fi
 # Ensure data dir exists
 mkdir -p data
 
-# Python dependencies
+# Python dependencies (in venv to avoid breaking system packages)
 echo "[setup] Installing Python dependencies..."
-pip install --break-system-packages -q \
+if [ ! -d ".venv" ]; then
+    python3 -m venv .venv
+fi
+.venv/bin/pip install -q \
     fastapi uvicorn httpx \
     loguru pydantic python-dotenv \
     requests beautifulsoup4 lxml \
@@ -64,6 +67,6 @@ pip install --break-system-packages -q \
 
 echo ""
 echo "[setup] Done. Start with:"
-echo "  cd intelligence && python server.py"
+echo "  cd intelligence && .venv/bin/python server.py"
 echo ""
 echo "Verify: curl http://localhost:8100/health"

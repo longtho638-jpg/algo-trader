@@ -76,7 +76,7 @@ echo "  ✓ TypeScript compiles clean"
 
 echo "[6/6] Running test suite..."
 TEST_OUTPUT=$(pnpm test 2>&1 | tail -5)
-TESTS_PASSED=$(echo "$TEST_OUTPUT" | grep -oP '\d+ passed' | head -1 || echo "unknown")
+TESTS_PASSED=$(echo "$TEST_OUTPUT" | grep -oE '[0-9]+ passed' | head -1 || echo "unknown")
 echo "  ✓ Tests: $TESTS_PASSED"
 
 # ── Done ─────────────────────────────────────────────────────────────────────

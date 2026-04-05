@@ -43,7 +43,12 @@ export function renderEmpty(container, config = {}) {
   if (config.icon) {
     const iconEl = document.createElement('div');
     iconEl.className = 'cc-empty-icon';
-    iconEl.innerHTML = config.icon;
+    // Sanitize: only accept SVG elements or plain text, never raw HTML strings
+    if (config.icon instanceof Element) {
+      iconEl.appendChild(config.icon);
+    } else {
+      iconEl.textContent = config.icon;
+    }
     wrapper.appendChild(iconEl);
   }
 

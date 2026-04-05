@@ -3,7 +3,7 @@
 import { createServer as createHttpServer } from 'node:http';
 import type { Server, IncomingMessage, ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { join, extname } from 'node:path';
+import { join, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { logger } from '../core/logger.js';
 
@@ -76,13 +76,15 @@ export function createLandingServer(port: number): Server {
 
       // Serve design system files from src/ui/ for /ui/* paths
       if (staticPath.startsWith('/ui/')) {
-        const uiPath = join(UI_DIR, staticPath.slice(4).replace(/\.\./g, ''));
+        const uiPath = resolve(UI_DIR, staticPath.slice(4));
+        if (!uiPath.startsWith(resolve(UI_DIR))) { sendError(res, 403, 'Forbidden'); return; }
         await serveStatic(res, uiPath);
         return;
       }
 
       // Prevent directory traversal attacks
-      const safePath = join(PUBLIC_DIR, staticPath.replace(/\.\./g, ''));
+      const safePath = resolve(PUBLIC_DIR, staticPath.slice(1));
+      if (!safePath.startsWith(resolve(PUBLIC_DIR))) { sendError(res, 403, 'Forbidden'); return; }
 
       await serveStatic(res, safePath);
     } catch (err) {

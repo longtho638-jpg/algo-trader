@@ -7,7 +7,7 @@ import { alphaear } from '../intelligence/alphaear-client.js';
 export type SentimentScore = 'positive' | 'negative' | 'neutral';
 
 export interface SentimentSignal {
-  source: 'twitter' | 'newsapi' | 'coingecko' | 'reddit';
+  source: 'twitter' | 'newsapi' | 'coingecko' | 'reddit' | 'finbert';
   keyword: string;
   score: SentimentScore;
   numericScore: number; // positive=1, neutral=0, negative=-1
@@ -155,7 +155,7 @@ export async function getFinBERTSentiment(text: string): Promise<SentimentSignal
     result.label === 'positive' ? 'positive' :
     result.label === 'negative' ? 'negative' : 'neutral';
   return {
-    source: 'newsapi',  // closest existing source type
+    source: 'finbert',
     keyword: text.slice(0, 50),
     score,
     numericScore: result.score,
@@ -170,7 +170,7 @@ export async function batchFinBERTSentiment(texts: string[]): Promise<SentimentS
       r.label === 'positive' ? 'positive' :
       r.label === 'negative' ? 'negative' : 'neutral';
     return {
-      source: 'newsapi' as const,
+      source: 'finbert' as const,
       keyword: texts[i]!.slice(0, 50),
       score,
       numericScore: r.score,

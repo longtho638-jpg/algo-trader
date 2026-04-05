@@ -71,9 +71,11 @@ export function netProfitMaker(
   amount: number,
   category: PolymarketCategory,
   estimatedTakerVolume: number,
+  probability = 0.5,
 ): number {
+  const feeRate = calcTakerFee(category, probability);
   const schedule = FEE_SCHEDULES[category];
-  const rebate = estimatedTakerVolume * schedule.maxTakerFee * schedule.makerRebatePct;
+  const rebate = estimatedTakerVolume * feeRate * schedule.makerRebatePct;
   return amount + rebate;
 }
 
@@ -83,7 +85,7 @@ const CATEGORY_KEYWORDS: Record<PolymarketCategory, string[]> = {
   crypto:       ['bitcoin', 'btc', 'ethereum', 'eth', 'crypto', 'token', 'defi', 'blockchain', 'solana', 'sol'],
   politics:     ['president', 'election', 'congress', 'senate', 'democrat', 'republican', 'vote', 'governor', 'trump', 'biden'],
   finance:      ['fed', 'interest rate', 'gdp', 'inflation', 'stock', 'sp500', 's&p', 'nasdaq', 'treasury', 'fomc'],
-  tech:         ['ai ', 'openai', 'apple', 'google', 'microsoft', 'nvidia', 'spacex', 'launch', 'chip'],
+  tech:         ['ai', 'openai', 'apple', 'google', 'microsoft', 'nvidia', 'spacex', 'launch', 'chip'],
   culture:      ['oscar', 'grammy', 'album', 'movie', 'netflix', 'show', 'concert', 'festival'],
   sports:       ['nba', 'nfl', 'mlb', 'champion', 'playoff', 'world cup', 'super bowl', 'finals', 'match'],
   science:      ['climate', 'nasa', 'mars', 'vaccine', 'cdc', 'pandemic', 'research', 'study'],
