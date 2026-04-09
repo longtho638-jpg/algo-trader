@@ -9,6 +9,7 @@
  */
 
 import { JetStreamClient, RetentionPolicy, StorageType, AckPolicy, DeliverPolicy } from 'nats';
+import type { JetStreamManager } from 'nats';
 import { getNatsConnection } from './nats-connection-manager';
 import { logger } from '../utils/logger';
 
@@ -82,8 +83,7 @@ export async function createReplayConsumer(
   logger.info(`[JetStream] Consumer ${consumerName} created on ${streamName}`);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function ensureStream(jsm: any, config: StreamConfig): Promise<void> {
+async function ensureStream(jsm: JetStreamManager, config: StreamConfig): Promise<void> {
   const storageType = config.storage === 'memory' ? StorageType.Memory : StorageType.File;
 
   const streamDef = {
