@@ -17,7 +17,7 @@ services:
       - '--storage.tsdb.retention.time=15d'
       - '--web.enable-lifecycle'
     networks:
-      - monitoring
+      - algo-net
 
   grafana:
     image: grafana/grafana:10.4.0
@@ -37,11 +37,13 @@ services:
     depends_on:
       - prometheus
     networks:
-      - monitoring
+      - algo-net
 
+# Use the same network as base compose
 networks:
-  monitoring:
-    driver: bridge
+  algo-net:
+    external: true
+    name: algo-trader_algo-net
 
 volumes:
   prometheus_data:
