@@ -46,5 +46,23 @@ services:
       timeout: 5s
       retries: 5
 
+  # NATS message bus — primary event transport
+  nats:
+    image: nats:2.10-alpine
+    container_name: algo-trade-nats
+    restart: unless-stopped
+    ports:
+      - '4222:4222'   # Client connections
+      - '8222:8222'   # HTTP monitoring
+    command: ['--jetstream', '--store_dir', '/data', '-m', '8222']
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ['CMD', 'wget', '-qO-', 'http://localhost:8222/healthz']
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 volumes:
   postgres_data:
+  nats_data:
