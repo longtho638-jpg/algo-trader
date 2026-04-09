@@ -1,0 +1,38 @@
+mode: dry_run
+duration_days: 14
+start_date: "2026-04-04"
+end_date: "2026-04-18"
+
+capital:
+  initial_usd: 1000
+  max_position_pct: 5  # quarter-Kelly
+  max_drawdown_pct: 10
+
+markets:
+  source: polymarket
+  min_liquidity: 50000
+  min_volume_24h: 10000
+  categories: [politics, crypto, sports, science]
+
+strategy:
+  type: informed_market_making
+  fair_value_source: fair_value_store
+  confidence_threshold: 0.65
+  spread_tightening: true
+  twap_enabled: true
+
+risk:
+  circuit_breaker_levels: [5, 8, 10]  # % drawdown
+  max_open_positions: 10
+  daily_loss_limit_pct: 3
+
+logging:
+  level: INFO
+  audit_log: true  # SHA-256 hashed
+  metrics_interval_sec: 60
+  report_interval: daily
+
+models:
+  primary: deepseek_r1_32b  # port 11435
+  secondary: nemotron_30b   # port 11436
+  inference: local_mlx

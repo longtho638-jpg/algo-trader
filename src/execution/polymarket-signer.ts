@@ -2,41 +2,25 @@
  * Polymarket ECDSA Order Signer
  * EIP-712 typed data signing for Polymarket CLOB orders on Polygon (chainId 137).
  * Docs: https://docs.polymarket.com/#signing-orders
- *
- * NOTE: Actual ECDSA signing is stubbed — requires ethers.js or viem at runtime.
- * TODO: Install ethers@6 and replace stub with: wallet.signTypedData(domain, types, value)
  */
+
+import { ethers } from 'ethers';
 
 /** Polymarket CLOB order (unsigned) */
 export interface PolymarketOrder {
-  /** Token ID (YES or NO outcome token address) */
   tokenId: string;
-  /** Limit price as a decimal between 0 and 1 (e.g. 0.65 = 65 cents) */
   price: number;
-  /** Order size in USDC (6 decimals) */
   size: number;
-  /** Order side */
   side: 'BUY' | 'SELL';
-  /** Unix timestamp (seconds) after which the order expires; 0 = GTC */
   expiration: number;
-  /** Unique order nonce (prevents replay) */
   nonce: string;
-  /** Fee rate in basis points */
   feeRateBps: number;
-  /**
-   * Signature type:
-   * 0 = EOA (standard ECDSA)
-   * 1 = POLY_PROXY (Polymarket proxy wallet)
-   * 2 = POLY_GNOSIS_SAFE
-   */
   signatureType: 0 | 1 | 2;
 }
 
 /** Signed order ready for submission to CLOB API */
 export interface SignedOrder extends PolymarketOrder {
-  /** Hex-encoded EIP-712 signature */
   signature: string;
-  /** Signer address (checksum) */
   maker: string;
 }
 
@@ -48,13 +32,11 @@ export interface TypedDataDomain {
   verifyingContract: string;
 }
 
-/** EIP-712 field descriptor */
 export interface TypedDataField {
   name: string;
   type: string;
 }
 
-/** Full EIP-712 typed data structure */
 export interface OrderTypedData {
   domain: TypedDataDomain;
   types: Record<string, TypedDataField[]>;
@@ -62,29 +44,21 @@ export interface OrderTypedData {
   message: Record<string, unknown>;
 }
 
-/** Polymarket CTF Exchange contract on Polygon */
 const CTF_EXCHANGE_ADDRESS = '0x4bFb41d5B3570DeFd03C39a9A4D8dE6Bd8B8982E';
 
 /**
- * Signs Polymarket CLOB orders using EIP-712 typed data.
+ * Signs Polymarket CLOB orders using EIP-712 typed data via ethers.js.
  * Chain: Polygon mainnet (chainId 137).
  */
 export class PolymarketSigner {
   private readonly chainId: number;
-  private readonly privateKey: string;
+  private readonly wallet: ethers.Wallet;
 
-  /**
-   * @param privateKey - Hex private key (with or without 0x prefix)
-   * @param chainId    - Polygon chain ID (default: 137 mainnet, 80001 = Mumbai testnet)
-   */
-  /** Returns true if key is a placeholder/paper-trading value, not a real private key */
   static isPaperKey(key: string): boolean {
     if (!key) return true;
     const normalized = key.toLowerCase().replace(/^0x/, '');
-    // Placeholder patterns: non-hex characters, too short, or known paper-key strings
     if (/[^0-9a-f]/.test(normalized)) return true;
     if (normalized.length !== 64) return true;
-    // All-zeros is also invalid
     if (/^0+$/.test(normalized)) return true;
     return false;
   }
@@ -92,37 +66,34 @@ export class PolymarketSigner {
   constructor(privateKey: string, chainId: number = 137) {
     if (!privateKey) throw new Error('privateKey is required');
     if (PolymarketSigner.isPaperKey(privateKey)) {
-      throw new Error(
-        `Invalid private key: "${privateKey}" looks like a placeholder. ` +
+      throw new Error("Invalid private key: looks like a placeholder. " +
+         +
         'Set POLY_PRIVATE_KEY to a valid 32-byte hex key or run in paper-trading mode.'
       );
     }
-    this.privateKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+    const key = privateKey.startsWith("0x") ? privateKey : "0x" + privateKey;
+    this.wallet = new ethers.Wallet(key);
     this.chainId = chainId;
   }
 
-  /**
-   * Sign an order using EIP-712 typed data.
-   * @param order - Unsigned Polymarket order
-   * @returns Signed order with signature and maker address attached
-   * TODO: Replace stub with: const wallet = new ethers.Wallet(this.privateKey);
-   *       return wallet.signTypedData(typed.domain, typed.types, typed.message);
-   */
+  /** Sign an order using EIP-712 typed data */
   async signOrder(order: PolymarketOrder): Promise<SignedOrder> {
-    this.buildTypedData(order); // validates structure
-    const hash = this.createOrderHash(order);
+    const typed = this.buildTypedData(order);
 
-    // TODO: implement with ethers.js — stub returns deterministic placeholder
-    const signature = await this._stubSign(hash);
-    const maker = this._stubGetAddress();
+    const signature = await this.wallet.signTypedData(
+      typed.domain,
+      { Order: typed.types.Order },
+      typed.message
+    );
 
-    return { ...order, signature, maker };
+    return {
+      ...order,
+      signature,
+      maker: this.wallet.address,
+    };
   }
 
-  /**
-   * Build EIP-712 typed data for a CLOB order.
-   * @param order - The order to encode
-   */
+  /** Build EIP-712 typed data for a CLOB order */
   buildTypedData(order: PolymarketOrder): OrderTypedData {
     return {
       domain: {
@@ -157,14 +128,14 @@ export class PolymarketSigner {
     };
   }
 
-  /**
-   * Create a deterministic order hash string for deduplication / logging.
-   * TODO: Replace with proper keccak256(encodeData(typed)) via ethers.js
-   */
+  /** Create a deterministic order hash via EIP-712 */
   createOrderHash(order: PolymarketOrder): string {
-    const raw = `${order.tokenId}:${order.price}:${order.size}:${order.side}:${order.nonce}`;
-    // TODO: return ethers.TypedDataEncoder.hash(domain, types, message)
-    return `0x${Buffer.from(raw).toString('hex').slice(0, 64).padEnd(64, '0')}`;
+    const typed = this.buildTypedData(order);
+    return ethers.TypedDataEncoder.hash(
+      typed.domain,
+      { Order: typed.types.Order },
+      typed.message
+    );
   }
 
   /** Generate a random nonce string */
@@ -172,17 +143,8 @@ export class PolymarketSigner {
     return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString();
   }
 
-  // ── Stubs (replace with ethers.js) ─────────────────────────────────────────
-
-  /** @internal stub — replace with wallet.signTypedData() */
-  private async _stubSign(_hash: string): Promise<string> {
-    // TODO: const wallet = new ethers.Wallet(this.privateKey);
-    //       return wallet.signTypedData(domain, types, value);
-    throw new Error('Signing not implemented — install ethers.js and replace _stubSign()');
-  }
-
-  /** @internal stub — replace with ethers.Wallet.computeAddress(this.privateKey) */
-  private _stubGetAddress(): string {
-    return '0x0000000000000000000000000000000000000000';
+  /** Get the signer's address */
+  getAddress(): string {
+    return this.wallet.address;
   }
 }

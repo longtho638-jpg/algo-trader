@@ -91,12 +91,12 @@
     "twilio": "^5.4.0",
     "winston": "^3.19.0",
     "ws": "^8.19.0",
-    "zod": "4.3.6"
+    "zod": "4.3.6",
+    "@polymarket/clob-client": "5.8.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241230.0",
     "@playwright/test": "^1.40.0",
-    "@polymarket/clob-client": "5.8.0",
     "@types/cors": "2.8.19",
     "@types/express": "5.0.6",
     "@types/fs-extra": "^11.0.4",
