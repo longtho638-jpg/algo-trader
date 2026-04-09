@@ -70,21 +70,24 @@ export class OnChainPositionReconciler {
    * Keys follow pattern: polymarket:position:{marketId}:{tokenId}
    */
   private async getLocalPositions(): Promise<Array<{ marketId: string; tokenId: string; balance: number }>> {
-    const keys = await this.redis.keys('polymarket:position:*');
+    // Use SCAN instead of KEYS to avoid blocking Redis on large keyspaces
     const positions: Array<{ marketId: string; tokenId: string; balance: number }> = [];
-
-    for (const key of keys) {
-      // key format: polymarket:position:{marketId}:{tokenId}
-      const parts = key.split(':');
-      if (parts.length < 4) continue;
-
-      const marketId = parts[2];
-      const tokenId = parts[3];
-      const raw = await this.redis.get(key);
-      const balance = raw ? parseFloat(raw) : 0;
-
-      positions.push({ marketId, tokenId, balance });
-    }
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await this.redis.scan(
+        cursor, 'MATCH', 'polymarket:position:*', 'COUNT', '100'
+      );
+      cursor = nextCursor;
+      for (const key of keys) {
+        const parts = key.split(':');
+        if (parts.length < 4) continue;
+        const marketId = parts[2];
+        const tokenId = parts[3];
+        const raw = await this.redis.get(key);
+        const balance = raw ? parseFloat(raw) : 0;
+        positions.push({ marketId, tokenId, balance });
+      }
+    } while (cursor !== '0');
 
     return positions;
   }
@@ -142,7 +145,7 @@ export class OnChainPositionReconciler {
         // Publish alert to NATS risk.alert topic
         try {
           const bus = getMessageBus();
-          await bus.publish(Topics.RISK_ALERT, discrepancy);
+          await bus.publish(Topics.RISK_ALERT, discrepancy, 'position-reconciler');
         } catch (err) {
           logger.error(`[Reconciler] Failed to publish alert: ${(err as Error).message}`);
         }

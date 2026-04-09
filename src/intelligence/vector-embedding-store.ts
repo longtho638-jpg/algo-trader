@@ -106,8 +106,16 @@ export async function getAllEmbeddings(): Promise<Map<string, number[]>> {
   const result = new Map<string, number[]>();
   try {
     const redis = getRedisClient();
-    const keys = await redis.keys(`${EMBED_KEY_PREFIX}*`);
-    const marketKeys = keys.filter(k => k !== VOCAB_KEY);
+    // Use SCAN instead of KEYS to avoid blocking Redis
+    const marketKeys: string[] = [];
+    let cursor = '0';
+    do {
+      const [nextCursor, keys] = await redis.scan(cursor, 'MATCH', `${EMBED_KEY_PREFIX}*`, 'COUNT', '200');
+      cursor = nextCursor;
+      for (const k of keys) {
+        if (k !== VOCAB_KEY) marketKeys.push(k);
+      }
+    } while (cursor !== '0');
     if (marketKeys.length === 0) return result;
 
     const values = await redis.mget(...marketKeys);
