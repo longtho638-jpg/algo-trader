@@ -1,6 +1,9 @@
 /**
  * Strategy wiring — registers strategy tick functions with StrategyOrchestrator.
  * Pure orchestration: creates tick factories and wires them into the orchestrator.
+ *
+ * When NATS_URL (or REDIS_URL) is set, also initialises the NATS event loop so
+ * strategies can receive event-driven market updates in addition to tick polling.
  */
 import { StrategyOrchestrator } from '../strategies/strategy-orchestrator.js';
 import { createPolymarketArbTick } from '../strategies/polymarket-arb-strategy.js';
@@ -42,6 +45,8 @@ import type { ExchangeClient } from '../cex/exchange-client.js';
 import type { EventBus } from '../events/event-bus.js';
 import type { GammaClient } from '../polymarket/gamma-client.js';
 import type { ClobClient } from '../polymarket/clob-client.js';
+import { startNatsEventLoop } from './nats-event-loop.js';
+import type { NatsEventLoop } from './nats-event-loop.js';
 
 export interface WireStrategyDeps {
   eventBus: EventBus;
@@ -306,6 +311,21 @@ export function wireStrategies(deps: WireStrategyDeps): StrategyOrchestrator {
   }
 
   return orc;
+}
+
+/**
+ * Wire strategies AND start the NATS event loop when a messaging transport is configured.
+ * Returns both the orchestrator (tick-based) and the event loop (NATS-driven), allowing
+ * callers to register strategy callbacks on the bridge for event-driven updates.
+ *
+ * Falls back gracefully to tick-only mode when NATS_URL / REDIS_URL is not set.
+ */
+export async function wireStrategiesWithNats(
+  deps: WireStrategyDeps,
+): Promise<{ orc: StrategyOrchestrator; eventLoop: NatsEventLoop }> {
+  const orc = wireStrategies(deps);
+  const eventLoop = await startNatsEventLoop();
+  return { orc, eventLoop };
 }
 
 // Backward-compat function aliases so wiring/index.ts exports remain valid.
