@@ -4,9 +4,9 @@ Runs bare metal on M1 Max alongside mlx_lm.server instances.
 CashClaw container calls via host.docker.internal:8100.
 
 Router modules:
-  news-endpoints.py        → /news/hot, /news/polymarket, /news/content
-  prediction-endpoints.py  → /sentiment/*, /predict/forecast, /v1/kronos/*
-  signal-tracker-endpoint.py → /signal/track
+  news_endpoints.py        → /news/hot, /news/polymarket, /news/content
+  prediction_endpoints.py  → /sentiment/*, /predict/forecast, /v1/kronos/*
+  signal_tracker_endpoint.py → /signal/track
 
 GET  /health — Health check (this file)
 """

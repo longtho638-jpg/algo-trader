@@ -118,13 +118,6 @@ class KronosEngine:
             x_start = df["timestamp"].iloc[0]
             x_end = df["timestamp"].iloc[-1]
 
-            # Infer candle frequency to project y_end
-            if len(df) > 1:
-                freq = df["timestamp"].diff().median()
-                y_end = x_end + freq * pred_len
-            else:
-                y_end = x_end + pd.Timedelta(hours=pred_len)
-
             pred_df = self.predictor.predict(
                 df, x_start, x_end, pred_len=pred_len
             )
@@ -136,7 +129,7 @@ class KronosEngine:
                         "close": float(row.get("close", 0)),
                         "high": float(row.get("high", 0)),
                         "low": float(row.get("low", 0)),
-                        "confidence": 0.85,
+                        "confidence": 0.85,  # default — no model uncertainty available
                     }
                 )
             return results

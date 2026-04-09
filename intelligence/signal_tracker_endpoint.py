@@ -35,7 +35,7 @@ async def track_signal(req: SignalTrackRequest):
             "LLM_FAST_TRIAGE_MODEL",
             "mlx-community/NVIDIA-Nemotron-3-Nano-30B-A3B-4bit",
         )
-        pnl_pct = (req.current_price - req.entry_price) / req.entry_price * 100
+        pnl_pct = ((req.current_price - req.entry_price) / req.entry_price * 100) if req.entry_price else 0
 
         prompt = (
             f"Assess signal evolution for this trading position:\n\n"
