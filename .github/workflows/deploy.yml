@@ -123,18 +123,29 @@ jobs:
             # Pull Docker image
             docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
 
-            # Stop old containers
-            docker compose down || true
+            # Create shared network for cross-service communication
+            docker network create algo-trader_algo-net 2>/dev/null || true
 
-            # Start new containers
-            docker compose up -d
+            # Stop old containers (all compose files)
+            docker compose -f docker-compose.yml -f docker/monitoring/docker-compose.monitoring.yml down || true
+
+            # Start full stack: app + redis + nats + prometheus + grafana
+            docker compose -f docker-compose.yml -f docker/monitoring/docker-compose.monitoring.yml up -d
 
             # Wait for health check
-            echo "Waiting for service to be healthy..."
+            echo "Waiting for services to be healthy..."
             sleep 30
 
-            # Health check
-            curl -f http://localhost:3000/health || exit 1
+            # Health checks
+            echo "=== Health Checks ==="
+            curl -f http://localhost:3000/api/health && echo " API: OK" || echo " API: FAIL"
+            curl -f http://localhost:9090/-/healthy && echo " Prometheus: OK" || echo " Prometheus: FAIL"
+            curl -f http://localhost:3030/api/health && echo " Grafana: OK" || echo " Grafana: SKIP"
+            wget -qO- http://localhost:8222/healthz && echo " NATS: OK" || echo " NATS: FAIL"
+            redis-cli -h localhost ping 2>/dev/null && echo " Redis: OK" || echo " Redis: SKIP"
+
+            # Final API health (required)
+            curl -f http://localhost:3000/api/health || exit 1
 
             # Clean up old images
             docker image prune -af

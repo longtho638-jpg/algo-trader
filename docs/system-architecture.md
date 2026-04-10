@@ -162,6 +162,35 @@ graph TD
 - **Dashboard 2: Risk Dashboard** — Portfolio delta, cumulative slippage, correlation matrix heatmap
 - **Dashboard 3: Infrastructure Health** — NATS broker uptime, Redis pub/sub lag, DB query latency, GC pressure
 
+### Phase 25: Vibe-Trading Integration (Signal Consensus & Self-Evolving ILP)
+**Signal Consensus Swarm** (`src/intelligence/signal-consensus-swarm.ts`):
+- **3-Persona DAG Debate** — Risk analyst, momentum trader, contrarian personalities evaluate each signal via LLM
+- **Majority Vote** (2/3) determines final APPROVE/REJECT decision
+- **False Positive Reduction** — 30-40% fewer trades with <60% consensus confidence
+- **Fail-Closed** — ≥2 failed LLM calls → auto-reject signal for safety
+- **Dissent Capture** — Minority reasoning preserved as contrarian signal input
+
+**Self-Evolving ILP Constraints** (`src/arbitrage/self-evolving-ilp-constraints.ts`):
+- **Opportunity Analysis** — Detects missed arbitrage opportunities via sliding buffer (max 50 opportunities)
+- **DeepSeek Recommendations** — LLM suggests constraint modifications (min_edge, max_market_exposure)
+- **Hard Limits Enforced** — min_edge ≥ 1.5%, max_exposure ≤ 30% (non-negotiable)
+- **Rate Limiting** — 1 analysis per hour to prevent constraint churn
+- **NATS Publication** — Suggestions published to `intelligence.ilp.evolution` for async consideration
+
+**Vibe Controller** (`src/wiring/vibe-controller.ts`):
+- **Runtime Mode Switching** — NL commands change trading behavior without code redeploy
+- **4 Preset Modes**: conservative (3.0% min edge, 10% max exposure), balanced (2.5%, 15%), aggressive (1.5%, 25%), defensive (5.0%, 5%)
+- **NATS Command Bus** — Subscribes `vibe.command`, publishes `vibe.state.updated`
+- **Redis State Persistence** — Trading state stored key `vibe:state` with fallback to defaults
+- **Dynamic Market Filtering** — Pause/resume individual markets via Vibe commands
+
+**Dual-Level Reflection Engine** (`src/intelligence/dual-level-reflection-engine.ts`):
+- **Level 1 (Pure Math)** — Slippage analysis, latency deviation detection (no LLM)
+- **Level 2 (LLM Optional)** — DeepSeek causal attribution analysis, parameter tuning suggestions
+- **Ring Buffer** — Last 100 trade reflections retained in-memory for analysis
+- **Auto-Tuning** — Captures lessons from each trade, suggests parameter adjustments
+- **NATS Broadcasting** — Results published after analysis completion
+
 ### CLI Onboarding (Zero-Config)
 **Setup Wizard** (`src/cli/setup-wizard-command.ts`):
 - Interactive readline wizard — prompts exchange API keys, auto-generates `.env` with smart defaults.
@@ -263,6 +292,7 @@ All Opportunities →
 - Phase 22: Delta-Neutral Volatility Arbitrage (Frank-Wolfe multi-leg execution, 12+ Polymarket strategies)
 - Phase 23: Infrastructure Hardening (Distributed nonce manager, gas batch optimizer, TimescaleDB hypertables, Grafana/Prometheus monitoring)
 - Phase 24: Kronos Foundation Model Integration (OHLCV prediction, KronosStrategy, ML sidecar modularization)
+- Phase 25: Vibe-Trading Integration (Signal consensus swarm, self-evolving ILP, vibe controller, dual-level reflection)
 
 ### Quality Gates
 - **1216 tests** (102 test suites, Jest 29, 100% pass rate)
