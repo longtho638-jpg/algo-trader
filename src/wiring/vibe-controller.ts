@@ -126,7 +126,7 @@ function applyCommand(cmd: VibeCommand): VibeState {
       const param = cmd.payload.param as keyof VibeState;
       const value = cmd.payload.value;
       if (param in next) {
-        (next as Record<string, unknown>)[param] = value;
+        (next as unknown as Record<string, unknown>)[param] = value;
       } else {
         logger.warn('[VibeController] Unknown param', { param });
         return currentState;
