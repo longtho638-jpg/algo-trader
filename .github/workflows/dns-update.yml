@@ -26,22 +26,22 @@ jobs:
 
           echo "Updating ${FQDN} → ${TARGET}"
 
-          # Find existing record
-          RECORD_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=${FQDN}" \
-            -H "Authorization: Bearer ${TOKEN}" | jq -r '.result[0].id // empty')
+          # Delete ALL existing records for this hostname (A, AAAA, CNAME)
+          RECORDS=$(curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=${FQDN}" \
+            -H "Authorization: Bearer ${TOKEN}" | jq -r '.result[].id // empty')
 
-          if [ -n "$RECORD_ID" ]; then
-            echo "Updating existing record ${RECORD_ID}..."
-            curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" \
-              -H "Authorization: Bearer ${TOKEN}" \
-              -H "Content-Type: application/json" \
-              --data "{\"type\":\"CNAME\",\"name\":\"${FQDN}\",\"content\":\"${TARGET}\",\"proxied\":true}" | jq .success
-          else
-            echo "Creating new CNAME..."
-            curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
-              -H "Authorization: Bearer ${TOKEN}" \
-              -H "Content-Type: application/json" \
-              --data "{\"type\":\"CNAME\",\"name\":\"${FQDN}\",\"content\":\"${TARGET}\",\"proxied\":true}" | jq .success
-          fi
+          for RID in $RECORDS; do
+            echo "Deleting old record ${RID}..."
+            curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RID}" \
+              -H "Authorization: Bearer ${TOKEN}" | jq .success
+          done
+
+          # Create fresh CNAME pointing to tunnel
+          echo "Creating CNAME ${FQDN} → ${TARGET}..."
+          RESULT=$(curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"type\":\"CNAME\",\"name\":\"${FQDN}\",\"content\":\"${TARGET}\",\"proxied\":true}")
+          echo "$RESULT" | jq '{success: .success, id: .result.id}'
 
           echo "Done. Verify: curl -sI https://${FQDN}"
