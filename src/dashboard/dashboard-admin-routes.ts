@@ -57,7 +57,7 @@ export function handleAdminGetRoutes(ctx: RouteContext): boolean {
   if (!requireAdmin(req, res, jwtSecret)) return true;
 
   if (url === '/dashboard/api/admin/users') {
-    const users = userStore ? userStore.listActiveUsers().map(u => ({
+    const users = userStore ? userStore.listActiveUsers().map((u: Record<string, unknown>) => ({
       id: u.id, email: u.email, tier: u.tier, role: u.role ?? 'user',
       createdAt: u.createdAt, active: u.active,
       apiKeyPrefix: u.apiKey.slice(0, 8) + '...',
