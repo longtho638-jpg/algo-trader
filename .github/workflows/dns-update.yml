@@ -1,0 +1,47 @@
+name: Update CF DNS
+
+on:
+  workflow_dispatch:
+    inputs:
+      subdomain:
+        description: 'Subdomain (e.g., api)'
+        required: true
+      tunnel_id:
+        description: 'Tunnel UUID'
+        required: true
+        default: '35d5d11a-d15d-4fd6-83f3-5ccd6064a569'
+
+jobs:
+  update-dns:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update CNAME to tunnel
+        run: |
+          ZONE_ID="${{ secrets.CLOUDFLARE_ZONE_ID }}"
+          TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+          SUBDOMAIN="${{ inputs.subdomain }}"
+          TUNNEL="${{ inputs.tunnel_id }}"
+          FQDN="${SUBDOMAIN}.cashclaw.cc"
+          TARGET="${TUNNEL}.cfargotunnel.com"
+
+          echo "Updating ${FQDN} → ${TARGET}"
+
+          # Find existing record
+          RECORD_ID=$(curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=${FQDN}" \
+            -H "Authorization: Bearer ${TOKEN}" | jq -r '.result[0].id // empty')
+
+          if [ -n "$RECORD_ID" ]; then
+            echo "Updating existing record ${RECORD_ID}..."
+            curl -s -X PUT "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RECORD_ID}" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "{\"type\":\"CNAME\",\"name\":\"${FQDN}\",\"content\":\"${TARGET}\",\"proxied\":true}" | jq .success
+          else
+            echo "Creating new CNAME..."
+            curl -s -X POST "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records" \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data "{\"type\":\"CNAME\",\"name\":\"${FQDN}\",\"content\":\"${TARGET}\",\"proxied\":true}" | jq .success
+          fi
+
+          echo "Done. Verify: curl -sI https://${FQDN}"
