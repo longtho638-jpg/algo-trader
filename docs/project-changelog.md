@@ -1,5 +1,33 @@
 # Project Changelog - Algo Trader
 
+## [1.2.1] - 2026-04-09
+
+### Added - Kronos Foundation Model Integration (Phase 24)
+
+#### Kronos OHLCV Prediction Engine
+- **KronosEngine** (Python) — Time-series forecasting using HuggingFace pretrained models
+- **KronosStrategy** (`src/strategies/kronos-strategy.ts`) — IStrategy implementation for Kronos predictions
+- **KronosFairValue** (`src/intelligence/kronos-fair-value.ts`) — Fair value computation from time-series forecasts
+- **Endpoint**: `POST /v1/kronos/predict-ohlcv` — Accepts historical OHLCV candles, returns 5-candle forecast
+
+#### Intelligence Sidecar Modularization
+- **server.py refactored** into 4 router modules: predictions, indicators, cache management, health monitoring
+- **AlphaEar integration** — Sidecar at `:8100` with Metal GPU support (Kronos + FinBERT)
+- **CLI Command**: `kronos` — New command in `src/cli/index.ts` for Kronos-based strategy execution
+
+### Technical Highlights
+- HuggingFace pretrained models reduce feature engineering overhead
+- Modular sidecar enables independent scaling for prediction service
+- 5-step OHLCV forecasts integrate with existing arbitrage detection
+
+### Changed
+- Total source files: 280+ → 285+ (3 new Kronos modules, 4 sidecar routers)
+- Phase 24 status: COMPLETE
+
+### Documentation Updates
+- Updated `docs/system-architecture.md` — Phase 24 architecture + Kronos prediction details
+- Updated `docs/project-changelog.md` — Current session entry
+
 ## [1.2.0] - 2026-04-09
 
 ### Added - DeepSeek Polymarket Arbitrage Upgrade (Phases 19-23)
