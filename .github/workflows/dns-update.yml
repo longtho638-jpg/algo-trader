@@ -28,13 +28,18 @@ jobs:
 
           # Delete ALL existing records for this hostname (A, AAAA, CNAME)
           RECORDS=$(curl -s "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records?name=${FQDN}" \
-            -H "Authorization: Bearer ${TOKEN}" | jq -r '.result[].id // empty')
+            -H "Authorization: Bearer ${TOKEN}" | jq -r '.result[]?.id // empty' 2>/dev/null || echo "")
 
-          for RID in $RECORDS; do
-            echo "Deleting old record ${RID}..."
-            curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RID}" \
-              -H "Authorization: Bearer ${TOKEN}" | jq .success
-          done
+          if [ -n "$RECORDS" ]; then
+            for RID in $RECORDS; do
+              [ -z "$RID" ] && continue
+              echo "Deleting old record ${RID}..."
+              curl -s -X DELETE "https://api.cloudflare.com/client/v4/zones/${ZONE_ID}/dns_records/${RID}" \
+                -H "Authorization: Bearer ${TOKEN}" | jq -r '.success'
+            done
+          else
+            echo "No existing records found — creating fresh"
+          fi
 
           # Create fresh CNAME pointing to tunnel
           echo "Creating CNAME ${FQDN} → ${TARGET}..."
