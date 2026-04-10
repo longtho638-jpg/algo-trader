@@ -17,7 +17,7 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 | `create-message-bus.ts` | — | Factory for bus instantiation |
 | `index.ts` | — | Module exports |
 
-### src/intelligence/ — Semantic Dependency Discovery (Phase 20)
+### src/intelligence/ — Semantic Dependency Discovery & Vibe-Trading (Phases 20, 25)
 | File | Class | Purpose |
 |------|-------|---------|
 | `semantic-dependency-discovery.ts` | `SemanticDependencyDiscovery` | DeepSeek API analyzes market relationships |
@@ -26,14 +26,22 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 | `kronos-fair-value.ts` | `KronosFairValue` | Time-series fair value computation |
 | `semantic-cache.ts` | `SemanticCache` | Redis caching (24h TTL) for analyses |
 | `market-context-builder.ts` | — | Context aggregation from multiple sources |
+| `signal-consensus-swarm.ts` | `SignalConsensusSwarm` | 3-persona LLM debate (risk/momentum/contrarian) for signal validation |
+| `dual-level-reflection-engine.ts` | `DualLevelReflectionEngine` | Post-trade analysis: Level 1 (math) + Level 2 (LLM causal) learning |
 
-### src/arbitrage/ — Cross-Market ILP Solver (Phase 21)
+### src/arbitrage/ — Cross-Market ILP Solver & Self-Evolving Constraints (Phases 21, 25)
 | File | Class | Purpose |
 |------|-------|---------|
 | `integer-programming-solver.ts` | `IntegerProgrammingSolver` | javascript-lp-solver wrapper for optimization |
 | `ilp-constraint-builder.ts` | `ILPConstraintBuilder` | Dynamic constraint generation |
 | `cross-market-arbitrage-detector.ts` | `CrossMarketArbitrageDetector` | Multi-leg arb identification |
 | `multi-leg-basket.ts` | `MultiLegBasket` | Multi-leg position representation |
+| `self-evolving-ilp-constraints.ts` | `SelfEvolvingILPConstraints` | DeepSeek-powered constraint auto-tuning from missed opportunities |
+
+### src/wiring/ — Runtime Mode Control (Phase 25)
+| File | Class | Purpose |
+|------|-------|---------|
+| `vibe-controller.ts` | `VibeController` | NATS-based runtime trading mode switcher (conservative/balanced/aggressive/defensive) |
 
 ### src/core/ — Engine & Multi-Tenant
 - `BotEngine.ts` — Signal routing, strategy orchestration
@@ -192,7 +200,7 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 - `workflow-pipeline-engine.ts` — Generic workflow pipeline with step sequencing
 
 ## Key Metrics
-- **280+ source files** (TypeScript 5.9, strict mode)
+- **289+ source files** (TypeScript 5.9, strict mode)
 - **1400+ tests** (Jest 29, 115+ suites, 100% pass rate)
 - **20+ CLI commands** (Commander)
 - **25+ trading strategies** (RSI, SMA, MACD, Cross-Exchange, Triangular, Funding-Rate, AGI, Delta-Neutral, Event-Driven, Momentum, GRU, Q-Learning, + 15 Polymarket)
@@ -201,9 +209,10 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 - **9 database models** (Tenant, Strategy, Order, Trade, ApiKey, BacktestResult, Candle, PnlSnapshot, AlertRule via Prisma)
 - **5 dashboard pages** + 10 components (React 19, Vite 6, Tailwind, TradingView Charts)
 - **Event-driven messaging**: NATS primary + JetStream (persistent) + Redis fallback (8 modules)
-- **Semantic intelligence**: DeepSeek API + relationship graph + semantic cache (6 modules)
-- **Cross-market optimization**: ILP solver + Frank-Wolfe (4 modules)
+- **Semantic intelligence**: DeepSeek API + relationship graph + semantic cache (8 modules with consensus swarm + reflection)
+- **Cross-market optimization**: ILP solver + Frank-Wolfe + self-evolving constraints (5 modules)
 - **Infrastructure hardening**: Distributed nonce, gas optimizer, TimescaleDB hypertables, Grafana/Prometheus
+- **Runtime control**: Vibe controller for dynamic mode switching (1 module)
 
 ## Quality Metrics
 - **0 TypeScript errors** (strict mode enforced)
@@ -230,4 +239,4 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 
 **CLI & UI**: Commander CLI | React 19 | Vite 6 | Tailwind CSS | Zustand 5
 
-Updated: 2026-04-09
+Updated: 2026-04-10
