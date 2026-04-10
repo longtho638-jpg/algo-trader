@@ -262,6 +262,7 @@ All Opportunities →
 - Phase 21: Cross-Market ILP Solver (multi-market basket optimization, javascript-lp-solver)
 - Phase 22: Delta-Neutral Volatility Arbitrage (Frank-Wolfe multi-leg execution, 12+ Polymarket strategies)
 - Phase 23: Infrastructure Hardening (Distributed nonce manager, gas batch optimizer, TimescaleDB hypertables, Grafana/Prometheus monitoring)
+- Phase 24: Kronos Foundation Model Integration (OHLCV prediction, KronosStrategy, ML sidecar modularization)
 
 ### Quality Gates
 - **1216 tests** (102 test suites, Jest 29, 100% pass rate)
@@ -272,7 +273,7 @@ All Opportunities →
 - **0 TODO/FIXME** (zero tech debt)
 - **Binh Phap 6/6 fronts passing**
 
-Updated: 2026-03-27
+Updated: 2026-04-09
 
 ---
 
