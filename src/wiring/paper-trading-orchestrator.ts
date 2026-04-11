@@ -87,10 +87,15 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
   if (!market) return;
 
   const size = Math.min(portfolio.capital * POSITION_SIZE_PCT, vibe.maxExposure);
+  // Endgame: buy the near-certain side (NO when YES<0.05, YES when YES>0.95)
+  // Non-endgame: buy whichever side the signal reasoning suggests
+  const side: 'YES' | 'NO' = isEndgame
+    ? (market.yesPrice < 0.5 ? 'NO' : 'YES')  // buy the CERTAIN side
+    : (market.yesPrice < 0.5 ? 'YES' : 'NO');  // contrarian bet
+  const entryPrice = side === 'YES' ? market.yesPrice : market.noPrice;
   const trade: PaperTrade = {
     id: `paper-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-    marketId: market.id, side: market.yesPrice < 0.5 ? 'YES' : 'NO', size,
-    entryPrice: market.yesPrice, strategy: candidate.signalType,
+    marketId: market.id, side, size, entryPrice, strategy: candidate.signalType,
     signalConfidence: isEndgame ? candidate.expectedEdge : 0.8, swarmApproved: !isEndgame, aiValidated: !isEndgame,
     timestamp: Date.now(),
   };
@@ -108,12 +113,27 @@ async function checkPositions(): Promise<void> {
   const stale = portfolio.positions.filter(p => now - p.timestamp > 5 * 60_000);
 
   for (const trade of stale) {
-    // Simulate price convergence: small random walk with slight positive bias
-    const priceMove = (Math.random() - 0.48) * 0.04;
-    const exitPrice = Math.max(0.01, Math.min(0.99, trade.entryPrice + priceMove));
-    const pnl = trade.side === 'YES'
-      ? (exitPrice - trade.entryPrice) * (trade.size / trade.entryPrice)
-      : (trade.entryPrice - exitPrice) * (trade.size / (1 - trade.entryPrice));
+    // Binary market P&L:
+    // Buy YES at $P, resolve YES → get $1, profit = $1-P per share. Resolve NO → get $0, loss = -P per share.
+    // Buy NO at $(1-P), resolve NO → get $1, profit = $P per share. Resolve YES → get $0, loss = -(1-P) per share.
+    // Shares = size / costPerShare
+    const isEndgameTrade = trade.entryPrice > 0.90 || trade.entryPrice < 0.10;
+    const costPerShare = trade.side === 'YES' ? trade.entryPrice : (1 - trade.entryPrice);
+    const shares = trade.size / costPerShare;
+
+    // Simulate resolution
+    let won: boolean;
+    if (isEndgameTrade) {
+      // Near-certain outcome: 95% chance the expected side wins
+      won = Math.random() < 0.95;
+    } else {
+      // Non-endgame: 50/50 + small edge bias
+      won = Math.random() < 0.52; // slight positive bias
+    }
+
+    // P&L: win → get $1/share, loss → get $0
+    const exitPrice = won ? 1.0 : 0.0;
+    const pnl = won ? shares * (1 - costPerShare) - trade.size * 0.02 : -trade.size; // subtract 2% fee on win
 
     portfolio.positions = portfolio.positions.filter(p => p.id !== trade.id);
     portfolio.closedTrades.push({ ...trade, exitPrice, pnl });
