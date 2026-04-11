@@ -66,11 +66,10 @@ function loadTrades(): void {
 
 async function processCandidate(candidate: SignalCandidate, maxPositions: number): Promise<void> {
   const vibe = getVibeState();
-  const minEdge = Math.max(0.01, vibe.minEdge / 100); // floor at 1%
-  if (portfolio.positions.length >= maxPositions || candidate.expectedEdge < minEdge || portfolio.capital <= 0) return;
-
-  // Endgame signals are mathematical — skip slow AI validation, just execute
+  // Endgame signals are mathematical — use lower threshold (0.5% min)
   const isEndgame = candidate.reasoning.includes('Endgame') || candidate.reasoning.includes('near-certain');
+  const minEdge = isEndgame ? 0.005 : Math.max(0.01, vibe.minEdge / 100);
+  if (portfolio.positions.length >= maxPositions || candidate.expectedEdge < minEdge || portfolio.capital <= 0) return;
   if (!isEndgame) {
     // Non-endgame: run swarm consensus + AI validation
     const swarm = await runSwarmConsensus(candidate);
