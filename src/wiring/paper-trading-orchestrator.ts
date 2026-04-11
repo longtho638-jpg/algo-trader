@@ -66,14 +66,22 @@ function loadTrades(): void {
 
 async function processCandidate(candidate: SignalCandidate, maxPositions: number): Promise<void> {
   const vibe = getVibeState();
-  if (portfolio.positions.length >= maxPositions || candidate.expectedEdge < vibe.minEdge / 100 || portfolio.capital <= 0) return;
+  const minEdge = Math.max(0.01, vibe.minEdge / 100); // floor at 1%
+  if (portfolio.positions.length >= maxPositions || candidate.expectedEdge < minEdge || portfolio.capital <= 0) return;
 
-  const swarm = await runSwarmConsensus(candidate);
-  if (!swarm.approved) { logger.info('[PaperOrchestrator] Swarm REJECT', { type: candidate.signalType }); return; }
+  // Endgame signals are mathematical — skip slow AI validation, just execute
+  const isEndgame = candidate.reasoning.includes('Endgame') || candidate.reasoning.includes('near-certain');
+  if (!isEndgame) {
+    // Non-endgame: run swarm consensus + AI validation
+    const swarm = await runSwarmConsensus(candidate);
+    if (!swarm.approved) { logger.info('[PaperOrchestrator] Swarm REJECT', { type: candidate.signalType }); return; }
 
-  const validation = await validateSignal(candidate);
-  if (!validation.valid || validation.confidence < MIN_AI_CONFIDENCE) {
-    logger.info('[PaperOrchestrator] AI REJECT', { type: candidate.signalType, conf: validation.confidence }); return;
+    const validation = await validateSignal(candidate);
+    if (!validation.valid || validation.confidence < MIN_AI_CONFIDENCE) {
+      logger.info('[PaperOrchestrator] AI REJECT', { type: candidate.signalType, conf: validation.confidence }); return;
+    }
+  } else {
+    logger.info('[PaperOrchestrator] Endgame — skip AI (mathematical)', { edge: candidate.expectedEdge });
   }
 
   const market = candidate.markets[0];
@@ -229,10 +237,10 @@ export async function startPaperTrading(config?: {
 
       // Strategy 2: Near-resolution endgame (>95% or <5% = near-certain)
       for (const m of markets) {
-        if (m.vol < 100_000) continue; // min liquidity
+        if (m.vol < 10_000) continue; // min $10K liquidity
         if (m.yes > 0.95) {
           const edge = 1 - m.yes - 0.02; // profit = (1 - price) minus 2% fee
-          if (edge > 0.01) await processCandidate({
+          if (edge > 0.005) await processCandidate({ // 0.5% min for endgame
             signalType: 'simple-arb',
             markets: [{ id: m.id, title: m.title, yesPrice: m.yes, noPrice: m.no }],
             expectedEdge: edge,
@@ -240,7 +248,7 @@ export async function startPaperTrading(config?: {
           }, maxPositions);
         } else if (m.yes < 0.05) {
           const edge = m.yes - 0.02;
-          if (edge > 0.01) await processCandidate({
+          if (edge > 0.005) await processCandidate({ // 0.5% min for endgame
             signalType: 'simple-arb',
             markets: [{ id: m.id, title: m.title, yesPrice: m.yes, noPrice: m.no }],
             expectedEdge: edge,
