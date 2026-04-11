@@ -162,6 +162,48 @@ graph TD
 - **Dashboard 2: Risk Dashboard** — Portfolio delta, cumulative slippage, correlation matrix heatmap
 - **Dashboard 3: Infrastructure Health** — NATS broker uptime, Redis pub/sub lag, DB query latency, GC pressure
 
+### Phase 26: Multi-Platform Price Feed Integration
+**Price Feed Adapters** (`src/feeds/`):
+- **PolymarketWebSocketFeed** — Real-time Polymarket CLOB orderbook via WebSocket, order/trade streaming.
+- **LimitlessPriceFeed** — Limitless Market HTTP API integration with polling/webhook support.
+- **PredictItPriceFeed** — PredictIt REST API with market snapshot caching (5min TTL).
+- **SmarketsPriceFeed** — Smarkets exchange feed via native API, real-time order book.
+- **KalshiPriceFeed** — Kalshi orderbook feed with atomic tick broadcast.
+- **UnifiedPriceFeedAggregator** — Normalizes ticks across all platforms to common schema, broadcasts to signal engines.
+
+### Phase 27: CLOB v2 Adapter & Split/Merge Arbitrage
+**CLOB v2 Module** (`src/execution/clob-v2/`):
+- **ClobV2Adapter** — Polymarket CLOB v2 order/cancel/fill protocol with automatic nonce management.
+- **SplitClobEntry** — Entry splitting for logical hedges: YES+NO share-splitting on market A ↔ money market B.
+- **SplitMergeArbExecutor** — Execute coordinated YES/NO split entry on Market A + reverse on Market B, atomic with parallel order submission.
+- **LogicalHedgeDiscovery** — Scan all Polymarket events for implicit hedge opportunities (e.g., Bitcoin > $50k AND < $60k).
+
+### Phase 28: Whale Activity Monitoring & Copy-Trading
+**Whale Tracking** (`src/intelligence/whale-activity/`):
+- **WhaleActivityFeed** — Monitors Polygon CTF for large position changes (>$10k net), tracks whale address movements.
+- **WhaleCopyTrader** — Auto-follow top whale traders, copy position changes with configurable lag (5-60s delay for plausible deniability).
+- **CrossMarketSync** — Correlate whale moves across Polymarket + Kalshi + Limitless, identify cross-market edges.
+- **WhaleAnalyticsReport** — Daily whale leaderboard, win rate, edge estimation, correlation matrix.
+
+### Phase 29: BTC 15-Minute Pattern Detection
+**Intraday Strategies** (`src/strategies/intraday/`):
+- **BtcFifteenMinuteStrategy** — Real-time 15-min candle analysis from Kraken/Coinbase, pattern detection (momentum, reversal, volatility clusters).
+- **BitcoinVolatilityScanner** — Detect intraday volatility spikes >2σ, flag for Polymarket BTC price prediction markets.
+- **BreakoutDetector** — Identify 15-min breakouts (2-hour range), map to Polymarket "BTC > X by Y date" positions.
+
+### Phase 30: Cycle-End Sniper & Resolution Criteria Analyzer
+**End-Game Strategy** (`src/strategies/polymarket/`):
+- **CycleEndSniperStrategy** — Target markets resolving within 24h, dynamic bid-ask placing as outcome probability crystallizes.
+- **ResolutionCriteriaAnalyzer** — Parse Polymarket contract text (UMA resolution criteria), extract success conditions via DeepSeek reasoning.
+- **UmaOracleTiming** — Monitor UMA challenge window (1-2 days post-resolution), detect oracle manipulation signals for reversal trades.
+
+### Phase 31: Signal Fusion Engine & Resolution Analytics
+**Intelligence Core** (`src/intelligence/`):
+- **SignalFusionEngine** — Combine outputs: whale activity + BTC patterns + sentiment + regime detection → composite signal with weighted voting.
+- **MultiResolution** — Fuse multiple data sources (DeepSeek semantic analysis, news sentiment, on-chain metrics) into unified conviction score.
+- **ResolutionCriteriaAnalyzer** — Auto-extract market resolution criteria from Polymarket/Kalshi contracts using DeepSeek, cross-reference with settlement logic.
+- **ConvictionScorer** — Combine all signals into final probability estimate with confidence interval.
+
 ### Phase 25: Vibe-Trading Integration (Signal Consensus & Self-Evolving ILP)
 **Signal Consensus Swarm** (`src/intelligence/signal-consensus-swarm.ts`):
 - **3-Persona DAG Debate** — Risk analyst, momentum trader, contrarian personalities evaluate each signal via LLM
@@ -293,15 +335,26 @@ All Opportunities →
 - Phase 23: Infrastructure Hardening (Distributed nonce manager, gas batch optimizer, TimescaleDB hypertables, Grafana/Prometheus monitoring)
 - Phase 24: Kronos Foundation Model Integration (OHLCV prediction, KronosStrategy, ML sidecar modularization)
 - Phase 25: Vibe-Trading Integration (Signal consensus swarm, self-evolving ILP, vibe controller, dual-level reflection)
+- Phase 26: Multi-Platform Price Feeds (Polymarket WebSocket, Limitless, PredictIt, Smarkets, Kalshi adapters)
+- Phase 27: CLOB v2 Adapter & Split/Merge Arbitrage (Logical hedge discovery, YES/NO splitting, cross-market sync)
+- Phase 28: Whale Activity Monitoring & Copy-Trading (Polygon CTF tracker, cross-market whale sync, leaderboard analytics)
+- Phase 29: BTC 15-Minute Pattern Detection (Intraday momentum, volatility clustering, breakout detection)
+- Phase 30: Cycle-End Sniper & Resolution Criteria Analysis (24-h market sniper, UMA oracle timing, contract text parsing)
+- Phase 31: Signal Fusion Engine & Multi-Resolution Analytics (Weighted signal voting, conviction scoring, criteria extraction)
 
 ### Quality Gates
-- **1216 tests** (102 test suites, Jest 29, 100% pass rate)
-- **232+ source files** (TypeScript 5.9, strict mode)
+- **570 tests** (Jest 29, 100% pass rate)
+- **266+ source files** (TypeScript 5.9, strict mode)
 - **0 TypeScript errors**
 - **0 `any` types** (test mocks only — acceptable)
 - **0 console.log** (production clean)
 - **0 TODO/FIXME** (zero tech debt)
 - **Binh Phap 6/6 fronts passing**
+
+### Deployment & Paper Trading
+- **Paper Trading P&L**: +$2,251 across 50 trades (66.7% win rate)
+- **26 PR Merges** (Session: #58-#85) — CLOB v2, WebSocket feeds, CLI enhancements, multi-platform support
+- **Target**: $1M ARR via RaaS + white-label licensing
 
 Updated: 2026-04-09
 
