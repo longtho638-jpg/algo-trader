@@ -13,8 +13,11 @@ interface Env {
   JWT_SECRET?: string;
 }
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
+function getCorsOrigin(env: Env, origin?: string | null): string {
+  const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map(s => s.trim());
+  return origin && allowed.includes(origin) ? origin : allowed[0];
+}
+const CORS_BASE = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',

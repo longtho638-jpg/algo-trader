@@ -4,21 +4,28 @@
 
 import { hashPassword, verifyPassword, createJwt, verifyJwt } from './crypto-utils';
 
-interface Env { CACHE: KVNamespace; JWT_SECRET?: string; }
+interface Env { CACHE: KVNamespace; JWT_SECRET: string; ALLOWED_ORIGINS?: string; }
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
+const BASE_CORS = {
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
 };
 
-function json(data: unknown, status = 200): Response {
-  return new Response(JSON.stringify(data), { status, headers: CORS });
+function getCorsHeaders(env: Env, origin?: string | null): Record<string, string> {
+  const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map(s => s.trim());
+  const match = origin && allowed.includes(origin) ? origin : allowed[0];
+  return { ...BASE_CORS, 'Access-Control-Allow-Origin': match };
+}
+
+function json(data: unknown, status = 200, env?: Env, origin?: string | null): Response {
+  const headers = env ? getCorsHeaders(env, origin) : { ...BASE_CORS, 'Access-Control-Allow-Origin': 'https://cashclaw.cc' };
+  return new Response(JSON.stringify(data), { status, headers });
 }
 
 function getSecret(env: Env): string {
-  return env.JWT_SECRET || 'cashclaw-dev-secret-not-for-prod';
+  if (!env.JWT_SECRET) throw new Error('JWT_SECRET env var is required — refusing to use insecure fallback');
+  return env.JWT_SECRET;
 }
 
 interface StoredUser {
@@ -39,7 +46,10 @@ export async function handleSignup(request: Request, env: Env): Promise<Response
     const { email, password, tier = 'free' } = body;
 
     if (!email || !password) return json({ error: 'Email and password required' }, 400);
-    if (password.length < 6) return json({ error: 'Password must be at least 6 characters' }, 400);
+    if (password.length < 12) return json({ error: 'Password must be at least 12 characters' }, 400);
+    if (!/[A-Z]/.test(password) || !/[0-9]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      return json({ error: 'Password must contain uppercase, number, and special character' }, 400);
+    }
 
     const existing = await env.CACHE.get(`user:${email}`);
     if (existing) return json({ error: 'Email already registered' }, 409);
