@@ -12,7 +12,8 @@
     "LICENSE"
   ],
   "bin": {
-    "algo-trader": "./dist/index.js"
+    "algo-trader": "./dist/index.js",
+    "cashclaw": "./dist/cli/cashclaw-cli.js"
   },
   "scripts": {
     "prepublishOnly": "npm run build && npm test",
