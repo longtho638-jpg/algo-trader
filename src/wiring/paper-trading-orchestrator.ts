@@ -92,7 +92,7 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
     id: `paper-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
     marketId: market.id, side: market.yesPrice < 0.5 ? 'YES' : 'NO', size,
     entryPrice: market.yesPrice, strategy: candidate.signalType,
-    signalConfidence: validation.confidence, swarmApproved: true, aiValidated: true,
+    signalConfidence: isEndgame ? candidate.expectedEdge : 0.8, swarmApproved: !isEndgame, aiValidated: !isEndgame,
     timestamp: Date.now(),
   };
 
