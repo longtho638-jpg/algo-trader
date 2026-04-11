@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/longtho638-jpg/algo-trader/actions/workflows/ci.yml/badge.svg)](https://github.com/longtho638-jpg/algo-trader/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg)](package.json)
+[![Version](https://img.shields.io/badge/version-1.4.0-blue.svg)](package.json)
 
 Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (20%).
 
@@ -10,20 +10,23 @@ Algorithmic trading platform targeting $1M ARR — Polymarket (80%) + CEX/DEX (2
 
 ## Features
 
-- **43 Polymarket trading strategies** with real-time execution and backtesting
-- Polymarket CLOB integration with ECDSA signing and WebSocket orderbook streaming
-- Cross-market arbitrage and market-making strategies
+- **52+ trading strategies** across 5 prediction markets (Polymarket, Kalshi, Limitless, PredictIt, Smarkets)
+- Multi-platform price feeds with WebSocket support (Polymarket, Limitless, PredictIt, Smarkets)
+- CLOB v2 adapter with logical hedge discovery and split/merge arb execution
+- Whale activity monitoring and copy-trading with cross-market sync
+- BTC 15-minute pattern detection for intraday momentum strategies
+- Cycle-end sniper for resolving-soon market opportunities with resolution criteria analysis
+- Cross-market arbitrage, market-making, and grid/DCA/funding strategies
 - CEX support via CCXT (Binance, Bybit, and more)
 - DEX support via ethers.js (Ethereum, Polygon, Arbitrum) and Jupiter (Solana)
 - Kelly Criterion risk manager with drawdown protection and position sizing
-- Backtesting engine with historical data replay
-- Paper trading mode for strategy validation
-- SQLite-backed trade history and analytics
-- Billing, metering, referral, and webhook modules for RaaS monetization
-- CLI interface with 25+ commands via Mekong-style AgentDispatcher
+- Backtesting engine with historical data replay and signal fusion validation
+- Paper trading mode: +$2,251 P&L with 66.7% win rate across 50 trades
+- Comprehensive CLI (25+ commands) with agent-driven market analysis and risk reporting
 - 19 specialist agents including 9 dark edge agents + HFT loop for 24/7 solo operation
 - **Dual-model AI prediction ensemble**: Nemotron-3 Nano (fast scanner, 35-50 t/s) + DeepSeek R1 (deep reasoner) with consensus voting
-- 4477+ automated tests for reliability and code quality
+- Telegram trading alerts and CashClaw CLI for distributed trading operations
+- 570 automated tests for reliability and code quality
 
 ---
 

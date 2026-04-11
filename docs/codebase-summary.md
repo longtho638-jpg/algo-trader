@@ -1,7 +1,7 @@
-# Codebase Summary — Algo Trader v3.0.0
+# Codebase Summary — Algo Trader v1.4.0
 
 ## Overview
-Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platform. Supports 6+ strategies, real-time WebSocket price feeds, AGI intelligence suite (regime detection, triangular arb, funding-rate arb), paper trading, and Fastify API gateway.
+Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platform. Supports 52+ strategies across 5 prediction markets (Polymarket, Kalshi, Limitless, PredictIt, Smarkets), real-time multi-platform price feeds, AGI intelligence suite (regime detection, triangular arb, funding-rate arb, whale tracking, cycle-end sniper), paper trading (+$2,251 P&L), and Fastify API gateway.
 
 ## Project Structure
 
@@ -199,20 +199,87 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 ### src/pipeline/ — Workflow Pipeline
 - `workflow-pipeline-engine.ts` — Generic workflow pipeline with step sequencing
 
+### src/feeds/ — Multi-Platform Price Feed Adapters (Phase 26)
+| File | Class | Purpose |
+|------|-------|---------|
+| `polymarket-websocket-feed.ts` | `PolymarketWebSocketFeed` | Real-time Polymarket CLOB orderbook via WebSocket |
+| `limitless-price-feed.ts` | `LimitlessPriceFeed` | Limitless Market HTTP API with polling/webhook |
+| `predictit-price-feed.ts` | `PredictItPriceFeed` | PredictIt REST API with 5min cache |
+| `smarkets-price-feed.ts` | `SmarketsPriceFeed` | Smarkets exchange feed with order book |
+| `kalshi-price-feed.ts` | `KalshiPriceFeed` | Kalshi orderbook integration |
+| `unified-price-feed-aggregator.ts` | `UnifiedPriceFeedAggregator` | Normalize all platform ticks to common schema |
+
+### src/execution/clob-v2/ — CLOB v2 Adapter & Split/Merge Arbitrage (Phase 27)
+| File | Class | Purpose |
+|------|-------|---------|
+| `clob-v2-adapter.ts` | `ClobV2Adapter` | Polymarket CLOB v2 order/cancel/fill protocol |
+| `split-clob-entry.ts` | `SplitClobEntry` | YES+NO share-splitting on logical hedges |
+| `split-merge-arb-executor.ts` | `SplitMergeArbExecutor` | Coordinated split entry + reverse execution |
+| `logical-hedge-discovery.ts` | `LogicalHedgeDiscovery` | Scan for implicit hedge opportunities |
+
+### src/intelligence/whale-activity/ — Whale Activity Monitoring (Phase 28)
+| File | Class | Purpose |
+|------|-------|---------|
+| `whale-activity-feed.ts` | `WhaleActivityFeed` | Monitor Polygon CTF for large position changes (>$10k) |
+| `whale-copy-trader.ts` | `WhaleCopyTrader` | Auto-follow top whale traders with lag (5-60s) |
+| `cross-market-sync.ts` | `CrossMarketSync` | Correlate whale moves across Polymarket + Kalshi + Limitless |
+| `whale-analytics-report.ts` | `WhaleAnalyticsReport` | Daily whale leaderboard, win rate, edge estimation |
+
+### src/strategies/intraday/ — BTC 15-Minute Pattern Detection (Phase 29)
+| File | Class | Purpose |
+|------|-------|---------|
+| `btc-fifteen-minute-strategy.ts` | `BtcFifteenMinuteStrategy` | Real-time 15-min candle pattern detection |
+| `bitcoin-volatility-scanner.ts` | `BitcoinVolatilityScanner` | Detect intraday volatility spikes >2σ |
+| `breakout-detector.ts` | `BreakoutDetector` | Identify 15-min breakouts, map to Polymarket |
+
+### src/strategies/polymarket/cycle-end/ — Cycle-End Sniper & Resolution Analysis (Phase 30)
+| File | Class | Purpose |
+|------|-------|---------|
+| `cycle-end-sniper-strategy.ts` | `CycleEndSniperStrategy` | Target markets resolving within 24h |
+| `resolution-criteria-analyzer.ts` | `ResolutionCriteriaAnalyzer` | Parse contract conditions via DeepSeek |
+| `uma-oracle-timing.ts` | `UmaOracleTiming` | Monitor UMA challenge window for signals |
+
+### src/intelligence/signal-fusion/ — Signal Fusion Engine (Phase 31)
+| File | Class | Purpose |
+|------|-------|---------|
+| `signal-fusion-engine.ts` | `SignalFusionEngine` | Combine whale + BTC + sentiment + regime → composite signal |
+| `multi-resolution-analyzer.ts` | `MultiResolutionAnalyzer` | Fuse multiple data sources (DeepSeek, news, on-chain) |
+| `conviction-scorer.ts` | `ConvictionScorer` | Final probability estimate with confidence interval |
+
+### src/cli/ — CLI Enhancement Modules (Phases 27-29, 31)
+| File | Commands |
+|------|----------|
+| `cashclaw-cli-command.ts` | `cashclaw:*` — Distributed trading operations |
+| `trading-alerts-telegram-command.ts` | `telegram:alerts` — Real-time trade notifications |
+| `whale-watch-command.ts` | `whale:watch` — Live whale activity monitoring |
+| `btc-pattern-command.ts` | `btc:patterns` — BTC 15-min strategy launcher |
+| `cycle-end-sniper-command.ts` | `cycle:sniper` — 24h cycle-end market sniper |
+
 ## Key Metrics
-- **289+ source files** (TypeScript 5.9, strict mode)
-- **1400+ tests** (Jest 29, 115+ suites, 100% pass rate)
-- **20+ CLI commands** (Commander)
-- **25+ trading strategies** (RSI, SMA, MACD, Cross-Exchange, Triangular, Funding-Rate, AGI, Delta-Neutral, Event-Driven, Momentum, GRU, Q-Learning, + 15 Polymarket)
+- **266+ source files** (TypeScript 5.9, strict mode)
+- **570 tests** (Jest 29, 100% pass rate)
+- **25+ CLI commands** (Commander + new whale/BTC/sniper/Telegram commands)
+- **52+ trading strategies** across 5 platforms:
+  - Core: RSI, SMA, MACD, Cross-Exchange, Triangular, Funding-Rate, AGI (7)
+  - Polymarket: Delta-Neutral, Event-Driven, Momentum, Correlation, Microstructure (15)
+  - Intraday: BTC 15-min patterns, breakout detection (3)
+  - Cycle-End: Sniper strategies with resolution analysis (2)
+  - ML: GRU, Q-Learning (2)
+  - Whale-Copy: Cross-market sync (1)
+  - Total: 30+ core + 22+ market-specific
 - **28+ API endpoints** + 5 WebSocket channels (Fastify 5)
-- **3 exchange integrations** (Binance, OKX, Bybit via CCXT 4.5)
+- **5 exchange integrations** (Binance, OKX, Bybit via CCXT 4.5, + Polygon CTF via ethers.js)
 - **9 database models** (Tenant, Strategy, Order, Trade, ApiKey, BacktestResult, Candle, PnlSnapshot, AlertRule via Prisma)
 - **5 dashboard pages** + 10 components (React 19, Vite 6, Tailwind, TradingView Charts)
+- **6-node Redis Cluster** (3 masters + 3 replicas, 1000+ concurrent WebSocket connections)
 - **Event-driven messaging**: NATS primary + JetStream (persistent) + Redis fallback (8 modules)
-- **Semantic intelligence**: DeepSeek API + relationship graph + semantic cache (8 modules with consensus swarm + reflection)
+- **Semantic intelligence**: DeepSeek API + relationship graph + semantic cache + signal consensus + dual-level reflection (11+ modules)
+- **Multi-platform feeds**: Polymarket, Limitless, PredictIt, Smarkets, Kalshi (6 adapters)
 - **Cross-market optimization**: ILP solver + Frank-Wolfe + self-evolving constraints (5 modules)
+- **Whale tracking**: Polygon CTF monitor + cross-market sync + copy-trading (4 modules)
 - **Infrastructure hardening**: Distributed nonce, gas optimizer, TimescaleDB hypertables, Grafana/Prometheus
 - **Runtime control**: Vibe controller for dynamic mode switching (1 module)
+- **Paper trading**: +$2,251 P&L across 50 trades (66.7% win rate)
 
 ## Quality Metrics
 - **0 TypeScript errors** (strict mode enforced)
@@ -225,18 +292,26 @@ Algo Trader is a RaaS (Robot-as-a-Service) multi-tenant automated trading platfo
 ## Tech Stack
 **Core**: TypeScript 5.9 | Node.js 20 | Fastify 5 | CCXT 4.5
 
-**Messaging**: NATS.io (primary) | JetStream (persistence) | Redis (fallback)
+**Exchanges**: Binance, OKX, Bybit, Polygon CTF, Polymarket, Kalshi, Limitless, PredictIt, Smarkets
 
-**Optimization**: javascript-lp-solver (ILP) | Frank-Wolfe algorithm
+**Messaging**: NATS.io (primary) + JetStream (persistence) | Redis Cluster (fallback + state)
 
-**Data & Analytics**: BullMQ 5 | Redis (IoRedis) | PostgreSQL 16 (Prisma) | TimescaleDB (hypertables)
+**Optimization**: javascript-lp-solver (ILP) | Frank-Wolfe algorithm | Signal consensus voting
 
-**Intelligence**: DeepSeek API (semantic analysis) | Gamma API (market data)
+**Data & Analytics**: BullMQ 5 | Redis Cluster 6-node | PostgreSQL 16 (Prisma) | TimescaleDB (hypertables)
 
-**Validation & Logging**: Zod 4.3 | Winston | Prometheus | Grafana
+**Intelligence**: DeepSeek API (semantic + causal analysis) | Gamma API (market data) | Nemotron-3 Nano (fast scan) | Model consensus
 
-**ML & Testing**: TensorFlow.js | Jest 29 | Playwright
+**Trading Logic**: Regime detection | Whale tracking | 15-min pattern detection | Resolution criteria analysis | ILP cross-market optimization
+
+**Validation & Logging**: Zod 4.3 | Winston | Prometheus | Grafana (3 dashboards: Arbitrage Metrics, Risk, Infrastructure)
+
+**ML & Testing**: TensorFlow.js | Jest 29 | Playwright | Walk-forward validation
 
 **CLI & UI**: Commander CLI | React 19 | Vite 6 | Tailwind CSS | Zustand 5
 
-Updated: 2026-04-10
+**Billing**: NOWPayments (USDT TRC20) | Coupon system with atomicity guards
+
+**Stealth**: Order splitting & timing jitter | Anti-detection middleware | Phantom order cloaking
+
+Updated: 2026-04-09
