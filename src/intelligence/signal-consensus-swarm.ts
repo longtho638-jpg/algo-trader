@@ -75,7 +75,7 @@ async function callPersona(persona: Persona, signalSummary: string, llmUrl: stri
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
-    signal: AbortSignal.timeout(30_000),
+    signal: AbortSignal.timeout(120_000), // DeepSeek R1 32B local needs ~30-60s per call
   });
 
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
