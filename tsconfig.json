@@ -16,7 +16,7 @@
     "composite": false,
     "declaration": true,
     "downlevelIteration": true,
-    "lib": ["ES2023"],
+    "lib": ["ES2023", "DOM"],
     "baseUrl": ".",
     "rootDir": "./src"
   },
