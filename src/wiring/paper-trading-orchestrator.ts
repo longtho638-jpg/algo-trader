@@ -181,7 +181,40 @@ export async function startPaperTrading(config?: {
     await processCandidate(candidate, maxPositions);
   });
 
+  // Self-contained signal generation: fetch Gamma API → detect simple arb → process
+  async function scanAndTrade(): Promise<void> {
+    try {
+      const resp = await fetch('https://gamma-api.polymarket.com/markets?closed=false&limit=50', {
+        signal: AbortSignal.timeout(15_000),
+      });
+      if (!resp.ok) return;
+      const markets = (await resp.json()) as Array<Record<string, unknown>>;
+
+      for (const m of markets) {
+        const prices = (m['outcomePrices'] as string) ?? '[]';
+        let yes = 0, no = 0;
+        try {
+          const parsed = JSON.parse(prices);
+          yes = parseFloat(parsed[0] ?? '0');
+          no = parseFloat(parsed[1] ?? '0');
+        } catch { continue; }
+
+        const edge = 1 - yes - no;
+        if (edge < 0.025 || yes <= 0 || no <= 0) continue; // min 2.5% edge
+
+        const candidate: SignalCandidate = {
+          signalType: 'simple-arb',
+          markets: [{ id: String(m['conditionId'] ?? ''), title: String(m['question'] ?? ''), yesPrice: yes, noPrice: no }],
+          expectedEdge: edge,
+          reasoning: `YES+NO=${(yes + no).toFixed(3)} < 1, edge=${(edge * 100).toFixed(1)}%`,
+        };
+        await processCandidate(candidate, maxPositions);
+      }
+    } catch (err) { logger.warn('[PaperOrchestrator] Scan error', { err: (err as Error).message }); }
+  }
+
   const ticker = setInterval(async () => {
+    await scanAndTrade();
     await checkPositions().catch(err => logger.error('[PaperOrchestrator] Check error', { err }));
     await publishMetrics();
   }, intervalMs);
