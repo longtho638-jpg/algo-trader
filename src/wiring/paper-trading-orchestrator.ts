@@ -181,35 +181,86 @@ export async function startPaperTrading(config?: {
     await processCandidate(candidate, maxPositions);
   });
 
-  // Self-contained signal generation: fetch Gamma API → detect simple arb → process
+  // Self-contained multi-strategy scan: Gamma API → detect edges → process
   async function scanAndTrade(): Promise<void> {
     try {
-      const resp = await fetch('https://gamma-api.polymarket.com/markets?closed=false&limit=50', {
+      const resp = await fetch('https://gamma-api.polymarket.com/markets?closed=false&limit=200', {
         signal: AbortSignal.timeout(15_000),
       });
       if (!resp.ok) return;
-      const markets = (await resp.json()) as Array<Record<string, unknown>>;
+      const raw = (await resp.json()) as Array<Record<string, unknown>>;
 
-      for (const m of markets) {
-        const prices = (m['outcomePrices'] as string) ?? '[]';
-        let yes = 0, no = 0;
+      type PM = { id: string; title: string; yes: number; no: number; vol: number; group: string };
+      const markets: PM[] = [];
+      for (const m of raw) {
         try {
-          const parsed = JSON.parse(prices);
-          yes = parseFloat(parsed[0] ?? '0');
-          no = parseFloat(parsed[1] ?? '0');
-        } catch { continue; }
-
-        const edge = 1 - yes - no;
-        if (edge < 0.025 || yes <= 0 || no <= 0) continue; // min 2.5% edge
-
-        const candidate: SignalCandidate = {
-          signalType: 'simple-arb',
-          markets: [{ id: String(m['conditionId'] ?? ''), title: String(m['question'] ?? ''), yesPrice: yes, noPrice: no }],
-          expectedEdge: edge,
-          reasoning: `YES+NO=${(yes + no).toFixed(3)} < 1, edge=${(edge * 100).toFixed(1)}%`,
-        };
-        await processCandidate(candidate, maxPositions);
+          const p = JSON.parse((m['outcomePrices'] as string) ?? '[]');
+          const yes = parseFloat(p[0] ?? '0'), no = parseFloat(p[1] ?? '0');
+          if (yes > 0 && no > 0) markets.push({
+            id: String(m['conditionId'] ?? ''),
+            title: String(m['question'] ?? ''),
+            yes, no, vol: Number(m['volume'] ?? 0),
+            group: String(m['groupItemTitle'] ?? m['question'] ?? ''),
+          });
+        } catch { /* skip */ }
       }
+
+      // Strategy 1: Cross-market logical arb (primary vs general election)
+      const groups: Record<string, PM[]> = {};
+      for (const m of markets) { (groups[m.group] ??= []).push(m); }
+      for (const ms of Object.values(groups)) {
+        if (ms.length < 2) continue;
+        ms.sort((a, b) => b.yes - a.yes); // highest prob first
+        const primary = ms[0], general = ms[1];
+        // Logical: "win primary" YES should be >= "win general" YES
+        if (primary.yes < general.yes && general.yes - primary.yes > 0.03) {
+          const edge = general.yes - primary.yes;
+          await processCandidate({
+            signalType: 'cross-market',
+            markets: [
+              { id: primary.id, title: primary.title, yesPrice: primary.yes, noPrice: primary.no },
+              { id: general.id, title: general.title, yesPrice: general.yes, noPrice: general.no },
+            ],
+            expectedEdge: edge,
+            reasoning: `Logical violation: "${primary.title.substring(0,30)}" YES=${primary.yes.toFixed(3)} < "${general.title.substring(0,30)}" YES=${general.yes.toFixed(3)}. Edge=${(edge*100).toFixed(1)}%`,
+          }, maxPositions);
+        }
+      }
+
+      // Strategy 2: Near-resolution endgame (>95% or <5% = near-certain)
+      for (const m of markets) {
+        if (m.vol < 100_000) continue; // min liquidity
+        if (m.yes > 0.95) {
+          const edge = 1 - m.yes - 0.02; // profit = (1 - price) minus 2% fee
+          if (edge > 0.01) await processCandidate({
+            signalType: 'simple-arb',
+            markets: [{ id: m.id, title: m.title, yesPrice: m.yes, noPrice: m.no }],
+            expectedEdge: edge,
+            reasoning: `Endgame: YES=${m.yes.toFixed(3)} near-certain, edge=${(edge*100).toFixed(1)}% after fees`,
+          }, maxPositions);
+        } else if (m.yes < 0.05) {
+          const edge = m.yes - 0.02;
+          if (edge > 0.01) await processCandidate({
+            signalType: 'simple-arb',
+            markets: [{ id: m.id, title: m.title, yesPrice: m.yes, noPrice: m.no }],
+            expectedEdge: edge,
+            reasoning: `Endgame: NO near-certain (YES=${m.yes.toFixed(3)}), edge=${(edge*100).toFixed(1)}%`,
+          }, maxPositions);
+        }
+      }
+
+      // Strategy 3: YES+NO spread (simple arb, rare but checked)
+      for (const m of markets) {
+        const spread = 1 - m.yes - m.no;
+        if (spread > 0.025) await processCandidate({
+          signalType: 'simple-arb',
+          markets: [{ id: m.id, title: m.title, yesPrice: m.yes, noPrice: m.no }],
+          expectedEdge: spread,
+          reasoning: `Spread: YES+NO=${(m.yes+m.no).toFixed(3)}, edge=${(spread*100).toFixed(1)}%`,
+        }, maxPositions);
+      }
+
+      logger.info('[PaperOrchestrator] Scan complete', { markets: markets.length, positions: portfolio.positions.length });
     } catch (err) { logger.warn('[PaperOrchestrator] Scan error', { err: (err as Error).message }); }
   }
 
