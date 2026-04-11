@@ -10,14 +10,16 @@ interface Env {
   CACHE: KVNamespace;
   ENVIRONMENT: string;
   VPS_ORIGIN?: string;
-  JWT_SECRET?: string;
+  JWT_SECRET: string;
+  ALLOWED_ORIGINS?: string;
 }
 
 function getCorsOrigin(env: Env, origin?: string | null): string {
-  const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map(s => s.trim());
+  const allowed = (env.ALLOWED_ORIGINS || 'https://cashclaw.cc').split(',').map((s: string) => s.trim());
   return origin && allowed.includes(origin) ? origin : allowed[0];
 }
-const CORS_BASE = {
+const CORS: Record<string, string> = {
+  'Access-Control-Allow-Origin': 'https://cashclaw.cc',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',

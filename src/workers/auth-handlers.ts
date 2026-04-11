@@ -154,7 +154,7 @@ export async function handleDeleteUser(request: Request, env: Env): Promise<Resp
 }
 
 export function corsPreflightResponse(): Response {
-  return new Response(null, { status: 204, headers: CORS });
+  return new Response(null, { status: 204, headers: { ...BASE_CORS, 'Access-Control-Allow-Origin': 'https://cashclaw.cc' } });
 }
 
 export function notImplementedResponse(path: string): Response {
