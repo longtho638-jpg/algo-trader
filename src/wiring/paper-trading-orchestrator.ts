@@ -13,6 +13,7 @@ import { validateSignal } from '../intelligence/signal-validator';
 import { reflectOnTrade } from '../intelligence/dual-level-reflection-engine';
 import type { SignalCandidate } from '../intelligence/signal-validator';
 import type { TradeOutcome } from '../intelligence/dual-level-reflection-engine';
+import { recordPrediction, startResolutionChecker } from '../intelligence/prediction-accuracy-tracker';
 import { logger } from '../utils/logger';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -103,6 +104,15 @@ async function processCandidate(candidate: SignalCandidate, maxPositions: number
   portfolio.capital -= size;
   portfolio.positions.push(trade);
   saveTrades();
+
+  // Record prediction for accuracy tracking (no money needed)
+  recordPrediction({
+    id: trade.id, marketId: trade.marketId, title: market.title,
+    predictedOutcome: trade.side, confidence: trade.signalConfidence,
+    predictedAt: Date.now(), marketYesPrice: market.yesPrice, strategy: candidate.signalType,
+    actualOutcome: null, resolvedAt: null, correct: null,
+  });
+
   logger.info('[PaperOrchestrator] Trade OPEN', { id: trade.id, side: trade.side, size, entryPrice: trade.entryPrice });
 }
 
@@ -307,5 +317,8 @@ export async function startPaperTrading(config?: {
   process.once('SIGTERM', shutdown);
   process.once('SIGINT', shutdown);
 
-  logger.info('[PaperOrchestrator] Active', { subscribing: 'signal.validated', intervalMs });
+  // Start prediction accuracy checker (polls resolved markets every 5 min)
+  startResolutionChecker();
+
+  logger.info('[PaperOrchestrator] Active', { subscribing: 'signal.validated', intervalMs, predictionTracking: true });
 }
