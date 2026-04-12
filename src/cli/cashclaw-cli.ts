@@ -141,6 +141,15 @@ program
     }
   });
 
+program
+  .command('ledger <wallet>')
+  .description('Show REAL Polymarket trades for any wallet (public data)')
+  .option('--limit <n>', 'Number of trades', '50')
+  .action(async (wallet: string, opts: { limit: string }) => {
+    const { showRealLedger } = require('../polymarket/real-trade-ledger');
+    await showRealLedger(wallet);
+  });
+
 // ─── parse ────────────────────────────────────────────────────────────────────
 
 program.parse(process.argv);
